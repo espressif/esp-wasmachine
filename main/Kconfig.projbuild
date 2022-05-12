@@ -1,0 +1,7 @@
+menu "Wasmachine Configuration"
+
+    config WASMACHINE_TCP_PORT
+        int "TCP Port"
+        default 8080
+
+endmenu
