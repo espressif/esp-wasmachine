@@ -1,0 +1,57 @@
+stages:
+  - build
+
+# global variables
+variables: &global-variables
+  GIT_STRATEGY: clone
+  PYTHON_VER: 3
+  IDF_VERSION: v4.4.1
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+.before_script_preparation: &before_script_preparation
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - echo -n $GITLAB_KEY >> ~/.ssh/id_rsa_base64
+  - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
+  - chmod 600 ~/.ssh/id_rsa
+  - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+
+.setup_tools: &setup_tools
+  - if [ ! -d "esp-idf" ]; then git clone -b ${IDF_VERSION} --recursive ${GITLAB_SSH_SERVER}/espressif/esp-idf.git; fi
+  - export IDF_PATH=$(pwd)/esp-idf
+  - source $IDF_PATH/tools/ci/configure_ci_environment.sh
+  - $IDF_PATH/tools/idf_tools.py --non-interactive install && eval "$($IDF_PATH/tools/idf_tools.py --non-interactive export)" || exit 1
+  - $IDF_PATH/tools/idf_tools.py install-python-env
+
+.get_wamr: &get_wamr
+  - git clone ${GITLAB_WASR_SRC_URL} components/wamr/wasm-micro-runtime
+  - cd components/wamr/wasm-micro-runtime
+  - git checkout ${CI_BUILD_REF_NAME} || echo "Using wasm-micro-runtime default branch"
+  - cd -
+
+.build_esp_box: &build_esp_box
+  - idf.py -DBOARD=esp-box build
+
+cache:
+  key: "${CI_PROJECT_NAME}-esp-idf-${IDF_VERSION}"
+  paths:
+    - .cache/pip
+    - esp-idf/
+  policy: pull
+
+build_with_v4.4:
+  stage: build
+  image: $CI_DOCKER_REGISTRY/esp-env:v4.4-1
+  tags:
+    - build
+
+  variables:
+    <<: *global-variables
+
+  before_script:
+    - *before_script_preparation
+
+  script:
+    - *get_wamr
+    - *setup_tools
+    - *build_esp_box
