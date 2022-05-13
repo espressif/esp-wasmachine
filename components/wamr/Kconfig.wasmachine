@@ -1,4 +1,4 @@
-menu "WASM Micro Runtime Configuration"
+menu "WASM Micro Runtime"
 
     choice WAMR_BUILD_TYPE
         prompt "Build type"
