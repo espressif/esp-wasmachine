@@ -1,4 +1,16 @@
 menu "WASM Micro Runtime"
+    config WAMR_ENABLE_AOT
+        bool "AOT"
+        default n
+        depends on WAMR_PLATFORM_AOT_VAILD
+
+    config WAMR_ENABLE_APP_FRAMEWORK
+        bool "App Framework"
+        default y
+
+    config WAMR_APP_THREAD_STACK_SIZE_MAX
+        int "Application thread max stack size"
+        default 131072
 
     choice WAMR_BUILD_TYPE
         prompt "Build type"
@@ -14,51 +26,6 @@ menu "WASM Micro Runtime"
     config WAMR_ENABLE_INTERP
         bool "Interpreter"
         default y
-
-    config WAMR_ENABLE_AOT
-        bool "AOT"
-        default n
-        depends on WAMR_PLATFORM_AOT_VAILD
-
-    config WAMR_ENABLE_LIBC_BUILTIN
-        bool "Libc builtin"
-        default y
-
-    config WAMR_ENABLE_MULTI_MODULE
-        bool "Multi module"
-        default n
-
-    config WASM_ENABLE_SHARED_MEMORY
-        bool "Shared memory"
-        default n
-
-    config WAMR_ENABLE_MEMORY_PROFILING
-        bool "Memory profiling"
-        default n
-
-    config WAMR_ENABLE_PERF_PROFILING
-        bool "Performance profiling"
-        default n
-    
-    config WAMR_ENABLE_REF_TYPES
-        bool "Reference types"
-        default n
-
-    config WAMR_ENABLE_APP_FRAMEWORK
-        bool "App Framework"
-        default y
-
-    config WAMR_ENABLE_LIB_PTHREAD
-        bool "Lib Pthread"
-        default y
-
-    config WAMR_APP_THREAD_STACK_SIZE_MAX
-        int "Application thread max stack size"
-        default 131072
-
-    config WAMR_IMPORT_ESP_LIBC_WASI
-        bool "Import ESP libc WASI functions"
-        default n
 
     menu "Interpreter Configuration"
         depends on WAMR_ENABLE_INTERP
@@ -85,6 +52,38 @@ menu "WASM Micro Runtime"
                 bool "Mini"
         endchoice
     endmenu
+
+    config WAMR_ENABLE_LIB_PTHREAD
+        bool "Lib Pthread"
+        default y
+
+    config WAMR_ENABLE_LIBC_BUILTIN
+        bool "Libc builtin"
+        default y
+
+    config WAMR_ENABLE_LIBC_WASI
+        bool "libc WASI"
+        default y
+
+    config WAMR_ENABLE_MEMORY_PROFILING
+        bool "Memory profiling"
+        default n
+
+    config WAMR_ENABLE_MULTI_MODULE
+        bool "Multi module"
+        default n
+
+    config WAMR_ENABLE_PERF_PROFILING
+        bool "Performance profiling"
+        default n
+
+    config WAMR_ENABLE_REF_TYPES
+        bool "Reference types"
+        default n
+
+    config WAMR_ENABLE_SHARED_MEMORY
+        bool "Shared memory"
+        default n
 
     config WAMR_PLATFORM_AOT_VAILD
         bool
