@@ -7,9 +7,13 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
         list(APPEND srcs "src/wm_ext_wasm_native_libc.c"
                          "src/wm_ext_wasm_native_vfs_ioctl.c")
     endif()
+
+    if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_MQTT)
+        list(APPEND srcs "src/wm_ext_wasm_native_mqtt.c")
+    endif()
 endif()
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dir}
                        PRIV_INCLUDE_DIRS ${priv_include_dir}
-                       REQUIRES "wamr" "data_sequence" "extended_vfs")
+                       REQUIRES "data_sequence" "extended_vfs" "mqtt" "wamr")
