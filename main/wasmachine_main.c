@@ -15,12 +15,14 @@
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/param.h>
 #include <sys/errno.h>
 #include <sys/socket.h>
 
 #include "app_manager_export.h"
 #include "wasm_export.h"
 
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_event.h"
@@ -30,6 +32,7 @@
 #define TCP_TX_BUFFER_SIZE      2048
 #define WAMR_TASK_STACK_SIZE    4096
 #define TCP_SERVER_LISTEN       5
+#define MALLOC_ALIGN_SIZE       8  
 
 static const char *TAG = "wm_main";
 static int listenfd = -1;
@@ -163,20 +166,12 @@ errout_create_sock:
 
 static void *wamr_thread(void *p)
 {
-    RuntimeInitArgs init_args;
     korp_tid tid;
     host_interface interface = {
         .init = host_init,
         .send = host_send,
         .destroy = host_destroy
     };
-
-    memset(&init_args, 0, sizeof(RuntimeInitArgs));
-    init_args.mem_alloc_type = Alloc_With_System_Allocator;
-    if (!wasm_runtime_full_init(&init_args)) {
-        ESP_LOGE(TAG, "Init runtime environment failed.");
-        return NULL;
-    }
 
     ESP_ERROR_CHECK(os_thread_create(&tid, tcp_server_thread, NULL,
                                      WAMR_TASK_STACK_SIZE));
@@ -188,16 +183,65 @@ static void *wamr_thread(void *p)
     return NULL;
 }
 
+static void *wamr_malloc(unsigned int size)
+{
+    void *ptr;
+#ifdef CONFIG_SPIRAM
+    uint32_t caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
+#else
+    uint32_t caps = MALLOC_CAP_8BIT;
+#endif
+
+    ptr = heap_caps_aligned_alloc(MALLOC_ALIGN_SIZE, size, caps);
+    ESP_LOGV(TAG, "malloc ptr=%p size=%u", ptr, size);
+
+    return ptr;
+}
+
+static void wamr_free(void *ptr)
+{
+    ESP_LOGV(TAG, "free ptr=%p", ptr);
+
+    heap_caps_free(ptr);
+}
+
+static void *wamr_realloc(void *ptr, unsigned int size)
+{
+    void *new_ptr;
+
+    new_ptr = wamr_malloc(size);
+    if (new_ptr) {
+        if (ptr) {
+            size_t n = heap_caps_get_allocated_size(ptr);
+            size_t m = MIN(size, n);
+            memcpy(new_ptr, ptr, m);
+            wamr_free(ptr);
+        }
+    }
+
+    ESP_LOGV(TAG, "realloc ptr=%p size=%u new_ptr=%p", ptr, size, new_ptr);
+
+    return new_ptr;
+}
+
 void app_main(void)
 {
     pthread_t tid;
     pthread_attr_t attr;
+    RuntimeInitArgs init_args;
 
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     ESP_ERROR_CHECK(example_connect());
+
+    memset(&init_args, 0, sizeof(RuntimeInitArgs));
+    init_args.mem_alloc_type = Alloc_With_Allocator;
+    init_args.mem_alloc_option.allocator.malloc_func  = wamr_malloc;
+    init_args.mem_alloc_option.allocator.realloc_func = wamr_realloc;
+    init_args.mem_alloc_option.allocator.free_func    = wamr_free;
+    assert(wasm_runtime_full_init(&init_args));
 
     ESP_ERROR_CHECK(pthread_attr_init(&attr));
     ESP_ERROR_CHECK(pthread_attr_setstacksize(&attr, WAMR_TASK_STACK_SIZE));
