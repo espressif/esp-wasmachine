@@ -27,7 +27,6 @@ sdkconfig.old
 build
 spiffs.bin
 
-
 # gcov coverage reports
 *.gcda
 *.gcno
@@ -50,3 +49,5 @@ cmake-build-*/
 flake8_output.txt
 
 components/wamr/wasm-micro-runtime
+
+spiffs_image
