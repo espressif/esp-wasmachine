@@ -1,0 +1,42 @@
+menu "Shell"
+    config WASMACHINE_SHELL
+        bool "Enable WASMachine Shell"
+        default y
+
+    if WASMACHINE_SHELL
+        config WASMACHINE_SHELL_WASM_APP_STACK_SIZE
+            string "WASM application default stack size"
+            default "16384"
+            help
+                If WASM application's stack size is not set by `iwasm` command, this
+                value will be used as the default stack size.
+
+        config WASMACHINE_SHELL_WASM_APP_HEAP_SIZE
+            string "WASM application default heap size"
+            default "16384"
+            help
+                If WASM application's heap size is not set by `iwasm` command, this
+                value will be used as the default heap size.
+
+        config WASMACHINE_SHELL_WASM_TASK_STACK_SIZE
+            int "WASM task stack size"
+            default 8192
+            help
+                This stack size is used for WASM task in WASMachine side, this task
+                will handle WASM application load logic.
+
+        config WASMACHINE_SHELL_PROMPT
+            string "Shell prompt"
+            default "WASMachine>"
+
+        menu "Shell Command List"
+            config WASMACHINE_SHELL_CMD_IWASM
+                bool "iwasm"
+                default y
+
+            config WASMACHINE_SHELL_CMD_LS
+                bool "ls"
+                default y
+        endmenu
+    endif
+endmenu
