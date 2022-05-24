@@ -48,6 +48,10 @@ menu "WASM Micro Runtime"
         bool "App Framework"
         default y
 
+    config WAMR_ENABLE_LIB_PTHREAD
+        bool "Lib Pthread"
+        default y
+
     config WAMR_APP_THREAD_STACK_SIZE_MAX
         int "Application thread max stack size"
         default 131072
