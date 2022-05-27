@@ -86,6 +86,12 @@ if (NOT CMAKE_BUILD_EARLY_EXPANSION)
         set (WAMR_BUILD_APP_FRAMEWORK 0)
     endif()
 
+    if(CONFIG_WAMR_ENABLE_LIB_PTHREAD)
+        set (WAMR_BUILD_LIB_PTHREAD 1)
+    else()
+        set (WAMR_BUILD_LIB_PTHREAD 0)
+    endif()
+
     include(${COMPONENT_PATH}/wasm-micro-runtime/build-scripts/runtime_lib.cmake)
 
     set(srcs "${WAMR_RUNTIME_LIB_SOURCE}"
