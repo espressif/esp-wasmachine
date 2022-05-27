@@ -22,6 +22,7 @@
 #include "sdkconfig.h"
 
 #include "app_manager_export.h"
+#include "runtime_lib.h"
 #include "wasm_export.h"
 
 #include "esp_heap_caps.h"
@@ -186,8 +187,14 @@ static void *wamr_thread(void *p)
     ESP_ERROR_CHECK(os_thread_create(&tid, tcp_server_thread, NULL,
                                      WAMR_TASK_STACK_SIZE));
 
+    /* timer manager */
+    if (!init_wasm_timer()) {
+        goto fail1;
+    }
+
     app_manager_startup(&interface);
 
+fail1:
     wasm_runtime_destroy();
 
     return NULL;
