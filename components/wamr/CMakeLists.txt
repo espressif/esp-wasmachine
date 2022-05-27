@@ -100,10 +100,14 @@ if (NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(include_dirs "${IWASM_DIR}/include"
                      "${UTILS_SHARED_DIR}"
                      "${PLATFORM_SHARED_DIR}"
-                     "${PLATFORM_SHARED_DIR}/../include"
-                     "${APP_MGR_SHARED_DIR}"
-                     "${NATIVE_INTERFACE_DIR}")
+                     "${PLATFORM_SHARED_DIR}/../include")
 
+    if(CONFIG_WAMR_ENABLE_APP_FRAMEWORK)
+        list(APPEND include_dirs "${APP_MGR_SHARED_DIR}"
+                                 "${NATIVE_INTERFACE_DIR}"
+                                 "${WASM_APP_LIBS_DIR}")
+    endif()
+    
     if(CONFIG_WAMR_IMPORT_ESP_LIBC_WASI)
         list(APPEND include_dirs "esp-libc-wasi/include")
         list(APPEND srcs "esp-libc-wasi/esp_libc_wasi_wrapper.c")
