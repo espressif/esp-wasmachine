@@ -2,4 +2,9 @@ menu "WASM Extended Native"
     config WASMACHINE_WASM_EXT_NATIVE
         bool "Enable Export WASM Extended Native"
         default y
+    
+    config WASMACHINE_WASM_EXT_NATIVE_LIBC
+        bool "Export WASM extended libc native APIs"
+        default y
+        depends on WASMACHINE_WASM_EXT_NATIVE
 endmenu

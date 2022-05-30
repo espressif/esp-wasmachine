@@ -14,4 +14,6 @@
 
 #pragma once
 
-#define SHELL_ROOT_FS_PATH   "/spiffs"
+#include "wm_config.h"
+
+#define SHELL_ROOT_FS_PATH  WM_FILE_SYSTEM_BASE_PATH

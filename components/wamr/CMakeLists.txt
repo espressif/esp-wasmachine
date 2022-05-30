@@ -100,7 +100,8 @@ if (NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(include_dirs "${IWASM_DIR}/include"
                      "${UTILS_SHARED_DIR}"
                      "${PLATFORM_SHARED_DIR}"
-                     "${PLATFORM_SHARED_DIR}/../include")
+                     "${PLATFORM_SHARED_DIR}/../include"
+                     "${IWASM_COMMON_DIR}")
 
     if(CONFIG_WAMR_ENABLE_APP_FRAMEWORK)
         list(APPEND include_dirs "${APP_MGR_SHARED_DIR}"

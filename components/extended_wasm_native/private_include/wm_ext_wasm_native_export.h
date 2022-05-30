@@ -14,18 +14,11 @@
 
 #pragma once
 
-#include "sdkconfig.h"
-#include "wm_config.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef CONFIG_WASMACHINE_APP_MGR
-void wm_wamr_app_mgr_init(void);
-#endif
-
-void wm_wamr_init(void);
+int wm_ext_wasm_native_libc_export(void);
 
 #ifdef __cplusplus
 }

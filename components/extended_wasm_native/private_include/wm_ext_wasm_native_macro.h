@@ -14,19 +14,6 @@
 
 #pragma once
 
-#include "sdkconfig.h"
-#include "wm_config.h"
+#define REG_NATIVE_FUNC(func_name, signature) \
+    { #func_name, func_name##_wrapper, signature, NULL }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef CONFIG_WASMACHINE_APP_MGR
-void wm_wamr_app_mgr_init(void);
-#endif
-
-void wm_wamr_init(void);
-
-#ifdef __cplusplus
-}
-#endif
