@@ -37,6 +37,10 @@
 #include "shell.h"
 #endif
 
+#ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE
+#include "wm_ext_wasm_native.h"
+#endif
+
 #define TCP_TX_BUFFER_SIZE      2048
 #define WAMR_TASK_STACK_SIZE    4096
 #define TCP_SERVER_LISTEN       5
@@ -268,6 +272,10 @@ static void wamr_init(void)
     init_args.mem_alloc_option.allocator.realloc_func = wamr_realloc;
     init_args.mem_alloc_option.allocator.free_func    = wamr_free;
     assert(wasm_runtime_full_init(&init_args));
+
+#ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE
+    wm_ext_wasm_native_init();
+#endif
 }
 
 static void fs_init(void)

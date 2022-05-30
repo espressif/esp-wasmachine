@@ -1,8 +1,6 @@
 menu "WASMachine Configuration"
     rsource "../components/shell/Kconfig.wasmachine"
 
-    rsource "../components/wamr/Kconfig.wasmachine"
-
     menu "WAMR APP Management"
         config WASMACHINE_APP_MGR
             bool "Enable WAMR APP Management"
@@ -15,4 +13,7 @@ menu "WASMachine Configuration"
                 default 8080
         endif
     endmenu
+
+    rsource "../components/extended_wasm_native/Kconfig.wasmachine"
+    rsource "../components/wamr/Kconfig.wasmachine"
 endmenu
