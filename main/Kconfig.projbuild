@@ -1,4 +1,5 @@
 menu "WASMachine Configuration"
+    rsource "../components/extended_vfs/Kconfig.wasmachine"
     rsource "../components/shell/Kconfig.wasmachine"
 
     menu "WAMR APP Management"
