@@ -1,0 +1,5 @@
+menu "Extended VFS"
+    config WASMACHINE_EXT_VFS
+        bool "Enable Extended VFS for WASMachine"
+        default y
+endmenu
