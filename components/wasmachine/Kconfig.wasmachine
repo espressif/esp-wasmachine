@@ -5,8 +5,14 @@ menu "Generic"
         depends on WAMR_ENABLE_APP_FRAMEWORK
 
     if WASMACHINE_APP_MGR
-        config WASMACHINE_TCP_PORT
-            int "TCP Port"
-            default 8080
+        config WASMACHINE_TCP_SERVER
+            bool "Enable TCP server"
+            default y
+
+        if WASMACHINE_TCP_SERVER
+            config WASMACHINE_TCP_PORT
+                int "TCP Port"
+                default 8080
+        endif
     endif
 endmenu

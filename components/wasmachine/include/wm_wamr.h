@@ -14,8 +14,14 @@
 
 #pragma once
 
+#include "sdkconfig.h"
+
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef CONFIG_WASMACHINE_APP_MGR
+void wm_wamr_app_mgr_init(void);
 #endif
 
 void wm_wamr_init(void);
