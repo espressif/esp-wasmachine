@@ -1,0 +1,12 @@
+menu "Generic"
+    config WASMACHINE_APP_MGR
+        bool "Enable WAMR APP Management"
+        default n
+        depends on WAMR_ENABLE_APP_FRAMEWORK
+
+    if WASMACHINE_APP_MGR
+        config WASMACHINE_TCP_PORT
+            int "TCP Port"
+            default 8080
+    endif
+endmenu
