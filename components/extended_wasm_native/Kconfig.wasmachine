@@ -1,0 +1,5 @@
+menu "WASM Extended Native"
+    config WASMACHINE_WASM_EXT_NATIVE
+        bool "Enable Export WASM Extended Native"
+        default y
+endmenu
