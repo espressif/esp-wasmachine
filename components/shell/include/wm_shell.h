@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-void shell_init(void);
+void wm_shell_init(void);
 
 #ifdef __cplusplus
 }

@@ -14,7 +14,7 @@
 
 #include "shell_cmd.h"
 
-void shell_init(void)
+void wm_shell_init(void)
 {
     esp_console_repl_t *repl = NULL;
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();

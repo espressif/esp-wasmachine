@@ -21,7 +21,7 @@
 #include "protocol_examples_common.h"
 
 #ifdef CONFIG_WASMACHINE_SHELL
-#include "shell.h"
+#include "wm_shell.h"
 #endif
 
 #include "wm_wamr.h"
@@ -63,6 +63,6 @@ void app_main(void)
 #endif
 
 #ifdef CONFIG_WASMACHINE_SHELL
-    shell_init();
+    wm_shell_init();
 #endif
 }
