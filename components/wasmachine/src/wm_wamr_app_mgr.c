@@ -12,44 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <sys/param.h>
-#include <sys/errno.h>
-#include <sys/socket.h>
-
-#include "sdkconfig.h"
+#include "wm_wamr.h"
 
 #include "app_manager_export.h"
 #include "runtime_lib.h"
 #include "wasm_export.h"
 
-#include "esp_heap_caps.h"
+#define APP_MGR_TASK_STACK_SIZE    4096
+
+#ifdef CONFIG_WASMACHINE_TCP_SERVER
+#include <string.h>
+#include <pthread.h>
+#include <sys/socket.h>
+
 #include "esp_log.h"
-#include "esp_system.h"
-#include "esp_event.h"
-#include "nvs_flash.h"
-#include "esp_spiffs.h"
-#include "protocol_examples_common.h"
-
-#ifdef CONFIG_WASMACHINE_SHELL
-#include "shell.h"
-#endif
-
-#ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE
-#include "wm_ext_wasm_native.h"
-#endif
 
 #define TCP_TX_BUFFER_SIZE      2048
-#define WAMR_TASK_STACK_SIZE    4096
 #define TCP_SERVER_LISTEN       5
-#define MALLOC_ALIGN_SIZE       8
-#define SPIFFS_MAX_FILES        32
 
-static const char *TAG = "wm_main";
+static const char *TAG = "wm_wamr_app_mgr";
 
-#ifdef CONFIG_WASMACHINE_APP_MGR
 static int listenfd = -1;
 static int sockfd = -1;
 static pthread_mutex_t sock_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -101,7 +83,7 @@ static void host_destroy(void)
     pthread_mutex_unlock(&sock_lock);
 }
 
-static void *tcp_server_thread(void *arg)
+static void *_tcp_server_thread(void *arg)
 {
     extern int aee_host_msg_callback(void *msg, uint32_t msg_len);
 
@@ -178,9 +160,11 @@ errout_create_sock:
     free(buf);
     return NULL;
 }
+#endif
 
-static void *wamr_thread(void *p)
+static void *_app_mgr_thread(void *p)
 {
+#ifdef CONFIG_WASMACHINE_TCP_SERVER
     korp_tid tid;
     host_interface interface = {
         .init = host_init,
@@ -188,9 +172,15 @@ static void *wamr_thread(void *p)
         .destroy = host_destroy
     };
 
-    ESP_ERROR_CHECK(os_thread_create(&tid, tcp_server_thread, NULL,
-                                     WAMR_TASK_STACK_SIZE));
-
+    ESP_ERROR_CHECK(os_thread_create(&tid, _tcp_server_thread, NULL,
+                                     APP_MGR_TASK_STACK_SIZE));
+#else
+    host_interface interface = {
+        .init = NULL,
+        .send = NULL,
+        .destroy = NULL
+    };
+#endif
     /* timer manager */
     if (!init_wasm_timer()) {
         goto fail1;
@@ -204,107 +194,12 @@ fail1:
     return NULL;
 }
 
-static void app_mgr_init(void)
+void wm_wamr_app_mgr_init(void)
 {
     pthread_t tid;
     pthread_attr_t attr;
 
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    ESP_ERROR_CHECK(example_connect());
-
     ESP_ERROR_CHECK(pthread_attr_init(&attr));
-    ESP_ERROR_CHECK(pthread_attr_setstacksize(&attr, WAMR_TASK_STACK_SIZE));
-    ESP_ERROR_CHECK(pthread_create(&tid, &attr, wamr_thread, NULL));
-}
-#endif
-
-static void *wamr_malloc(unsigned int size)
-{
-    void *ptr;
-#ifdef CONFIG_SPIRAM
-    uint32_t caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
-#else
-    uint32_t caps = MALLOC_CAP_8BIT;
-#endif
-
-    ptr = heap_caps_aligned_alloc(MALLOC_ALIGN_SIZE, size, caps);
-    ESP_LOGV(TAG, "malloc ptr=%p size=%u", ptr, size);
-
-    return ptr;
-}
-
-static void wamr_free(void *ptr)
-{
-    ESP_LOGV(TAG, "free ptr=%p", ptr);
-
-    heap_caps_free(ptr);
-}
-
-static void *wamr_realloc(void *ptr, unsigned int size)
-{
-    void *new_ptr;
-
-    new_ptr = wamr_malloc(size);
-    if (new_ptr) {
-        if (ptr) {
-            size_t n = heap_caps_get_allocated_size(ptr);
-            size_t m = MIN(size, n);
-            memcpy(new_ptr, ptr, m);
-            wamr_free(ptr);
-        }
-    }
-
-    ESP_LOGV(TAG, "realloc ptr=%p size=%u new_ptr=%p", ptr, size, new_ptr);
-
-    return new_ptr;
-}
-
-static void wamr_init(void)
-{
-    RuntimeInitArgs init_args;
-
-    memset(&init_args, 0, sizeof(RuntimeInitArgs));
-    init_args.mem_alloc_type = Alloc_With_Allocator;
-    init_args.mem_alloc_option.allocator.malloc_func  = wamr_malloc;
-    init_args.mem_alloc_option.allocator.realloc_func = wamr_realloc;
-    init_args.mem_alloc_option.allocator.free_func    = wamr_free;
-    assert(wasm_runtime_full_init(&init_args));
-
-#ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE
-    wm_ext_wasm_native_init();
-#endif
-}
-
-static void fs_init(void)
-{
-    size_t total = 0, used = 0;
-    esp_vfs_spiffs_conf_t conf = {
-        .base_path = "/spiffs",
-        .partition_label = "storage",
-        .max_files = SPIFFS_MAX_FILES,
-        .format_if_mount_failed = false
-    };
-
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
-    ESP_ERROR_CHECK(esp_spiffs_info(conf.partition_label, &total, &used));
-
-    ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
-}
-
-void app_main(void)
-{
-    fs_init();
-
-    wamr_init();
-
-#ifdef CONFIG_WASMACHINE_APP_MGR
-    app_mgr_init();
-#endif
-
-#ifdef CONFIG_WASMACHINE_SHELL
-    shell_init();
-#endif
+    ESP_ERROR_CHECK(pthread_attr_setstacksize(&attr, APP_MGR_TASK_STACK_SIZE));
+    ESP_ERROR_CHECK(pthread_create(&tid, &attr, _app_mgr_thread, NULL));
 }
