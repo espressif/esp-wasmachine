@@ -8,4 +8,4 @@ endif()
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dir}
-                       REQUIRES "extended_wasm_native" "wamr")
+                       REQUIRES "extended_wasm_native" "wamr" "extended_vfs")

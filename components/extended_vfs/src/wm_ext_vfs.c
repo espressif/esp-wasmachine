@@ -12,8 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "sdkconfig.h"
 #include "wm_ext_vfs.h"
+
+#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
+#include "esp_vfs_dev.h"
+#endif
 
 void wm_ext_vfs_init(void)
 {
+#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
+    esp_vfs_dev_uart_register();
+#endif
 }
