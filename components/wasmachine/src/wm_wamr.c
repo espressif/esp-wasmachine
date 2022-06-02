@@ -84,6 +84,6 @@ void wm_wamr_init(void)
     assert(wasm_runtime_full_init(&init_args));
 
 #ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE
-    wm_ext_wasm_native_init();
+    wm_ext_wasm_native_export();
 #endif
 }

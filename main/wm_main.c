@@ -34,7 +34,7 @@ static void fs_init(void)
 {
     size_t total = 0, used = 0;
     esp_vfs_spiffs_conf_t conf = {
-        .base_path = "/spiffs",
+        .base_path = WM_FILE_SYSTEM_BASE_PATH,
         .partition_label = "storage",
         .max_files = SPIFFS_MAX_FILES,
         .format_if_mount_failed = false

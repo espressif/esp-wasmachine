@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-void wm_ext_wasm_native_init(void);
+void wm_ext_wasm_native_export(void);
 
 #ifdef __cplusplus
 }

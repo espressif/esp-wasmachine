@@ -15,4 +15,8 @@ menu "Generic"
                 default 8080
         endif
     endif
+
+    config WASMACHINE_FILE_SYSTEM_BASE_PATH
+        string "File-system base path"
+        default "/storage"
 endmenu

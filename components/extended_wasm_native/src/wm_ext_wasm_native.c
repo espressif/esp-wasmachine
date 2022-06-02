@@ -12,8 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "wm_ext_wasm_native.h"
+#include "sdkconfig.h"
+#include "esp_err.h"
 
-void wm_ext_wasm_native_init(void)
+#include "wm_ext_wasm_native.h"
+#include "wm_ext_wasm_native_export.h"
+
+void wm_ext_wasm_native_export(void)
 {
+#ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE_LIBC
+    ESP_ERROR_CHECK(wm_ext_wasm_native_libc_export());
+#endif
 }

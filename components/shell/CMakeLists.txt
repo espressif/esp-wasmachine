@@ -15,4 +15,4 @@ endif()
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dir}
                        PRIV_INCLUDE_DIRS ${priv_include_dir}
-                       REQUIRES "wamr" "console")
+                       REQUIRES "wamr" "console" "wasmachine")
