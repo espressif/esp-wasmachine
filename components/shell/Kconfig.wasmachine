@@ -30,6 +30,10 @@ menu "Shell"
             default "WASMachine>"
 
         menu "Shell Command List"
+            config WASMACHINE_SHELL_CMD_FREE
+                bool "free"
+                default y
+
             config WASMACHINE_SHELL_CMD_IWASM
                 bool "iwasm"
                 default y

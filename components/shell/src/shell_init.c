@@ -42,5 +42,9 @@ void wm_shell_init(void)
     shell_regitser_cmd_iwasm();
 #endif
 
+#ifdef CONFIG_WASMACHINE_SHELL_CMD_FREE
+    shell_regitser_cmd_free();
+#endif
+
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 }
