@@ -2,4 +2,20 @@ menu "Extended VFS"
     config WASMACHINE_EXT_VFS
         bool "Enable Extended VFS for WASMachine"
         default y
+
+    if WASMACHINE_EXT_VFS
+        menu "Peripherals"
+            config WASMACHINE_EXT_VFS_UART
+                bool "UART"
+                depends on !ESP_CONSOLE_UART_DEFAULT && !ESP_CONSOLE_UART_CUSTOM
+                default y
+                help
+                    Select this option, then "/dev/uart/x" (x=0, 1, 2) will be registered
+                    to VFS, but UART1 and UART2 are not initialized, so "/dev/uart/1" and
+                    "/dev/uart/2" can't be used directly.
+
+                    Besides above if users use UART0/1/2 for other functions, these devices
+                    also can't be used.
+        endmenu
+    endif
 endmenu

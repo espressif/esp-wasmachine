@@ -24,6 +24,10 @@
 #include "wm_ext_wasm_native.h"
 #endif
 
+#ifdef CONFIG_WASMACHINE_EXT_VFS
+#include "wm_ext_vfs.h"
+#endif
+
 #include "wm_wamr.h"
 
 #define MALLOC_ALIGN_SIZE       8
@@ -85,5 +89,9 @@ void wm_wamr_init(void)
 
 #ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE
     wm_ext_wasm_native_export();
+#endif
+
+#ifdef CONFIG_WASMACHINE_EXT_VFS
+    wm_ext_vfs_init();
 #endif
 }
