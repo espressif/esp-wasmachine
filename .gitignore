@@ -49,5 +49,6 @@ cmake-build-*/
 flake8_output.txt
 
 components/wamr/wasm-micro-runtime
+components/esp_littlefs
 
-spiffs_image
+fs_image

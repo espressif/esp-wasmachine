@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "esp_event.h"
+#include "esp_littlefs.h"
 #include "esp_log.h"
-#include "esp_spiffs.h"
 
 #include "nvs_flash.h"
 
@@ -26,22 +26,20 @@
 
 #include "wm_wamr.h"
 
-#define SPIFFS_MAX_FILES        32
-
 static const char *TAG = "wm_main";
 
 static void fs_init(void)
 {
     size_t total = 0, used = 0;
-    esp_vfs_spiffs_conf_t conf = {
+    esp_vfs_littlefs_conf_t conf = {
         .base_path = WM_FILE_SYSTEM_BASE_PATH,
         .partition_label = "storage",
-        .max_files = SPIFFS_MAX_FILES,
-        .format_if_mount_failed = false
+        .format_if_mount_failed = false,
+        .dont_mount = false,
     };
 
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
-    ESP_ERROR_CHECK(esp_spiffs_info(conf.partition_label, &total, &used));
+    ESP_ERROR_CHECK(esp_vfs_littlefs_register(&conf));
+    ESP_ERROR_CHECK(esp_littlefs_info(conf.partition_label, &total, &used));
 
     ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
 }
