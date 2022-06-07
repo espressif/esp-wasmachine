@@ -15,10 +15,11 @@
 #include "wm_wamr.h"
 
 #include "app_manager_export.h"
+#include "module_wasm_app.h"
 #include "runtime_lib.h"
 #include "wasm_export.h"
 
-#define APP_MGR_TASK_STACK_SIZE    4096
+#define APP_MGR_TASK_STACK_SIZE    8192
 
 #ifdef CONFIG_WASMACHINE_TCP_SERVER
 #include <string.h>
@@ -171,9 +172,6 @@ static void *_app_mgr_thread(void *p)
         .send = host_send,
         .destroy = host_destroy
     };
-
-    ESP_ERROR_CHECK(os_thread_create(&tid, _tcp_server_thread, NULL,
-                                     APP_MGR_TASK_STACK_SIZE));
 #else
     host_interface interface = {
         .init = NULL,
@@ -185,6 +183,15 @@ static void *_app_mgr_thread(void *p)
     if (!init_wasm_timer()) {
         goto fail1;
     }
+
+    if ( !wasm_set_wasi_root_dir(WM_FILE_SYSTEM_BASE_PATH)) {
+        goto fail1;
+    }
+
+#ifdef CONFIG_WASMACHINE_TCP_SERVER
+    ESP_ERROR_CHECK(os_thread_create(&tid, _tcp_server_thread, NULL,
+                                     APP_MGR_TASK_STACK_SIZE));
+#endif
 
     app_manager_startup(&interface);
 
