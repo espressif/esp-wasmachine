@@ -1,3 +1,4 @@
+
 // Copyright 2022 Espressif Systems (Shanghai) PTE LTD
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,23 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sdkconfig.h"
-#include "esp_err.h"
+#pragma once
 
-#include "wm_ext_vfs.h"
-#include "wm_ext_vfs_export.h"
-
-#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
-#include "esp_vfs_dev.h"
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-void wm_ext_vfs_init(void)
-{
-#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
-    esp_vfs_dev_uart_register();
-#endif
+int wm_ext_vfs_gpio_init(void);
 
-#ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
-    ESP_ERROR_CHECK(wm_ext_vfs_gpio_init());
-#endif
+#ifdef __cplusplus
 }
+#endif
