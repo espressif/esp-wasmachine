@@ -265,11 +265,25 @@ static int ioctl_wrapper(wasm_exec_env_t exec_env, int fd, int cmd, char *va_arg
     return -1;
 }
 
-static int fstat_wrapper(int fd, struct stat *st)
+static int fstat_wrapper(wasm_exec_env_t exec_env, int fd, struct stat *st)
 {
     ESP_LOGW(TAG, "function %s is not supported", __func__);
 
     return -1;
+}
+
+static unsigned long sleep_wrapper(wasm_exec_env_t exec_env, unsigned long s)
+{
+    ESP_LOGV(TAG, "sleep(%ld)", s);
+
+    return sleep(s);
+}
+
+static int usleep_wrapper(wasm_exec_env_t exec_env, unsigned long us)
+{
+    ESP_LOGV(TAG, "usleep(%ld)", us);
+
+    return usleep(us);
 }
 
 static NativeSymbol wm_libc_wrapper_native_symbol[] = {
@@ -283,7 +297,9 @@ static NativeSymbol wm_libc_wrapper_native_symbol[] = {
     REG_NATIVE_FUNC(fsync,  "(i)i"),
     REG_NATIVE_FUNC(close,  "(i)i"),
     REG_NATIVE_FUNC(ioctl,  "(ii*)i"),
-    REG_NATIVE_FUNC(fstat,  "(i*)i")
+    REG_NATIVE_FUNC(fstat,  "(i*)i"),
+    REG_NATIVE_FUNC(sleep,  "(i)i"),
+    REG_NATIVE_FUNC(usleep, "(i)i")
 };
 
 int wm_ext_wasm_native_libc_export(void)
