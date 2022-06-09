@@ -70,7 +70,11 @@ static int ls_main(int argc, char **argv)
             break;
         }
 
-        printf("%s\n", de->d_name);
+        if (de->d_type == DT_DIR) {
+            printf("\033[0;34m%s\033[0m\n", de->d_name);
+        } else {
+            printf("%s\n", de->d_name);
+        }
     } while (1);
 
     closedir(dir);

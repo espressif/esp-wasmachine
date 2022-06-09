@@ -20,8 +20,15 @@ variables: &global-variables
   - if [ ! -d "esp-idf" ]; then git clone -b ${IDF_VERSION} --recursive ${GITLAB_SSH_SERVER}/espressif/esp-idf.git; fi
   - export IDF_PATH=$(pwd)/esp-idf
   - source $IDF_PATH/tools/ci/configure_ci_environment.sh
-  - $IDF_PATH/tools/idf_tools.py --non-interactive install && eval "$($IDF_PATH/tools/idf_tools.py --non-interactive export)" || exit 1
+  - $IDF_PATH/tools/idf_tools.py --non-interactive install cmake || exit 1
+  - $IDF_PATH/tools/idf_tools.py --non-interactive install --targets esp32s3 && eval "$($IDF_PATH/tools/idf_tools.py --non-interactive export)" || exit 1
   - $IDF_PATH/tools/idf_tools.py install-python-env
+
+.get_littlefs: &get_littlefs
+  - git clone --recursive ${GITLAB_LITTLEFS_SRC_URL} components/esp_littlefs
+  - cd components/esp_littlefs
+  - git checkout ${CI_BUILD_REF_NAME} || echo "Using esp_littlefs default branch"
+  - cd -
 
 .get_wamr: &get_wamr
   - git clone ${GITLAB_WASR_SRC_URL} components/wamr/wasm-micro-runtime
@@ -52,6 +59,7 @@ build_with_v4.4:
     - *before_script_preparation
 
   script:
+    - *get_littlefs
     - *get_wamr
     - *setup_tools
     - *build_esp_box

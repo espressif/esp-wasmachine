@@ -7,4 +7,4 @@ idf_component_register(SRCS "${srcs}")
 # generated image with 'idf.py -p PORT flash', since the image will be
 # flashed each time, but you can use 'idf.py -p PORT storage-flash' to
 # flash this image seperately.
-spiffs_create_partition_image(storage spiffs_image)
+littlefs_create_partition_image(storage fs_image)
