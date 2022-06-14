@@ -12,23 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sdkconfig.h"
-#include "esp_err.h"
+#pragma once
 
-#include "wm_ext_vfs.h"
-#include "wm_ext_vfs_export.h"
+#include "data_seq.h"
+#include "wasm_export.h"
 
-#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
-#include "esp_vfs_dev.h"
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-void wm_ext_vfs_init(void)
-{
-#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
-    esp_vfs_dev_uart_register();
-#endif
+/**
+  * @brief  Check data sequence space and transform pointer address from WASM to runtime.
+  *
+  * @param  exec_env WAMR execution envirenment pointer
+  * @param  ds data sequence pointer
+  *
+  * @return 0 if success or a negative value if failed.
+  */
+int data_seq_addr_wasm2c(wasm_exec_env_t exec_env, data_seq_t *ds);
 
-#ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
-    ESP_ERROR_CHECK(wm_ext_vfs_gpio_init());
-#endif
+#ifdef __cplusplus
 }
+#endif

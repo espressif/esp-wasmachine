@@ -25,6 +25,7 @@
 
 #include "wm_ext_wasm_native_macro.h"
 #include "wm_ext_wasm_native_export.h"
+#include "wm_ext_wasm_native_vfs_ioctl.h"
 
 #define WASM_O_APPEND       (1 << 0)
 #define WASM_O_NONBLOCK     (1 << 2)
@@ -39,7 +40,88 @@
 
 #define WASM_O_RDWR         (WASM_O_RDONLY | WASM_O_WRONLY)
 
+#define WASI_ESUCCESS        (0)
+#define WASI_E2BIG           (1)
+#define WASI_EACCES          (2)
+#define WASI_EADDRINUSE      (3)
+#define WASI_EADDRNOTAVAIL   (4)
+#define WASI_EAFNOSUPPORT    (5)
+#define WASI_EAGAIN          (6)
+#define WASI_EALREADY        (7)
+#define WASI_EBADF           (8)
+#define WASI_EBADMSG         (9)
+#define WASI_EBUSY           (10)
+#define WASI_ECANCELED       (11)
+#define WASI_ECHILD          (12)
+#define WASI_ECONNABORTED    (13)
+#define WASI_ECONNREFUSED    (14)
+#define WASI_ECONNRESET      (15)
+#define WASI_EDEADLK         (16)
+#define WASI_EDESTADDRREQ    (17)
+#define WASI_EDOM            (18)
+#define WASI_EDQUOT          (19)
+#define WASI_EEXIST          (20)
+#define WASI_EFAULT          (21)
+#define WASI_EFBIG           (22)
+#define WASI_EHOSTUNREACH    (23)
+#define WASI_EIDRM           (24)
+#define WASI_EILSEQ          (25)
+#define WASI_EINPROGRESS     (26)
+#define WASI_EINTR           (27)
+#define WASI_EINVAL          (28)
+#define WASI_EIO             (29)
+#define WASI_EISCONN         (30)
+#define WASI_EISDIR          (31)
+#define WASI_ELOOP           (32)
+#define WASI_EMFILE          (33)
+#define WASI_EMLINK          (34)
+#define WASI_EMSGSIZE        (35)
+#define WASI_EMULTIHOP       (36)
+#define WASI_ENAMETOOLONG    (37)
+#define WASI_ENETDOWN        (38)
+#define WASI_ENETRESET       (39)
+#define WASI_ENETUNREACH     (40)
+#define WASI_ENFILE          (41)
+#define WASI_ENOBUFS         (42)
+#define WASI_ENODEV          (43)
+#define WASI_ENOENT          (44)
+#define WASI_ENOEXEC         (45)
+#define WASI_ENOLCK          (46)
+#define WASI_ENOLINK         (47)
+#define WASI_ENOMEM          (48)
+#define WASI_ENOMSG          (49)
+#define WASI_ENOPROTOOPT     (50)
+#define WASI_ENOSPC          (51)
+#define WASI_ENOSYS          (52)
+#define WASI_ENOTCONN        (53)
+#define WASI_ENOTDIR         (54)
+#define WASI_ENOTEMPTY       (55)
+#define WASI_ENOTRECOVERABLE (56)
+#define WASI_ENOTSOCK        (57)
+#define WASI_ENOTSUP         (58)
+#define WASI_ENOTTY          (59)
+#define WASI_ENXIO           (60)
+#define WASI_EOVERFLOW       (61)
+#define WASI_EOWNERDEAD      (62)
+#define WASI_EPERM           (63)
+#define WASI_EPIPE           (64)
+#define WASI_EPROTO          (65)
+#define WASI_EPROTONOSUPPORT (66)
+#define WASI_EPROTOTYPE      (67)
+#define WASI_ERANGE          (68)
+#define WASI_EROFS           (69)
+#define WASI_ESPIPE          (70)
+#define WASI_ESRCH           (71)
+#define WASI_ESTALE          (72)
+#define WASI_ETIMEDOUT       (73)
+#define WASI_ETXTBSY         (74)
+#define WASI_EXDEV           (75)
+#define WASI_ENOTCAPABLE     (76)
+#define WASI_ENODATA         (77)
+
 #define FLAGS_CHECK(v, f)   (((v) & (f)) == (f))
+
+#define X(v) [v] = WASI_##v
 
 static const char *TAG = "wm_libc_wrapper";
 
@@ -90,6 +172,105 @@ static int flags_wasm2c(int wasm_flags)
     return gcc_flags;
 }
 
+
+static uint32_t errno_c2wasm(int error)
+{
+    static const uint8_t errors[] = {
+        X(E2BIG),
+        X(EACCES),
+        X(EADDRINUSE),
+        X(EADDRNOTAVAIL),
+        X(EAFNOSUPPORT),
+        X(EAGAIN),
+        X(EALREADY),
+        X(EBADF),
+        X(EBADMSG),
+        X(EBUSY),
+        X(ECANCELED),
+        X(ECHILD),
+        X(ECONNABORTED),
+        X(ECONNREFUSED),
+        X(ECONNRESET),
+        X(EDEADLK),
+        X(EDESTADDRREQ),
+        X(EDOM),
+        X(EDQUOT),
+        X(EEXIST),
+        X(EFAULT),
+        X(EFBIG),
+        X(EHOSTUNREACH),
+        X(EIDRM),
+        X(EILSEQ),
+        X(EINPROGRESS),
+        X(EINTR),
+        X(EINVAL),
+        X(EIO),
+        X(EISCONN),
+        X(EISDIR),
+        X(ELOOP),
+        X(EMFILE),
+        X(EMLINK),
+        X(EMSGSIZE),
+        X(EMULTIHOP),
+        X(ENAMETOOLONG),
+        X(ENETDOWN),
+        X(ENETRESET),
+        X(ENETUNREACH),
+        X(ENFILE),
+        X(ENOBUFS),
+        X(ENODEV),
+        X(ENOENT),
+        X(ENOEXEC),
+        X(ENOLCK),
+        X(ENOLINK),
+        X(ENOMEM),
+        X(ENOMSG),
+        X(ENOPROTOOPT),
+        X(ENOSPC),
+        X(ENOSYS),
+#ifdef ENOTCAPABLE
+        X(ENOTCAPABLE),
+#endif
+        X(ENOTCONN),
+        X(ENOTDIR),
+        X(ENOTEMPTY),
+        X(ENOTRECOVERABLE),
+        X(ENOTSOCK),
+        X(ENOTSUP),
+        X(ENOTTY),
+        X(ENXIO),
+        X(EOVERFLOW),
+        X(EOWNERDEAD),
+        X(EPERM),
+        X(EPIPE),
+        X(EPROTO),
+        X(EPROTONOSUPPORT),
+        X(EPROTOTYPE),
+        X(ERANGE),
+        X(EROFS),
+        X(ESPIPE),
+        X(ESRCH),
+        X(ESTALE),
+        X(ETIMEDOUT),
+        X(ETXTBSY),
+        X(EXDEV),
+        X(ENODATA),
+#undef X
+#if EOPNOTSUPP != ENOTSUP
+        [EOPNOTSUPP] = WASI_ENOTSUP,
+#endif
+#if EWOULDBLOCK != EAGAIN
+        [EWOULDBLOCK] = WASI_EAGAIN,
+#endif
+    };
+    if (error < 0 || (size_t)error >= sizeof(errors) / sizeof(errors[0]) ||
+        errors[error] == 0) {
+        return WASI_ENOSYS;
+    }
+
+    return errors[error];
+}
+
 static void set_wasm_errno(wasm_exec_env_t exec_env, int c_errno)
 {
     uint32_t argv[1];
@@ -103,7 +284,7 @@ static void set_wasm_errno(wasm_exec_env_t exec_env, int c_errno)
         return ;
     }
 
-    argv[0] = (uint32_t)c_errno;
+    argv[0] = (uint32_t)errno_c2wasm(c_errno);
     if (!wasm_runtime_call_wasm(exec_env, func, 1, argv)) {
         ESP_LOGE(TAG, "failed to call function %s", func_name);
         return ;
@@ -260,9 +441,24 @@ static int close_wrapper(wasm_exec_env_t exec_env, int fd)
 
 static int ioctl_wrapper(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args)
 {
-    ESP_LOGW(TAG, "function %s is not supported", __func__);
+    int ret;
 
-    return -1;
+    switch(cmd) {
+#ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
+        case GPIOCSCFG:
+            ret = wm_ext_wasm_native_gpio_ioctl(exec_env, fd, cmd, va_args);
+            break;
+#endif
+        default:
+            errno = EINVAL;
+            ret = -1;
+    }
+
+    if (ret < 0) {
+        set_wasm_errno(exec_env, errno);
+    }
+
+    return ret;
 }
 
 static int fstat_wrapper(wasm_exec_env_t exec_env, int fd, struct stat *st)
