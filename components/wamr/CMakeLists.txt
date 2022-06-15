@@ -105,6 +105,7 @@ if (NOT CMAKE_BUILD_EARLY_EXPANSION)
 
     if(CONFIG_WAMR_ENABLE_APP_FRAMEWORK)
         list(APPEND include_dirs "${APP_MGR_SHARED_DIR}"
+                                 "${__APP_MGR_DIR}"
                                  "${NATIVE_INTERFACE_DIR}"
                                  "${WASM_APP_LIBS_DIR}")
     endif()
@@ -113,6 +114,7 @@ if (NOT CMAKE_BUILD_EARLY_EXPANSION)
         list(APPEND include_dirs "esp-libc-wasi/include")
         list(APPEND srcs "esp-libc-wasi/esp_libc_wasi_wrapper.c")
     endif()
+
 endif()
 
 idf_component_register(SRCS ${srcs}
