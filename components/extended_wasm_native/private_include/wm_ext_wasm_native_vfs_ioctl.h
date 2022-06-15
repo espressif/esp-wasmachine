@@ -21,12 +21,20 @@
 #include "ioctl/esp_gpio_ioctl.h"
 #endif
 
+#ifdef CONFIG_WASMACHINE_EXT_VFS_I2C
+#include "ioctl/esp_i2c_ioctl.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
 int wm_ext_wasm_native_gpio_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args);
+#endif
+
+#ifdef CONFIG_WASMACHINE_EXT_VFS_I2C
+int wm_ext_wasm_native_i2c_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args);
 #endif
 
 #ifdef __cplusplus

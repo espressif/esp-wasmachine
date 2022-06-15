@@ -6,6 +6,10 @@ if(CONFIG_WASMACHINE_EXT_VFS)
     if(CONFIG_WASMACHINE_EXT_VFS_GPIO)
         list(APPEND srcs "src/wm_ext_vfs_gpio.c")
     endif()
+
+    if(CONFIG_WASMACHINE_EXT_VFS_I2C)
+        list(APPEND srcs "src/wm_ext_vfs_i2c.c")
+    endif()
 endif()
 
 idf_component_register(SRCS ${srcs}

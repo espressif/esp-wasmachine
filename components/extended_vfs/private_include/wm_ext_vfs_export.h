@@ -20,6 +20,7 @@ extern "C" {
 #endif
 
 int wm_ext_vfs_gpio_init(void);
+int wm_ext_vfs_i2c_init(void);
 
 #ifdef __cplusplus
 }

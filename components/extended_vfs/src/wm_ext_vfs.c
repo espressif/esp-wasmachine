@@ -31,4 +31,8 @@ void wm_ext_vfs_init(void)
 #ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
     ESP_ERROR_CHECK(wm_ext_vfs_gpio_init());
 #endif
+
+#ifdef CONFIG_WASMACHINE_EXT_VFS_I2C
+    ESP_ERROR_CHECK(wm_ext_vfs_i2c_init());
+#endif
 }
