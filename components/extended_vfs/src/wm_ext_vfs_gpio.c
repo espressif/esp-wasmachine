@@ -38,11 +38,11 @@ static void set_opendrain(int fd, bool enable)
     gpio_mode_t mode = enable ? GPIO_MODE_DEF_OD : 0;
     int flags = gpio_stat[fd].flags;
 
-    if (flags & O_RDONLY) {
+    if (flags == O_RDONLY) {
         mode |= GPIO_MODE_INPUT;
-    } else if (flags & O_WRONLY) {
+    } else if (flags == O_WRONLY) {
         mode |= GPIO_MODE_OUTPUT;
-    } else if (flags & O_RDWR) {
+    } else if (flags == O_RDWR) {
         mode |= GPIO_MODE_INPUT_OUTPUT;
     }
 
@@ -71,11 +71,11 @@ static int gpio_open(const char *path, int flags, int mode)
 
     io_conf.intr_type    = GPIO_INTR_DISABLE;
     io_conf.pin_bit_mask = BIT64(fd);
-    if (flags & O_RDONLY) {
+    if (flags == O_RDONLY) {
         io_conf.mode = GPIO_MODE_INPUT;
-    } else if (flags & O_WRONLY) {
+    } else if (flags == O_WRONLY) {
         io_conf.mode = GPIO_MODE_OUTPUT;
-    } else if (flags & O_RDWR) {
+    } else if (flags == O_RDWR) {
         io_conf.mode = GPIO_MODE_INPUT_OUTPUT;
     } else {
         errno = EINVAL;
@@ -103,7 +103,7 @@ static ssize_t gpio_write(int fd, const void *buffer, size_t size)
 
     ESP_LOGV(TAG, "write(%d, %p, %u)", fd, buffer, size);
 
-    if (!(flags & O_WRONLY) && !(flags & O_RDWR)) {
+    if (!(flags == O_WRONLY) && !(flags == O_RDWR)) {
         errno = EBADF;
         return -1;
     }
@@ -129,7 +129,7 @@ static ssize_t gpio_read(int fd, void *buffer, size_t size)
 
     ESP_LOGV(TAG, "read(%d, %p, %u)", fd, buffer, size);
 
-    if (!(flags & O_RDONLY) && !(flags & O_RDWR)) {
+    if (!(flags == O_RDONLY) && !(flags == O_RDWR)) {
         errno = EBADF;
         return -1;
     }
