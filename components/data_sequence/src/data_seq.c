@@ -80,7 +80,7 @@ int data_seq_push(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, co
 
 int data_seq_pop(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, void *data)
 {
-    int ret = -ENODATA;
+    int ret = -ENOENT;
 
     if (!ds || !size || !data) {
         return -EINVAL;
