@@ -29,7 +29,17 @@ extern "C" {
   *
   * @return 0 if success or a negative value if failed.
   */
-int data_seq_addr_wasm2c(wasm_exec_env_t exec_env, data_seq_t *ds);
+int wm_ext_data_seq_addr_wasm2c(wasm_exec_env_t exec_env, data_seq_t *ds);
+
+/**
+  * @brief  Get data sequence pointer, check space and transform address from WASM to runtime.
+  *
+  * @param  exec_env WAMR execution envirenment pointer
+  * @param  va_args arguments list pointer
+  *
+  * @return 0 if success or a negative value if failed.
+  */
+data_seq_t *wm_ext_wasm_native_get_data_seq(wasm_exec_env_t exec_env, char *va_args);
 
 #ifdef __cplusplus
 }

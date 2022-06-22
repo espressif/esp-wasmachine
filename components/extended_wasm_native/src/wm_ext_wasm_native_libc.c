@@ -447,6 +447,13 @@ static int ioctl_wrapper(wasm_exec_env_t exec_env, int fd, int cmd, char *va_arg
             ret = wm_ext_wasm_native_gpio_ioctl(exec_env, fd, cmd, va_args);
             break;
 #endif
+#ifdef CONFIG_WASMACHINE_EXT_VFS_I2C
+        case I2CIOCSCFG:
+        case I2CIOCRDWR:
+        case I2CIOCEXCHANGE:
+            ret = wm_ext_wasm_native_i2c_ioctl(exec_env, fd, cmd, va_args);
+            break;
+#endif
         default:
             errno = EINVAL;
             ret = -1;
