@@ -117,7 +117,6 @@
 #define WASI_ETXTBSY         (74)
 #define WASI_EXDEV           (75)
 #define WASI_ENOTCAPABLE     (76)
-#define WASI_ENODATA         (77)
 
 #define FLAGS_CHECK(v, f)   (((v) & (f)) == (f))
 
@@ -254,7 +253,6 @@ static uint32_t errno_c2wasm(int error)
         X(ETIMEDOUT),
         X(ETXTBSY),
         X(EXDEV),
-        X(ENODATA),
 #undef X
 #if EOPNOTSUPP != ENOTSUP
         [EOPNOTSUPP] = WASI_ENOTSUP,

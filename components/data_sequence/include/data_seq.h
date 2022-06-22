@@ -109,7 +109,7 @@ int data_seq_push(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, co
   * @return
   *    - 0: succeed
   *    - -EINVAL: Input parameters are invalid
-  *    - -ENODATA: No data is found in data sequence, maybe type is error, or size is error.
+  *    - -ENOENT: No data is found in data sequence, maybe type is error, or size is error.
   */
 int data_seq_pop(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, void *data);
 
