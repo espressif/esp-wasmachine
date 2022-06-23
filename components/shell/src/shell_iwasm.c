@@ -33,6 +33,11 @@ typedef struct iwasm_main_arg {
     uint32_t size;
     uint32_t stack_size;
     uint32_t heap_size;
+#if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
+    char *env;
+    char *dir;
+    char *addrs;
+#endif
     int argc;
     char **argv;
 } iwasm_main_arg_t;
@@ -44,6 +49,11 @@ static struct {
     struct arg_int *heap_size;
     struct arg_str *file;
     struct arg_str *args;
+#if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
+    struct arg_str *env;
+    struct arg_str *dir;
+    struct arg_str *addrs;
+#endif
     struct arg_end *end;
 } iwasm_main_arg;
 
@@ -87,6 +97,59 @@ static int str2args(const char *str, int *argc, char ***argv)
     return 0;
 }
 
+#if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
+static bool validate_env_str(char *env)
+{
+    char *p = env;
+    int key_len = 0;
+
+    while (*p != '\0' && *p != '=') {
+        key_len++;
+        p++;
+    }
+
+    if (*p != '=' || key_len == 0)
+        return false;
+
+    return true;
+}
+
+static bool iwasm_prepare_wasi_dir(const char *wasi_dir, char *wasi_dir_buf, uint32_t buf_size)
+{
+    const char *wasi_root = CONFIG_WASMACHINE_FILE_SYSTEM_BASE_PATH;
+    char *p = wasi_dir_buf;
+    uint32_t wasi_dir_len = strlen(wasi_dir);
+    uint32_t wasi_root_len = strlen(wasi_root);
+    uint32_t total_size;
+    struct stat st = { 0 };
+
+    /* wasi_dir: wasi_root/wasi_dir */
+    total_size = wasi_root_len + 1 + wasi_dir_len + 1;
+    if (total_size > buf_size)
+        return false;
+    memcpy(p, wasi_root, wasi_root_len);
+    p += wasi_root_len;
+    *p++ = '/';
+    memcpy(p, wasi_dir, wasi_dir_len);
+    p += wasi_dir_len;
+    *p++ = '\0';
+
+    if (mkdir(wasi_dir_buf, 0777) != 0) {
+        if (errno == EEXIST) {
+            /* Failed due to dir already exist */
+            if ((stat(wasi_dir_buf, &st) == 0) && (st.st_mode & S_IFDIR)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+#endif
+
 static void *iwasm_main_thread(void *p)
 {
     iwasm_main_arg_t *arg = (iwasm_main_arg_t *)p;
@@ -97,6 +160,74 @@ static void *iwasm_main_thread(void *p)
     wasm_module_t wasm_module;
     wasm_module_inst_t wasm_module_inst;
     char error_buf[128];
+#if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
+    const char *dir_list[8] = { NULL };
+    uint32_t dir_list_size = 0;
+    const char *env_list[8] = { NULL };
+    uint32_t env_list_size = 0;
+    const char *addr_pool[8] = { NULL };
+    uint32_t addr_pool_size = 0;
+#endif
+
+    /* Process options. */
+#if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
+    if (arg->dir) {
+        char *tmp_dir = strtok(arg->dir, ",");
+        while (tmp_dir) {
+            if (dir_list_size >= sizeof(dir_list) / sizeof(char *)) {
+                ESP_LOGE(TAG, "Only allow max dir number %d\n", (int)(sizeof(dir_list) / sizeof(char *)));
+                goto fail0;
+            }
+
+            char wasi_dir_buf[64] = { 0 };
+            if (iwasm_prepare_wasi_dir(tmp_dir, wasi_dir_buf, sizeof(wasi_dir_buf)))
+                dir_list[dir_list_size++] = wasi_dir_buf;
+            else {
+                ESP_LOGE(TAG, "Wasm parse dir string failed: expect \"key=value\", " "got \"%s\"\n", tmp_dir);
+                goto fail0;
+            }
+            tmp_dir = strtok(NULL, ";");
+        }
+    } else {
+        dir_list[0] = CONFIG_WASMACHINE_FILE_SYSTEM_BASE_PATH;
+        dir_list_size = 1;
+    }
+
+    if (arg->env) {
+        char *tmp_env = strtok(arg->env, ",");
+        while (tmp_env) {
+            if (env_list_size >= sizeof(env_list) / sizeof(char *)) {
+                ESP_LOGE(TAG, "Only allow max env number %d\n", (int)(sizeof(env_list) / sizeof(char *)));
+                goto fail0;
+            }
+
+            if (validate_env_str(tmp_env))
+                env_list[env_list_size++] = tmp_env;
+            else {
+                ESP_LOGE(TAG, "Wasm parse env string failed: expect \"key=value\", " "got \"%s\"\n", tmp_env);
+                goto fail0;
+            }
+        }
+    }
+    if (arg->addrs) {
+        /* like: --addr-pool=100.200.244.255/30 */
+        char *token = strtok(arg->addrs, ",");
+        while (token) {
+            if (addr_pool_size >= sizeof(addr_pool) / sizeof(char *)) {
+                ESP_LOGE(TAG, "Only allow max address number %d\n",
+                       (int)(sizeof(addr_pool) / sizeof(char *)));
+                goto fail0;
+            }
+
+            addr_pool[addr_pool_size++] = token;
+            ESP_LOGW(TAG, "addrs %s", token);
+            token = strtok(NULL, ";");
+        }
+    } else {
+        addr_pool[0] = "0.0.0.0";
+        addr_pool_size = 1;
+    }
+#endif
 
     pkg_type = get_package_type(buffer, size);
     if (pkg_type == Wasm_Module_Bytecode) {
@@ -127,6 +258,13 @@ static void *iwasm_main_thread(void *p)
     }
 
     ESP_LOGI(TAG, "wasm runtime load module success.");
+
+#if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
+    wasm_runtime_set_wasi_args(wasm_module, dir_list, dir_list_size, NULL, 0,
+                               env_list, env_list_size, arg->argv, arg->argc);
+
+    wasm_runtime_set_wasi_addr_pool(wasm_module, addr_pool, addr_pool_size);
+#endif
 
     if (!(wasm_module_inst = wasm_runtime_instantiate(wasm_module,
                                                       arg->stack_size,
@@ -199,6 +337,20 @@ static void start_iwasm_thread(const char *str, uint8_t *buffer, uint32_t size)
     } else {
         arg.heap_size = atoi(CONFIG_WASMACHINE_SHELL_WASM_APP_HEAP_SIZE);
     }
+
+#if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
+    if (iwasm_main_arg.env->count) {
+        arg.env = iwasm_main_arg.env->sval[0];
+    }
+
+    if (iwasm_main_arg.dir->count) {
+        arg.dir = iwasm_main_arg.dir->sval[0];
+    }
+
+    if (iwasm_main_arg.addrs->count) {
+        arg.addrs = iwasm_main_arg.addrs->sval[0];
+    }
+#endif
 
     ret = pthread_create(&tid, &attr, iwasm_main_thread, &arg);
     if (ret < 0) {
@@ -304,7 +456,14 @@ void shell_regitser_cmd_iwasm(void)
         arg_str1(NULL, NULL, "<file>", "File name of WASM App");
     iwasm_main_arg.args =
         arg_str0(NULL, NULL, "<args>", "WASM App's arguments, need to use \"\" to wrap the args");
-
+#if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
+    iwasm_main_arg.env =
+        arg_str0("e", "env", "<env>", "Pass wasi environment variables with \"key=value\" to the program, seperated with ',', for example: --env=\"key1=value1\",\"key2=value2\"");
+    iwasm_main_arg.dir =
+        arg_str0("d", "dir", "<dir>", "Grant wasi access to the given host directories to the program, seperated with ',', for example: --dir=<dir1>,<dir2>");
+    iwasm_main_arg.addrs =
+        arg_str0("a", "addr-pool", "<addrs>", "Grant wasi access to the given network addresses in CIRD notation to the program, seperated with ',', for example: --addr-pool=1.2.3.4/15,2.3.4.5/16");
+#endif
     iwasm_main_arg.end = arg_end(4);
 
     const esp_console_cmd_t cmd = {
