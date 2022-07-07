@@ -13,9 +13,13 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
     endif()
 
     list(APPEND srcs "src/wm_ext_wasm_native_lvgl.c")
+
+    if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_WIFI_PROVISIONING)
+        list(APPEND srcs "src/wm_ext_wasm_native_wifi_provisioning.c")
+    endif()
 endif()
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dir}
                        PRIV_INCLUDE_DIRS ${priv_include_dir}
-                       REQUIRES "data_sequence" "extended_vfs" "mqtt" "wamr" "boards" "lvgl")
+                       REQUIRES "data_sequence" "extended_vfs" "mqtt" "wamr" "boards" "lvgl" "wifi_provisioning")
