@@ -17,7 +17,7 @@ variables: &global-variables
   - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 
 .setup_tools: &setup_tools
-  - if [ ! -d "esp-idf" ]; then git clone -b ${IDF_VERSION} --recursive ${GITLAB_SSH_SERVER}/espressif/esp-idf.git; fi
+  - if [ ! -d "esp-idf" ]; then git clone -b ${GITLAB_IDF_BRANCH} --recursive ${GITLAB_SSH_SERVER}/espressif/esp-idf.git; fi
   - export IDF_PATH=$(pwd)/esp-idf
   - source $IDF_PATH/tools/ci/configure_ci_environment.sh
   - $IDF_PATH/tools/idf_tools.py --non-interactive install cmake || exit 1
