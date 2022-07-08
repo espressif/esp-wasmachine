@@ -12,4 +12,9 @@ menu "WASM Extended Native"
         bool "Export WASM extended mqtt native APIs"
         default y
         depends on WASMACHINE_WASM_EXT_NATIVE
+    
+    config WASMACHINE_WASM_EXT_NATIVE_LVGL
+        bool "Export WASM extended LVGL native APIs"
+        default y
+        depends on WASMACHINE_WASM_EXT_NATIVE
 endmenu
