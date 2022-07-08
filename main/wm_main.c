@@ -17,6 +17,7 @@
 #include "esp_log.h"
 
 #include "nvs_flash.h"
+#include "bsp_board.h"
 
 #include "protocol_examples_common.h"
 
@@ -46,6 +47,8 @@ static void fs_init(void)
 
 void app_main(void)
 {
+    ESP_ERROR_CHECK(bsp_board_init());
+
     fs_init();
 
     ESP_ERROR_CHECK(nvs_flash_init());

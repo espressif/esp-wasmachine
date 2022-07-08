@@ -1,4 +1,5 @@
 menu "WASMachine Configuration"
+    rsource "../components/boards/Kconfig.wasmachine"
     rsource "../components/extended_vfs/Kconfig.wasmachine"
     rsource "../components/wasmachine/Kconfig.wasmachine"
     rsource "../components/shell/Kconfig.wasmachine"
