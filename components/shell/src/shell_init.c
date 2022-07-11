@@ -46,5 +46,9 @@ void wm_shell_init(void)
     shell_regitser_cmd_free();
 #endif
 
+#ifdef CONFIG_WASMACHINE_SHELL_CMD_WIFI
+    shell_regitser_cmd_wifi();
+#endif
+
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 }

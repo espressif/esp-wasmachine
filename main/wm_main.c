@@ -55,7 +55,9 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+#ifndef CONFIG_WASMACHINE_SHELL_CMD_WIFI
     ESP_ERROR_CHECK(example_connect());
+#endif
 
     wm_wamr_init();
 

@@ -41,6 +41,9 @@ menu "Shell"
             config WASMACHINE_SHELL_CMD_LS
                 bool "ls"
                 default y
+            config WASMACHINE_SHELL_CMD_WIFI
+                bool "sta"
+                default y
         endmenu
     endif
 endmenu

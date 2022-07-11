@@ -14,6 +14,10 @@ if(CONFIG_WASMACHINE_SHELL)
     if(CONFIG_WASMACHINE_SHELL_CMD_FREE)
         list(APPEND srcs "src/shell_free.c")
     endif()
+
+    if(CONFIG_WASMACHINE_SHELL_CMD_WIFI)
+        list(APPEND srcs "src/shell_wifi.c")
+    endif()
 endif()
 
 idf_component_register(SRCS ${srcs}
