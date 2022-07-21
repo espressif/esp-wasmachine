@@ -31,7 +31,7 @@
 #include "lvgl.h"
 #include "sdkconfig.h"
 
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+// #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
 static lv_disp_drv_t disp_drv;
 static const char *TAG = "lv_port";
@@ -264,6 +264,8 @@ static esp_err_t lv_port_indev_init(void)
     lv_img_set_src(cursor_obj, &mouse_cursor_icon);           /*Set the image source*/
     lv_indev_set_cursor(indev_touchpad, cursor_obj);             /*Connect the image  object to the driver*/
 #endif
+
+    return ESP_OK;
 }
 
 /**
@@ -277,7 +279,7 @@ static esp_err_t lv_port_tick_init(void)
     const esp_timer_create_args_t periodic_timer_args = {
         .callback = lv_tick_inc_cb,
         .name = "",     /* name is optional, but may help identify the timer when debugging */
-        .arg = &tick_inc_period_ms,
+        .arg = (void *)&tick_inc_period_ms,
         .dispatch_method = ESP_TIMER_TASK,
         .skip_unhandled_events = true,
     };

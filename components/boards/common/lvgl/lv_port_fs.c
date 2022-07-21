@@ -113,7 +113,7 @@ static void * fs_open (lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode)
     else if(mode == (LV_FS_MODE_WR | LV_FS_MODE_RD))
     {
         /*Open a file for read and write*/
-        f = f = fopen(path, "r+");
+        f = fopen(path, "r+");
     }
 
     return (FILE *) f;
@@ -224,7 +224,7 @@ static void * fs_dir_open (lv_fs_drv_t * drv, const char *path)
     d = opendir(path);
 
     if (NULL == d) {
-		return LV_FS_RES_UNKNOWN;
+		return NULL;
 	}
 
     return d;
