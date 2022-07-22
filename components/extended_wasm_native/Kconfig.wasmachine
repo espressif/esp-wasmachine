@@ -25,4 +25,9 @@ menu "WASM Extended Native"
         bool "Export WASM extended wifi provisioning native APIs"
         default y
         depends on WASMACHINE_WASM_EXT_NATIVE
+
+    config WASMACHINE_WASM_EXT_NATIVE_RMAKER
+        bool "Export WASM extended RainMaker native APIs"
+        default y
+        depends on WASMACHINE_WASM_EXT_NATIVE
 endmenu
