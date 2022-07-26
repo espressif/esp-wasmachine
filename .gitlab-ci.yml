@@ -30,6 +30,13 @@ variables: &global-variables
   - git checkout ${CI_BUILD_REF_NAME} || echo "Using esp_littlefs default branch"
   - cd -
 
+
+.get_lvgl: &get_lvgl
+  - git clone --recursive ${GITLAB_LVGL_SRC_URL} components/lvgl
+  - cd components/lvgl
+  - git checkout ${CI_BUILD_REF_NAME} || echo "Using lvgl default branch"
+  - cd -
+
 .get_wamr: &get_wamr
   - git clone ${GITLAB_WASR_SRC_URL} components/wamr/wasm-micro-runtime
   - cd components/wamr/wasm-micro-runtime
@@ -60,6 +67,7 @@ build_with_v4.4:
 
   script:
     - *get_littlefs
+    - *get_lvgl
     - *get_wamr
     - *setup_tools
     - *build_esp_box

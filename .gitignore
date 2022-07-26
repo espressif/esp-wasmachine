@@ -50,5 +50,6 @@ flake8_output.txt
 
 components/wamr/wasm-micro-runtime
 components/esp_littlefs
+components/lvgl
 
 fs_image
