@@ -28,6 +28,10 @@ void wm_ext_wasm_native_export(void)
     ESP_ERROR_CHECK(wm_ext_wasm_native_mqtt_export());
 #endif
 
+#ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE_HTTP_CLIENT
+    ESP_ERROR_CHECK(wm_ext_wasm_native_http_client_export());
+#endif
+
 #ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL
     ESP_ERROR_CHECK(wm_ext_wasm_native_lvgl_export());
 #endif
