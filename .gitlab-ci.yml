@@ -37,6 +37,12 @@ variables: &global-variables
   - git checkout ${CI_BUILD_REF_NAME} || echo "Using lvgl default branch"
   - cd -
 
+.get_rmaker: &get_rmaker
+  - git clone --recursive https://github.com/espressif/esp-rainmaker.git components/esp-rainmaker
+  - cd components/esp-rainmaker
+  - git checkout ${CI_BUILD_REF_NAME} || echo "Using rmaker default branch"
+  - cd -
+
 .get_wamr: &get_wamr
   - git clone ${GITLAB_WASR_SRC_URL} components/wamr/wasm-micro-runtime
   - cd components/wamr/wasm-micro-runtime
@@ -68,6 +74,7 @@ build_with_v4.4:
   script:
     - *get_littlefs
     - *get_lvgl
+    - *get_rmaker
     - *get_wamr
     - *setup_tools
     - *build_esp_box
