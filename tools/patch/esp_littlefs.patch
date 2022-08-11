@@ -1,0 +1,122 @@
+From 49d2122506a246d3765797ef5988095ca144381b Mon Sep 17 00:00:00 2001
+From: Dong Heng <dongheng@espressif.com>
+Date: Wed, 8 Jun 2022 11:34:21 +0800
+Subject: [PATCH] feat(esp_littlefs): Support O_DIRECTORY for WAMR
+
+feat(esp_littlefs): Support "get_path_by_fd"
+
+fix(littlefs): Convert O_NOFOLLOW of fcntl flags to include LFS_O_RDONLY
+---
+ src/esp_littlefs.c | 56 +++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 55 insertions(+), 1 deletion(-)
+
+diff --git a/src/esp_littlefs.c b/src/esp_littlefs.c
+index 43cca5f..972a3e9 100644
+--- a/src/esp_littlefs.c
++++ b/src/esp_littlefs.c
+@@ -49,7 +49,6 @@
+ #include "rom/spi_flash.h" //IDF 3
+ #endif
+ 
+-
+ static const char TAG[] = "esp_littlefs";
+ 
+ #define CONFIG_LITTLEFS_BLOCK_SIZE 4096 /* ESP32 can only operate at 4kb */
+@@ -127,6 +126,9 @@ static void rmdirs(esp_littlefs_t * efs, const char *dir);
+ #endif  // CONFIG_LITTLEFS_SPIFFS_COMPAT
+ 
+ static int vfs_littlefs_fcntl(void* ctx, int fd, int cmd, int arg);
++#ifndef CONFIG_LITTLEFS_USE_ONLY_HASH
++static const char *vfs_littlefs_get_path_by_fd(void *ctx, int fd);
++#endif
+ 
+ static int sem_take(esp_littlefs_t *efs);
+ static int sem_give(esp_littlefs_t *efs);
+@@ -247,6 +249,10 @@ esp_err_t esp_vfs_littlefs_register(const esp_vfs_littlefs_conf_t * conf)
+ #endif // CONFIG_LITTLEFS_USE_MTIME
+        
+ #endif // CONFIG_VFS_SUPPORT_DIR
++
++#ifndef CONFIG_LITTLEFS_USE_ONLY_HASH
++        .get_path_by_fd_p = &vfs_littlefs_get_path_by_fd,
++#endif
+     };
+ 
+     esp_err_t err = esp_littlefs_init(conf);
+@@ -529,6 +535,7 @@ static int esp_littlefs_flags_conv(int m) {
+     if (m & O_EXCL)    {ESP_LOGV(TAG, "O_EXCL");   lfs_flags |= LFS_O_EXCL;}
+     if (m & O_CREAT)   {ESP_LOGV(TAG, "O_CREAT");  lfs_flags |= LFS_O_CREAT;}
+     if (m & O_TRUNC)   {ESP_LOGV(TAG, "O_TRUNC");  lfs_flags |= LFS_O_TRUNC;}
++    if (m & O_NOFOLLOW) {ESP_LOGV(TAG, "O_NOFOLLOW");  lfs_flags |= LFS_O_RDONLY;}
+     return lfs_flags;
+ }
+ 
+@@ -959,6 +966,18 @@ static int vfs_littlefs_open(void* ctx, const char * path, int flags, int mode)
+     res = lfs_file_open(efs->fs, &file->file, path, lfs_flags);
+ 
+     if( res < 0 ) {
++        if (res == LFS_ERR_ISDIR) {
++            if (flags & O_DIRECTORY) {
++                file->file.flags = flags;
++                file->hash = compute_hash(path);
++#ifndef CONFIG_LITTLEFS_USE_ONLY_HASH
++                memcpy(file->path, path, path_len);
++#endif
++                sem_give(efs);
++                ESP_LOGV(TAG, "Done opening directory %s", path);
++                return fd;
++            }
++        }
+         errno = lfs_errno_remap(res);
+         esp_littlefs_free_fd(efs, fd);
+         sem_give(efs);
+@@ -1201,7 +1220,15 @@ static int vfs_littlefs_close(void* ctx, int fd) {
+         errno = EBADF;
+         return -1;
+     }
++
+     file = efs->cache[fd];
++
++    if (file->file.flags & O_DIRECTORY) {
++        esp_littlefs_free_fd(efs, fd);
++        sem_give(efs);
++        return 0;
++    }
++
+     res = lfs_file_close(efs->fs, &file->file);
+     if(res < 0){
+         errno = lfs_errno_remap(res);
+@@ -1922,3 +1949,30 @@ static int vfs_littlefs_fcntl(void* ctx, int fd, int cmd, int arg)
+ 
+     return result;
+ }
++
++#ifndef CONFIG_LITTLEFS_USE_ONLY_HASH
++static const char *vfs_littlefs_get_path_by_fd(void *ctx, int fd)
++{
++    esp_littlefs_t * efs = (esp_littlefs_t *)ctx;
++    vfs_littlefs_file_t *file = NULL;
++    const char *path;
++
++    sem_take(efs);
++    if((uint32_t)fd > efs->cache_size) {
++        sem_give(efs);
++        ESP_LOGE(TAG, "FD %d must be <%d.", fd, efs->cache_size);
++        errno = EBADF;
++        return NULL;
++    }
++    file = efs->cache[fd];
++    if (file) {
++        path = file->path;
++    } else {
++        path = NULL;
++    }
++
++    sem_give(efs);
++
++    return path;
++}
++#endif
+-- 
+2.25.1
+

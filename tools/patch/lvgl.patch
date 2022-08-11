@@ -1,0 +1,768 @@
+From 6024ed46a4973cd0add8e82523297b6c62bd7c63 Mon Sep 17 00:00:00 2001
+From: Dong Heng <dongheng@espressif.com>
+Date: Fri, 8 Jul 2022 10:28:35 +0800
+Subject: [PATCH] fix(draw): Fix radius being freed without clearing
+
+feat(lvgl): Refactor to support WASM
+---
+ CMakeLists.txt             |   5 +-
+ Kconfig                    |   1 +
+ src/core/lv_event.c        |  14 +++--
+ src/core/lv_event.h        |  10 +++-
+ src/core/lv_refr.c         |  12 +++-
+ src/draw/lv_draw_arc.c     |   2 +-
+ src/draw/lv_img_buf.c      |  26 +++++++--
+ src/draw/lv_img_buf.h      |   2 +
+ src/draw/lv_img_decoder.c  |  26 +++++++--
+ src/font/lv_font.c         |  34 +++++++++++-
+ src/font/lv_font.h         |   1 +
+ src/font/lv_font_fmt_txt.c | 110 +++++++++++++++++++++++--------------
+ src/hal/lv_hal_disp.h      |   1 +
+ src/lv_conf_internal.h     |   7 +++
+ src/misc/lv_anim.c         |  50 +++++++++++++++--
+ src/misc/lv_anim.h         |   2 +
+ src/misc/lv_timer.c        |  11 +++-
+ src/misc/lv_timer.h        |   1 +
+ 18 files changed, 247 insertions(+), 68 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1d473e0e..fd8d0835 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -7,10 +7,11 @@ if(ESP_PLATFORM)
+     if (LV_MICROPYTHON)
+         idf_component_register(SRCS ${SOURCES}
+                                INCLUDE_DIRS . src ../
+-                               REQUIRES main)
++                               REQUIRES main wamr)
+     else()
+         idf_component_register(SRCS ${SOURCES}
+-                               INCLUDE_DIRS . src ../)
++                               INCLUDE_DIRS . src ../
++                               REQUIRES wamr)
+     endif()
+ 
+     target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_CONF_INCLUDE_SIMPLE")
+diff --git a/Kconfig b/Kconfig
+index e18ff356..04cd5abf 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -39,6 +39,7 @@ menu "LVGL configuration"
+         config LV_COLOR_16_SWAP
+             bool "Swap the 2 bytes of RGB565 color. Useful if the display has an 8-bit interface (e.g. SPI)."
+             depends on LV_COLOR_DEPTH_16
++            default y
+ 
+         config LV_COLOR_SCREEN_TRANSP
+             bool "Enable more complex drawing routines to manage screens transparency."
+diff --git a/src/core/lv_event.c b/src/core/lv_event.c
+index c9671fa8..85132d97 100644
+--- a/src/core/lv_event.c
++++ b/src/core/lv_event.c
+@@ -17,11 +17,6 @@
+ /**********************
+  *      TYPEDEFS
+  **********************/
+-typedef struct _lv_event_dsc_t {
+-    lv_event_cb_t cb;
+-    void * user_data;
+-    lv_event_code_t filter : 8;
+-} lv_event_dsc_t;
+ 
+ /**********************
+  *  STATIC PROTOTYPES
+@@ -162,6 +157,7 @@ struct _lv_event_dsc_t * lv_obj_add_event_cb(lv_obj_t * obj, lv_event_cb_t event
+     obj->spec_attr->event_dsc[obj->spec_attr->event_dsc_cnt - 1].cb = event_cb;
+     obj->spec_attr->event_dsc[obj->spec_attr->event_dsc_cnt - 1].filter = filter;
+     obj->spec_attr->event_dsc[obj->spec_attr->event_dsc_cnt - 1].user_data = user_data;
++    obj->spec_attr->event_dsc[obj->spec_attr->event_dsc_cnt - 1].env = NULL;
+ 
+     return &obj->spec_attr->event_dsc[obj->spec_attr->event_dsc_cnt - 1];
+ }
+@@ -418,7 +414,13 @@ static lv_res_t event_send_core(lv_event_t * e)
+     while(event_dsc && res == LV_RES_OK) {
+         if(event_dsc->cb && (event_dsc->filter == LV_EVENT_ALL || event_dsc->filter == e->code)) {
+             e->user_data = event_dsc->user_data;
+-            event_dsc->cb(e);
++
++            if (event_dsc->env) {
++                uint32_t argv[1] = {(uint32_t)e};
++                lv_run_wasm(event_dsc->env, event_dsc->cb, 1, argv);
++            } else {
++                event_dsc->cb(e);
++            }
+ 
+             /*Stop if the object is deleted*/
+             if(e->deleted) return LV_RES_INV;
+diff --git a/src/core/lv_event.h b/src/core/lv_event.h
+index dd425543..74507525 100644
+--- a/src/core/lv_event.h
++++ b/src/core/lv_event.h
+@@ -24,7 +24,6 @@ extern "C" {
+  **********************/
+ 
+ struct _lv_obj_t;
+-struct _lv_event_dsc_t;
+ 
+ /**
+  * Type of event being sent to the object.
+@@ -126,6 +125,15 @@ typedef struct {
+     const lv_area_t * area;
+ } lv_cover_check_info_t;
+ 
++
++typedef struct _lv_event_dsc_t {
++    lv_event_cb_t cb;
++    void * user_data;
++    lv_event_code_t filter : 8;
++
++    void *env;
++} lv_event_dsc_t;
++
+ /**********************
+  * GLOBAL PROTOTYPES
+  **********************/
+diff --git a/src/core/lv_refr.c b/src/core/lv_refr.c
+index a44060a5..54fa9e87 100644
+--- a/src/core/lv_refr.c
++++ b/src/core/lv_refr.c
+@@ -229,7 +229,17 @@ void _lv_disp_refr_timer(lv_timer_t * tmr)
+         elaps = lv_tick_elaps(start);
+         /*Call monitor cb if present*/
+         if(disp_refr->driver->monitor_cb) {
+-            disp_refr->driver->monitor_cb(disp_refr->driver, elaps, px_num);
++            if (disp_refr->driver->env) {
++                uint32_t argv[3];
++
++                argv[0] = (uint32_t)disp_refr->driver;
++                argv[1] = (uint32_t)elaps;
++                argv[2] = px_num;
++
++                lv_run_wasm(disp_refr->driver->env, disp_refr->driver->monitor_cb, 3, argv);     
++            } else {
++                disp_refr->driver->monitor_cb(disp_refr->driver, elaps, px_num);
++            }
+         }
+     }
+ 
+diff --git a/src/draw/lv_draw_arc.c b/src/draw/lv_draw_arc.c
+index 44084f4d..5a644533 100644
+--- a/src/draw/lv_draw_arc.c
++++ b/src/draw/lv_draw_arc.c
+@@ -106,7 +106,7 @@ void lv_draw_arc(lv_coord_t center_x, lv_coord_t center_y, uint16_t radius,  uin
+ 
+     /*Create inner the mask*/
+     int16_t mask_in_id = LV_MASK_ID_INV;
+-    lv_draw_mask_radius_param_t mask_in_param;
++    lv_draw_mask_radius_param_t mask_in_param = { 0 };
+     if(lv_area_get_width(&area_in) > 0 && lv_area_get_height(&area_in) > 0) {
+         lv_draw_mask_radius_init(&mask_in_param, &area_in, LV_RADIUS_CIRCLE, true);
+         mask_in_id = lv_draw_mask_add(&mask_in_param, NULL);
+diff --git a/src/draw/lv_img_buf.c b/src/draw/lv_img_buf.c
+index 07ea03c5..d252ccc0 100644
+--- a/src/draw/lv_img_buf.c
++++ b/src/draw/lv_img_buf.c
+@@ -38,6 +38,22 @@
+  *   GLOBAL FUNCTIONS
+  **********************/
+ 
++static void *wasm_map_ptr(const lv_img_dsc_t *dsc, const void *ptr)
++{
++    void *mapped_ptr;
++
++    if (dsc->env) {
++        wasm_exec_env_t exec_env = (wasm_exec_env_t)dsc->env;
++        wasm_module_inst_t module_inst = get_module_inst(exec_env);
++
++        mapped_ptr = addr_app_to_native((uint32_t)ptr);
++    } else {
++        mapped_ptr = (void *)ptr;
++    }
++
++    return mapped_ptr;
++}
++
+ /**
+  * Get the color of an image's pixel
+  * @param dsc an image descriptor
+@@ -51,7 +67,7 @@
+ lv_color_t lv_img_buf_get_px_color(lv_img_dsc_t * dsc, lv_coord_t x, lv_coord_t y, lv_color_t color)
+ {
+     lv_color_t p_color = lv_color_black();
+-    uint8_t * buf_u8 = (uint8_t *)dsc->data;
++    uint8_t * buf_u8 = (uint8_t *)wasm_map_ptr(dsc, dsc->data);
+ 
+     if(dsc->header.cf == LV_IMG_CF_TRUE_COLOR || dsc->header.cf == LV_IMG_CF_TRUE_COLOR_CHROMA_KEYED ||
+        dsc->header.cf == LV_IMG_CF_TRUE_COLOR_ALPHA) {
+@@ -117,7 +133,7 @@ lv_color_t lv_img_buf_get_px_color(lv_img_dsc_t * dsc, lv_coord_t x, lv_coord_t
+  */
+ lv_opa_t lv_img_buf_get_px_alpha(lv_img_dsc_t * dsc, lv_coord_t x, lv_coord_t y)
+ {
+-    uint8_t * buf_u8 = (uint8_t *)dsc->data;
++    uint8_t * buf_u8 = (uint8_t *)wasm_map_ptr(dsc, dsc->data);
+ 
+     if(dsc->header.cf == LV_IMG_CF_TRUE_COLOR_ALPHA) {
+         uint32_t px = dsc->header.w * y * LV_IMG_PX_SIZE_ALPHA_BYTE + x * LV_IMG_PX_SIZE_ALPHA_BYTE;
+@@ -180,7 +196,7 @@ lv_opa_t lv_img_buf_get_px_alpha(lv_img_dsc_t * dsc, lv_coord_t x, lv_coord_t y)
+  */
+ void lv_img_buf_set_px_alpha(lv_img_dsc_t * dsc, lv_coord_t x, lv_coord_t y, lv_opa_t opa)
+ {
+-    uint8_t * buf_u8 = (uint8_t *)dsc->data;
++    uint8_t * buf_u8 = (uint8_t *)wasm_map_ptr(dsc, dsc->data);
+ 
+     if(dsc->header.cf == LV_IMG_CF_TRUE_COLOR_ALPHA) {
+         uint8_t px_size          = lv_img_cf_get_px_size(dsc->header.cf) >> 3;
+@@ -239,7 +255,7 @@ void lv_img_buf_set_px_alpha(lv_img_dsc_t * dsc, lv_coord_t x, lv_coord_t y, lv_
+  */
+ void lv_img_buf_set_px_color(lv_img_dsc_t * dsc, lv_coord_t x, lv_coord_t y, lv_color_t c)
+ {
+-    uint8_t * buf_u8 = (uint8_t *)dsc->data;
++    uint8_t * buf_u8 = (uint8_t *)wasm_map_ptr(dsc, dsc->data);
+ 
+     if(dsc->header.cf == LV_IMG_CF_TRUE_COLOR || dsc->header.cf == LV_IMG_CF_TRUE_COLOR_CHROMA_KEYED) {
+         uint8_t px_size = lv_img_cf_get_px_size(dsc->header.cf) >> 3;
+@@ -316,7 +332,7 @@ void lv_img_buf_set_palette(lv_img_dsc_t * dsc, uint8_t id, lv_color_t c)
+ 
+     lv_color32_t c32;
+     c32.full      = lv_color_to32(c);
+-    uint8_t * buf = (uint8_t *)dsc->data;
++    uint8_t * buf = (uint8_t *)wasm_map_ptr(dsc, dsc->data);
+     lv_memcpy_small(&buf[id * sizeof(c32)], &c32, sizeof(c32));
+ }
+ 
+diff --git a/src/draw/lv_img_buf.h b/src/draw/lv_img_buf.h
+index 984483e5..5cb83af9 100644
+--- a/src/draw/lv_img_buf.h
++++ b/src/draw/lv_img_buf.h
+@@ -136,6 +136,8 @@ typedef struct {
+     lv_img_header_t header; /**< A header describing the basics of the image*/
+     uint32_t data_size;     /**< Size of the image in bytes*/
+     const uint8_t * data;   /**< Pointer to the data of the image*/
++
++    void *env;
+ } lv_img_dsc_t;
+ 
+ typedef struct {
+diff --git a/src/draw/lv_img_decoder.c b/src/draw/lv_img_decoder.c
+index 3678a571..649a3b20 100644
+--- a/src/draw/lv_img_decoder.c
++++ b/src/draw/lv_img_decoder.c
+@@ -50,6 +50,21 @@ static lv_res_t lv_img_decoder_built_in_line_indexed(lv_img_decoder_dsc_t * dsc,
+  *   GLOBAL FUNCTIONS
+  **********************/
+ 
++static void *wasm_map_ptr(const lv_img_dsc_t *dsc, const void *ptr)
++{
++    void *mapped_ptr;
++    if (dsc->env) {
++        wasm_exec_env_t exec_env = (wasm_exec_env_t)dsc->env;
++        wasm_module_inst_t module_inst = get_module_inst(exec_env);
++
++        mapped_ptr = addr_app_to_native((uint32_t)ptr);
++    } else {
++        mapped_ptr = (void *)ptr;
++    }
++
++    return mapped_ptr;
++}
++
+ /**
+  * Initialize the image decoder module
+  */
+@@ -365,7 +380,9 @@ lv_res_t lv_img_decoder_built_in_open(lv_img_decoder_t * decoder, lv_img_decoder
+         if(dsc->src_type == LV_IMG_SRC_VARIABLE) {
+             /*In case of uncompressed formats the image stored in the ROM/RAM.
+              *So simply give its pointer*/
+-            dsc->img_data = ((lv_img_dsc_t *)dsc->src)->data;
++            lv_img_dsc_t *p_src = (lv_img_dsc_t *)dsc->src;
++            dsc->img_data = (const uint8_t *)wasm_map_ptr(p_src, p_src->data);
++            // printf("%d img_data=%p data=%p\n", __LINE__, dsc->img_data, p_src->data);
+             return LV_RES_OK;
+         }
+         else {
+@@ -414,7 +431,8 @@ lv_res_t lv_img_decoder_built_in_open(lv_img_decoder_t * decoder, lv_img_decoder
+         }
+         else {
+             /*The palette begins in the beginning of the image data. Just point to it.*/
+-            lv_color32_t * palette_p = (lv_color32_t *)((lv_img_dsc_t *)dsc->src)->data;
++            lv_img_dsc_t *p_src = (lv_img_dsc_t *)dsc->src;
++            lv_color32_t * palette_p = (lv_color32_t *)wasm_map_ptr(p_src, p_src->data);
+ 
+             uint32_t i;
+             for(i = 0; i < palette_size; i++) {
+@@ -600,7 +618,7 @@ static lv_res_t lv_img_decoder_built_in_line_alpha(lv_img_decoder_dsc_t * dsc, l
+     if(dsc->src_type == LV_IMG_SRC_VARIABLE) {
+         const lv_img_dsc_t * img_dsc = dsc->src;
+ 
+-        data_tmp = img_dsc->data + ofs;
++        data_tmp = (const uint8_t *)wasm_map_ptr(img_dsc, img_dsc->data) + ofs;
+     }
+     else {
+         lv_fs_seek(&user_data->f, ofs + 4, LV_FS_SEEK_SET); /*+4 to skip the header*/
+@@ -667,7 +685,7 @@ static lv_res_t lv_img_decoder_built_in_line_indexed(lv_img_decoder_dsc_t * dsc,
+     const uint8_t * data_tmp = NULL;
+     if(dsc->src_type == LV_IMG_SRC_VARIABLE) {
+         const lv_img_dsc_t * img_dsc = dsc->src;
+-        data_tmp                     = img_dsc->data + ofs;
++        data_tmp                     = (const uint8_t *)wasm_map_ptr(img_dsc, img_dsc->data) + ofs;
+     }
+     else {
+         lv_fs_seek(&user_data->f, ofs + 4, LV_FS_SEEK_SET); /*+4 to skip the header*/
+diff --git a/src/font/lv_font.c b/src/font/lv_font.c
+index cf3d374f..fafb2693 100644
+--- a/src/font/lv_font.c
++++ b/src/font/lv_font.c
+@@ -8,6 +8,7 @@
+  *********************/
+ 
+ #include "lv_font.h"
++#include "lv_font_fmt_txt.h"
+ #include "../misc/lv_utils.h"
+ #include "../misc/lv_log.h"
+ #include "../misc/lv_assert.h"
+@@ -49,7 +50,21 @@
+ const uint8_t * lv_font_get_glyph_bitmap(const lv_font_t * font_p, uint32_t letter)
+ {
+     LV_ASSERT_NULL(font_p);
+-    return font_p->get_glyph_bitmap(font_p, letter);
++
++    if (!font_p->get_glyph_bitmap) {
++        return lv_font_get_bitmap_fmt_txt(font_p, letter);
++    } else if (font_p->env && !esp_ptr_executable(font_p->get_glyph_bitmap)) {
++        uint32_t argv[2];
++
++        argv[0] = (uint32_t)font_p;
++        argv[1] = letter;
++
++        lv_run_wasm(font_p->env, font_p->get_glyph_bitmap, 2, argv);
++
++        return (const uint8_t *)argv[0];
++    } else {
++        return font_p->get_glyph_bitmap(font_p, letter);
++    }
+ }
+ 
+ /**
+@@ -64,7 +79,22 @@ bool lv_font_get_glyph_dsc(const lv_font_t * font_p, lv_font_glyph_dsc_t * dsc_o
+                            uint32_t letter_next)
+ {
+     LV_ASSERT_NULL(font_p);
+-    return font_p->get_glyph_dsc(font_p, dsc_out, letter, letter_next);
++
++    if (!font_p->get_glyph_dsc) {
++        return lv_font_get_glyph_dsc_fmt_txt(font_p, dsc_out, letter, letter_next);
++    } else if (font_p->env && !esp_ptr_executable(font_p->get_glyph_dsc)) {
++        uint32_t argv[4];
++
++        argv[0] = (uint32_t)font_p;
++        argv[1] = (uint32_t)dsc_out;
++        argv[2] = letter;
++        argv[3] = letter_next;
++
++        lv_run_wasm(font_p->env, font_p->get_glyph_dsc, 4, argv);
++        return (bool)argv[0];
++    } else {
++        return font_p->get_glyph_dsc(font_p, dsc_out, letter, letter_next);
++    }
+ }
+ 
+ /**
+diff --git a/src/font/lv_font.h b/src/font/lv_font.h
+index b68f5b9a..214c1690 100644
+--- a/src/font/lv_font.h
++++ b/src/font/lv_font.h
+@@ -76,6 +76,7 @@ typedef struct _lv_font_t {
+     void * user_data;               /**< Custom user data for font.*/
+ #endif
+ 
++    void *env;
+ } lv_font_t;
+ 
+ /**********************
+diff --git a/src/font/lv_font_fmt_txt.c b/src/font/lv_font_fmt_txt.c
+index 991b23e6..2fbc2f32 100644
+--- a/src/font/lv_font_fmt_txt.c
++++ b/src/font/lv_font_fmt_txt.c
+@@ -70,6 +70,27 @@ static int32_t kern_pair_16_compare(const void * ref, const void * element);
+  *   GLOBAL FUNCTIONS
+  **********************/
+ 
++static void *wasm_map_ptr(const lv_font_t * font, const void *ptr)
++{
++    void *mapped_ptr;
++
++    if (font->env) {
++        wasm_exec_env_t exec_env = (wasm_exec_env_t)font->env;
++        wasm_module_inst_t module_inst = get_module_inst(exec_env);
++
++        mapped_ptr = addr_app_to_native((uint32_t)ptr);
++
++        if (!mapped_ptr) {
++            mapped_ptr = (void *)ptr;
++        }
++    } else {
++        mapped_ptr = (void *)ptr;
++    }
++
++    return mapped_ptr;
++}
++
++
+ /**
+  * Used as `get_glyph_bitmap` callback in LittelvGL's native font format if the font is uncompressed.
+  * @param font pointer to font
+@@ -80,14 +101,16 @@ const uint8_t * lv_font_get_bitmap_fmt_txt(const lv_font_t * font, uint32_t unic
+ {
+     if(unicode_letter == '\t') unicode_letter = ' ';
+ 
+-    lv_font_fmt_txt_dsc_t * fdsc = (lv_font_fmt_txt_dsc_t *)font->dsc;
++    lv_font_fmt_txt_dsc_t * fdsc = (lv_font_fmt_txt_dsc_t *)wasm_map_ptr(font, font->dsc);
+     uint32_t gid = get_glyph_dsc_id(font, unicode_letter);
+     if(!gid) return NULL;
+ 
+-    const lv_font_fmt_txt_glyph_dsc_t * gdsc = &fdsc->glyph_dsc[gid];
++    const lv_font_fmt_txt_glyph_dsc_t * gdsc = (const lv_font_fmt_txt_glyph_dsc_t *)wasm_map_ptr(font, &fdsc->glyph_dsc[gid]);
+ 
+     if(fdsc->bitmap_format == LV_FONT_FMT_TXT_PLAIN) {
+-        return &fdsc->glyph_bitmap[gdsc->bitmap_index];
++        const uint8_t *p_glyph_bitmap = (const uint8_t *)wasm_map_ptr(font, fdsc->glyph_bitmap);
++
++        return &p_glyph_bitmap[gdsc->bitmap_index];
+     }
+     /*Handle compressed bitmap*/
+     else {
+@@ -153,7 +176,7 @@ bool lv_font_get_glyph_dsc_fmt_txt(const lv_font_t * font, lv_font_glyph_dsc_t *
+         unicode_letter = ' ';
+         is_tab = true;
+     }
+-    lv_font_fmt_txt_dsc_t * fdsc = (lv_font_fmt_txt_dsc_t *)font->dsc;
++    lv_font_fmt_txt_dsc_t * fdsc = (lv_font_fmt_txt_dsc_t *)wasm_map_ptr(font, font->dsc);
+     uint32_t gid = get_glyph_dsc_id(font, unicode_letter);
+     if(!gid) return false;
+ 
+@@ -166,7 +189,7 @@ bool lv_font_get_glyph_dsc_fmt_txt(const lv_font_t * font, lv_font_glyph_dsc_t *
+     }
+ 
+     /*Put together a glyph dsc*/
+-    const lv_font_fmt_txt_glyph_dsc_t * gdsc = &fdsc->glyph_dsc[gid];
++    const lv_font_fmt_txt_glyph_dsc_t * gdsc = (const lv_font_fmt_txt_glyph_dsc_t *)wasm_map_ptr(font, &fdsc->glyph_dsc[gid]);
+ 
+     int32_t kv = ((int32_t)((int32_t)kvalue * fdsc->kern_scale) >> 4);
+ 
+@@ -209,58 +232,61 @@ static uint32_t get_glyph_dsc_id(const lv_font_t * font, uint32_t letter)
+ {
+     if(letter == '\0') return 0;
+ 
+-    lv_font_fmt_txt_dsc_t * fdsc = (lv_font_fmt_txt_dsc_t *)font->dsc;
++    lv_font_fmt_txt_dsc_t * fdsc = (lv_font_fmt_txt_dsc_t *)wasm_map_ptr(font, font->dsc);
++
++    lv_font_fmt_txt_glyph_cache_t * cache = (lv_font_fmt_txt_glyph_cache_t *)wasm_map_ptr(font, fdsc->cache);
+ 
+     /*Check the cache first*/
+-    if(fdsc->cache && letter == fdsc->cache->last_letter) return fdsc->cache->last_glyph_id;
++    if(cache && letter == cache->last_letter) return cache->last_glyph_id;
+ 
+     uint16_t i;
+     for(i = 0; i < fdsc->cmap_num; i++) {
++        const lv_font_fmt_txt_cmap_t * cmaps = (const lv_font_fmt_txt_cmap_t *)wasm_map_ptr(font, fdsc->cmaps);
+ 
+         /*Relative code point*/
+-        uint32_t rcp = letter - fdsc->cmaps[i].range_start;
+-        if(rcp > fdsc->cmaps[i].range_length) continue;
++        uint32_t rcp = letter - cmaps[i].range_start;
++        if(rcp > cmaps[i].range_length) continue;
+         uint32_t glyph_id = 0;
+-        if(fdsc->cmaps[i].type == LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY) {
+-            glyph_id = fdsc->cmaps[i].glyph_id_start + rcp;
++        if(cmaps[i].type == LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY) {
++            glyph_id = cmaps[i].glyph_id_start + rcp;
+         }
+-        else if(fdsc->cmaps[i].type == LV_FONT_FMT_TXT_CMAP_FORMAT0_FULL) {
+-            const uint8_t * gid_ofs_8 = fdsc->cmaps[i].glyph_id_ofs_list;
+-            glyph_id = fdsc->cmaps[i].glyph_id_start + gid_ofs_8[rcp];
++        else if(cmaps[i].type == LV_FONT_FMT_TXT_CMAP_FORMAT0_FULL) {
++            const uint8_t * gid_ofs_8 = cmaps[i].glyph_id_ofs_list;
++            glyph_id = cmaps[i].glyph_id_start + gid_ofs_8[rcp];
+         }
+-        else if(fdsc->cmaps[i].type == LV_FONT_FMT_TXT_CMAP_SPARSE_TINY) {
++        else if(cmaps[i].type == LV_FONT_FMT_TXT_CMAP_SPARSE_TINY) {
+             uint16_t key = rcp;
+-            uint16_t * p = _lv_utils_bsearch(&key, fdsc->cmaps[i].unicode_list, fdsc->cmaps[i].list_length,
+-                                             sizeof(fdsc->cmaps[i].unicode_list[0]), unicode_list_compare);
++            uint16_t * p = _lv_utils_bsearch(&key, cmaps[i].unicode_list, cmaps[i].list_length,
++                                             sizeof(cmaps[i].unicode_list[0]), unicode_list_compare);
+ 
+             if(p) {
+-                lv_uintptr_t ofs = p - fdsc->cmaps[i].unicode_list;
+-                glyph_id = fdsc->cmaps[i].glyph_id_start + ofs;
++                lv_uintptr_t ofs = p - cmaps[i].unicode_list;
++                glyph_id = cmaps[i].glyph_id_start + ofs;
+             }
+         }
+-        else if(fdsc->cmaps[i].type == LV_FONT_FMT_TXT_CMAP_SPARSE_FULL) {
++        else if(cmaps[i].type == LV_FONT_FMT_TXT_CMAP_SPARSE_FULL) {
+             uint16_t key = rcp;
+-            uint16_t * p = _lv_utils_bsearch(&key, fdsc->cmaps[i].unicode_list, fdsc->cmaps[i].list_length,
+-                                             sizeof(fdsc->cmaps[i].unicode_list[0]), unicode_list_compare);
++            uint16_t * p = _lv_utils_bsearch(&key, cmaps[i].unicode_list, cmaps[i].list_length,
++                                             sizeof(cmaps[i].unicode_list[0]), unicode_list_compare);
+ 
+             if(p) {
+-                lv_uintptr_t ofs = p - fdsc->cmaps[i].unicode_list;
+-                const uint16_t * gid_ofs_16 = fdsc->cmaps[i].glyph_id_ofs_list;
+-                glyph_id = fdsc->cmaps[i].glyph_id_start + gid_ofs_16[ofs];
++                lv_uintptr_t ofs = p - cmaps[i].unicode_list;
++                const uint16_t * gid_ofs_16 = cmaps[i].glyph_id_ofs_list;
++                glyph_id = cmaps[i].glyph_id_start + gid_ofs_16[ofs];
+             }
+         }
+ 
+         /*Update the cache*/
+-        if(fdsc->cache) {
+-            fdsc->cache->last_letter = letter;
+-            fdsc->cache->last_glyph_id = glyph_id;
++        if(cache) {
++            cache->last_letter = letter;
++            cache->last_glyph_id = glyph_id;
+         }
+         return glyph_id;
+     }
+ 
+-    if(fdsc->cache) {
+-        fdsc->cache->last_letter = letter;
+-        fdsc->cache->last_glyph_id = 0;
++    if(cache) {
++        cache->last_letter = letter;
++        cache->last_glyph_id = 0;
+     }
+     return 0;
+ 
+@@ -268,37 +294,39 @@ static uint32_t get_glyph_dsc_id(const lv_font_t * font, uint32_t letter)
+ 
+ static int8_t get_kern_value(const lv_font_t * font, uint32_t gid_left, uint32_t gid_right)
+ {
+-    lv_font_fmt_txt_dsc_t * fdsc = (lv_font_fmt_txt_dsc_t *)font->dsc;
++    lv_font_fmt_txt_dsc_t * fdsc = (lv_font_fmt_txt_dsc_t *)wasm_map_ptr(font, font->dsc);
+ 
+     int8_t value = 0;
+ 
+     if(fdsc->kern_classes == 0) {
+         /*Kern pairs*/
+-        const lv_font_fmt_txt_kern_pair_t * kdsc = fdsc->kern_dsc;
++        const lv_font_fmt_txt_kern_pair_t * kdsc = (const lv_font_fmt_txt_kern_pair_t *)wasm_map_ptr(font, fdsc->kern_dsc);
+         if(kdsc->glyph_ids_size == 0) {
+             /*Use binary search to find the kern value.
+              *The pairs are ordered left_id first, then right_id secondly.*/
+-            const uint16_t * g_ids = kdsc->glyph_ids;
++            const uint16_t * g_ids = wasm_map_ptr(font, kdsc->glyph_ids);
+             uint16_t g_id_both = (gid_right << 8) + gid_left; /*Create one number from the ids*/
+             uint16_t * kid_p = _lv_utils_bsearch(&g_id_both, g_ids, kdsc->pair_cnt, 2, kern_pair_8_compare);
+ 
+             /*If the `g_id_both` were found get its index from the pointer*/
+             if(kid_p) {
+                 lv_uintptr_t ofs = kid_p - g_ids;
+-                value = kdsc->values[ofs];
++                const uint8_t *p_value = (const uint8_t *)wasm_map_ptr(font, kdsc->values);
++                value = p_value[ofs];
+             }
+         }
+         else if(kdsc->glyph_ids_size == 1) {
+             /*Use binary search to find the kern value.
+              *The pairs are ordered left_id first, then right_id secondly.*/
+-            const uint32_t * g_ids = kdsc->glyph_ids;
++            const uint32_t * g_ids = (const uint32_t *)wasm_map_ptr(font, kdsc->glyph_ids);
+             uint32_t g_id_both = (gid_right << 16) + gid_left; /*Create one number from the ids*/
+             uint32_t * kid_p = _lv_utils_bsearch(&g_id_both, g_ids, kdsc->pair_cnt, 4, kern_pair_16_compare);
+ 
+             /*If the `g_id_both` were found get its index from the pointer*/
+             if(kid_p) {
+                 lv_uintptr_t ofs = kid_p - g_ids;
+-                value = kdsc->values[ofs];
++                const uint8_t *p_value = (const uint8_t *)wasm_map_ptr(font, kdsc->values);
++                value = p_value[ofs];
+             }
+ 
+         }
+@@ -308,14 +336,14 @@ static int8_t get_kern_value(const lv_font_t * font, uint32_t gid_left, uint32_t
+     }
+     else {
+         /*Kern classes*/
+-        const lv_font_fmt_txt_kern_classes_t * kdsc = fdsc->kern_dsc;
+-        uint8_t left_class = kdsc->left_class_mapping[gid_left];
+-        uint8_t right_class = kdsc->right_class_mapping[gid_right];
++        const lv_font_fmt_txt_kern_classes_t * kdsc = (const lv_font_fmt_txt_kern_classes_t *)wasm_map_ptr(font, fdsc->kern_dsc);
++        uint8_t left_class = ((const uint8_t *)wasm_map_ptr(font, kdsc->left_class_mapping))[gid_left];
++        uint8_t right_class = ((const uint8_t *)wasm_map_ptr(font, kdsc->right_class_mapping))[gid_right];
+ 
+         /*If class = 0, kerning not exist for that glyph
+          *else got the value form `class_pair_values` 2D array*/
+         if(left_class > 0 && right_class > 0) {
+-            value = kdsc->class_pair_values[(left_class - 1) * kdsc->right_class_cnt + (right_class - 1)];
++            value = ((const uint8_t *)wasm_map_ptr(font, kdsc->class_pair_values))[(left_class - 1) * kdsc->right_class_cnt + (right_class - 1)];
+         }
+ 
+     }
+diff --git a/src/hal/lv_hal_disp.h b/src/hal/lv_hal_disp.h
+index 3626a34e..bfd0f874 100644
+--- a/src/hal/lv_hal_disp.h
++++ b/src/hal/lv_hal_disp.h
+@@ -143,6 +143,7 @@ typedef struct _lv_disp_drv_t {
+     void * user_data; /**< Custom display driver user data*/
+ #endif
+ 
++    void *env;
+ } lv_disp_drv_t;
+ 
+ /**
+diff --git a/src/lv_conf_internal.h b/src/lv_conf_internal.h
+index b3e6748b..13d9843f 100644
+--- a/src/lv_conf_internal.h
++++ b/src/lv_conf_internal.h
+@@ -1930,4 +1930,11 @@ LV_EXPORT_CONST_INT(LV_DPI_DEF);
+ #  endif
+ #endif  /*defined(LV_CONF_SKIP)*/
+ 
++#include "bh_platform.h"
++#include "wasm_export.h"
++#include "wasm_native.h"
++#include "wasm_runtime_common.h"
++
++void lv_run_wasm(void *env, void *cb, int argc, uint32_t *argv);
++
+ #endif  /*LV_CONF_INTERNAL_H*/
+diff --git a/src/misc/lv_anim.c b/src/misc/lv_anim.c
+index ecb95840..05907d7f 100644
+--- a/src/misc/lv_anim.c
++++ b/src/misc/lv_anim.c
+@@ -103,7 +103,18 @@ lv_anim_t * lv_anim_start(const lv_anim_t * a)
+             new_anim->end_value += v_ofs;
+         }
+ 
+-        if(new_anim->exec_cb && new_anim->var) new_anim->exec_cb(new_anim->var, new_anim->start_value);
++        if(new_anim->exec_cb && new_anim->var) {
++            if (new_anim->env) {
++                uint32_t argv[2];
++
++                argv[0] = (uint32_t)new_anim->var;
++                argv[1] = (uint32_t)new_anim->start_value;
++
++                lv_run_wasm(new_anim->env, new_anim->exec_cb, 2, argv);
++            } else {
++                new_anim->exec_cb(new_anim->var, new_anim->start_value);
++            }
++        }
+     }
+ 
+     /*Creating an animation changed the linked list.
+@@ -378,12 +389,33 @@ static void anim_timer(lv_timer_t * param)
+                 if(a->act_time > a->time) a->act_time = a->time;
+ 
+                 int32_t new_value;
+-                new_value = a->path_cb(a);
++                if (a->env && !esp_ptr_executable(a->path_cb)) {
++                    uint32_t argv[1];
++
++                    argv[0] = (uint32_t)a;
++
++                    lv_run_wasm(a->env, a->path_cb, 1, argv);
++                    
++                    new_value = (int32_t)argv[0];
++                } else {
++                    new_value = a->path_cb(a);
++                }
+ 
+                 if(new_value != a->current_value) {
+                     a->current_value = new_value;
+                     /*Apply the calculated value*/
+-                    if(a->exec_cb) a->exec_cb(a->var, new_value);
++                    if(a->exec_cb) {
++                        if (a->env) {
++                            uint32_t argv[2];
++
++                            argv[0] = (uint32_t)a->var;
++                            argv[1] = (uint32_t)new_value;
++
++                            lv_run_wasm(a->env, a->exec_cb, 2, argv);
++                        } else {
++                            a->exec_cb(a->var, new_value);
++                        }
++                    }
+                 }
+ 
+                 /*If the time is elapsed the animation is ready*/
+@@ -428,7 +460,17 @@ static void anim_ready_handler(lv_anim_t * a)
+         anim_mark_list_change();
+ 
+         /*Call the callback function at the end*/
+-        if(a->ready_cb != NULL) a->ready_cb(a);
++        if(a->ready_cb != NULL) {
++            if (a->env) {
++                uint32_t argv[1];
++
++                argv[0] = (uint32_t)a;
++
++                lv_run_wasm(a->env, a->ready_cb, 1, argv);
++            } else {
++                a->ready_cb(a);
++            }
++        }
+         lv_mem_free(a);
+     }
+     /*If the animation is not deleted then restart it*/
+diff --git a/src/misc/lv_anim.h b/src/misc/lv_anim.h
+index 6f51bf00..483dd4f2 100644
+--- a/src/misc/lv_anim.h
++++ b/src/misc/lv_anim.h
+@@ -91,6 +91,8 @@ typedef struct _lv_anim_t {
+     uint8_t playback_now : 1; /**< Play back is in progress*/
+     uint8_t run_round : 1;    /**< Indicates the animation has run in this round*/
+     uint8_t start_cb_called : 1;    /**< Indicates that the `start_cb` was already called*/
++
++    void *env;
+ } lv_anim_t;
+ 
+ /**********************
+diff --git a/src/misc/lv_timer.c b/src/misc/lv_timer.c
+index d8dd55b7..7c8ec8a8 100644
+--- a/src/misc/lv_timer.c
++++ b/src/misc/lv_timer.c
+@@ -178,6 +178,7 @@ lv_timer_t * lv_timer_create(lv_timer_cb_t timer_xcb, uint32_t period, void * us
+     new_timer->paused = 0;
+     new_timer->last_run = lv_tick_get();
+     new_timer->user_data = user_data;
++    new_timer->env = NULL;
+ 
+     timer_created = true;
+ 
+@@ -310,7 +311,15 @@ static bool lv_timer_exec(lv_timer_t * timer)
+         if(timer->repeat_count > 0) timer->repeat_count--;
+         timer->last_run = lv_tick_get();
+         TIMER_TRACE("calling timer callback: %p", *((void **)&timer->timer_cb));
+-        if(timer->timer_cb && original_repeat_count != 0) timer->timer_cb(timer);
++        if(timer->timer_cb && original_repeat_count != 0) {
++            if (timer->env) {
++                uint32_t argv[1] = {(uint32_t)timer};
++
++                lv_run_wasm(timer->env, timer->timer_cb, 1, argv);
++            } else {
++                timer->timer_cb(timer);
++            }
++        }
+         TIMER_TRACE("timer callback %p finished", *((void **)&timer->timer_cb));
+         LV_ASSERT_MEM_INTEGRITY();
+         exec = true;
+diff --git a/src/misc/lv_timer.h b/src/misc/lv_timer.h
+index ce94c7b0..bae50c63 100644
+--- a/src/misc/lv_timer.h
++++ b/src/misc/lv_timer.h
+@@ -47,6 +47,7 @@ typedef struct _lv_timer_t {
+     void * user_data; /**< Custom user data*/
+     int32_t repeat_count; /**< 1: One time;  -1 : infinity;  n>0: residual times*/
+     uint32_t paused : 1;
++    void *env;
+ } lv_timer_t;
+ 
+ /**********************
+-- 
+2.25.1
+

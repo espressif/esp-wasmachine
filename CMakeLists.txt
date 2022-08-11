@@ -42,6 +42,15 @@ else()
     message(FATAL_ERROR "Board ${BOARD} is not supported!")
 endif()
 
+if(CMAKE_HOST_WIN32)
+    execute_process(COMMAND python3 tools/setup_components.py
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+else()
+    execute_process(COMMAND python3 tools/setup_components.py
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                    OUTPUT_FILE /dev/stdout)
+endif()
+
 list(APPEND EXTRA_COMPONENT_DIRS "$ENV{IDF_PATH}/examples/common_components/protocol_examples_common")
 
 if(DEFINED ENV{RMAKER_PATH})
