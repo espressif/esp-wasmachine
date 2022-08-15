@@ -26,6 +26,10 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
     if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_RMAKER)
         list(APPEND srcs "src/wm_ext_wasm_native_rmaker.c")
     endif()
+
+    if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_LIBMATH)
+        list(APPEND srcs "src/wm_ext_wasm_native_libm.c")
+    endif()
 endif()
 
 set(requires "extended_wasm_vfs" "mqtt" "wamr"

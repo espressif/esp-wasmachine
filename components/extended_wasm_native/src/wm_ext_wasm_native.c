@@ -43,4 +43,8 @@ void wm_ext_wasm_native_export(void)
 #ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE_RMAKER
     ESP_ERROR_CHECK(wm_ext_wasm_native_rmaker_export());
 #endif
+
+#ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE_LIBMATH
+    ESP_ERROR_CHECK(wm_ext_wasm_native_libm_export());
+#endif
 }

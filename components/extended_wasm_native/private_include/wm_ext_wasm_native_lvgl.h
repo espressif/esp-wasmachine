@@ -285,6 +285,40 @@
 #define LV_OBJ_DRAW_PART_DSC_SET_DATA   268
 #define LV_CHART_SERIES_GET_DATA        269
 #define LV_FONT_GET_DATA                270
+#define LV_LABEL_SET_TEXT_STATIC        271
+#define LV_STYLE_SET_BORDER_COLOR       272
+#define LV_STYLE_SET_SHADOW_COLOR       273
+#define LV_STYLE_SET_OUTLINE_COLOR      274
+#define LV_STYLE_SET_OUTLINE_WIDTH      275
+#define LV_INDEV_GET_NEXT               276
+#define LV_GROUP_CREATE                 277
+#define LV_INDEV_SET_GROUP              278
+#define LV_OBJ_SET_STYLE_SHADOW_OPA     279
+#define LV_INDEV_ENABLE                 280
+#define LV_OBJ_HAS_FLAG                 281
+#define LV_ARC_SET_BG_ANGLES            282
+#define LV_ARC_SET_VALUE                283
+#define LV_OBJ_SET_STYLE_ARC_WIDTH      284
+#define LV_ARC_SET_ROTATION             285
+#define LV_OBJ_SET_STYLE_IMG_OPA        286
+#define LV_TIMER_DEL                    287
+#define LV_OBJ_GET_USER_DATA            288
+#define LV_OBJ_SET_USER_DATA            289
+#define LV_OBJ_SET_SCROLLBAR_MODE       290
+#define LV_GROUP_REMOVE_ALL_OBJS        291
+#define LV_LABEL_SET_RECOLOR            292
+#define LV_TABVIEW_GET_TAB_ACT          293
+#define LV_OBJ_SET_STYLE_SHADOW_OFS_X   294
+#define LV_OBJ_SET_STYLE_SHADOW_OFS_Y   295
+#define LV_LED_CREATE                   296
+#define LV_LED_OFF                      297
+#define LV_LED_ON                       298
+#define LV_OBJ_GET_CLICK_AREA           299
+#define LV_INDEV_SET_BUTTON_POINTS      300
+#define LV_QRCODE_CREATE                301
+#define LV_QRCODE_UPDATE                302
+#define LV_GROUP_FOCUS_OBJ              303
+#define LV_GROUP_FOCUS_FREEZE           304
 
 #define LV_OBJ_COORDS                     0 /*!< type of set/get lv_obj_t->coords */
 
