@@ -15,6 +15,9 @@ menu "WASM Extended Native"
     
     config WASMACHINE_WASM_EXT_NATIVE_LVGL
         bool "Export WASM extended LVGL native APIs"
+
+    config WASMACHINE_WASM_EXT_NATIVE_WIFI_PROVISIONING
+        bool "Export WASM extended wifi provisioning native APIs"
         default y
         depends on WASMACHINE_WASM_EXT_NATIVE
 endmenu
