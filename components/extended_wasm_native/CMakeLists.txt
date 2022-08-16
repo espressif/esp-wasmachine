@@ -12,6 +12,10 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
         list(APPEND srcs "src/wm_ext_wasm_native_mqtt.c")
     endif()
 
+    if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_HTTP_CLIENT)
+        list(APPEND srcs "src/wm_ext_wasm_native_http_client.c")
+    endif()
+
     list(APPEND srcs "src/wm_ext_wasm_native_lvgl.c")
 
     if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_WIFI_PROVISIONING)
@@ -22,4 +26,4 @@ endif()
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dir}
                        PRIV_INCLUDE_DIRS ${priv_include_dir}
-                       REQUIRES "data_sequence" "extended_vfs" "mqtt" "wamr" "boards" "lvgl" "wifi_provisioning")
+                       REQUIRES "data_sequence" "extended_vfs" "mqtt" "wamr" "boards" "lvgl" "wifi_provisioning" "esp_http_client")
