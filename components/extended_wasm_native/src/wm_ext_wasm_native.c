@@ -39,4 +39,8 @@ void wm_ext_wasm_native_export(void)
 #ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE_WIFI_PROVISIONING
     ESP_ERROR_CHECK(wm_ext_wasm_native_wifi_provisioning_export());
 #endif
+
+#ifdef CONFIG_WASMACHINE_WASM_EXT_NATIVE_RMAKER
+    ESP_ERROR_CHECK(wm_ext_wasm_native_rmaker_export());
+#endif
 }
