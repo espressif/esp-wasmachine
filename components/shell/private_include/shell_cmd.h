@@ -28,3 +28,4 @@
 void shell_regitser_cmd_iwasm(void);
 void shell_regitser_cmd_ls(void);
 void shell_regitser_cmd_free(void);
+void shell_regitser_cmd_wifi(void);
