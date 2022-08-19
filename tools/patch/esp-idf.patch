@@ -1,0 +1,99 @@
+From 256f94932225ed82994907f44df58307a4e8a18a Mon Sep 17 00:00:00 2001
+From: Dong Heng <dongheng@espressif.com>
+Date: Mon, 27 Jun 2022 15:56:14 +0800
+Subject: [PATCH] feat(vfs): Add openat for WAMR
+
+feat(vfs): Add O_RDWR to fcntl for WAMR enable WASI
+---
+ components/vfs/include/esp_vfs.h     |  5 +++++
+ components/vfs/vfs.c                 | 32 ++++++++++++++++++++++++++++
+ components/vfs/vfs_uart.c            |  1 +
+ components/vfs/vfs_usb_serial_jtag.c |  1 +
+ 4 files changed, 39 insertions(+)
+
+diff --git a/components/vfs/include/esp_vfs.h b/components/vfs/include/esp_vfs.h
+index 0498a3aa59..e7762eee7a 100644
+--- a/components/vfs/include/esp_vfs.h
++++ b/components/vfs/include/esp_vfs.h
+@@ -244,6 +244,11 @@ typedef struct
+     /** get_socket_select_semaphore returns semaphore allocated in the socket driver; set only for the socket driver */
+     esp_err_t (*end_select)(void *end_select_args);
+ #endif // CONFIG_VFS_SUPPORT_SELECT
++
++    union {
++        const char* (*get_path_by_fd_p)(void* ctx, int fd);
++        const char* (*get_path_by_fd)(int fd);
++    };
+ } esp_vfs_t;
+ 
+ /**
+diff --git a/components/vfs/vfs.c b/components/vfs/vfs.c
+index 905c636af5..157b904bdd 100644
+--- a/components/vfs/vfs.c
++++ b/components/vfs/vfs.c
+@@ -1203,6 +1203,38 @@ int tcsendbreak(int fd, int duration)
+ }
+ #endif // CONFIG_VFS_SUPPORT_TERMIOS
+ 
++int openat(int fd, const char *path, int flags, ...)
++{
++    int ret;
++    char *full_path;
++    const char *basic_path;
++    const vfs_entry_t* vfs = get_vfs_for_fd(fd);
++    const int local_fd = get_local_fd(vfs, fd);
++    struct _reent* r = __getreent();
++
++    if (vfs == NULL || local_fd < 0) {
++        __errno_r(r) = EBADF;
++        return -1;
++    }
++
++    CHECK_AND_CALL(basic_path, r, vfs, get_path_by_fd, local_fd);
++    if (!basic_path) {
++        __errno_r(r) = EBADF;
++        return -1;
++    }
++
++    ret = asprintf(&full_path, "%s%s%s", vfs->path_prefix, basic_path, path);
++    if (ret < 0) {
++        __errno_r(r) = ENOMEM;
++        return -1; 
++    }
++
++    ret = open(full_path, flags, 0);
++
++    free(full_path);
++
++    return ret;
++}
+ 
+ /* Create aliases for newlib syscalls
+ 
+diff --git a/components/vfs/vfs_uart.c b/components/vfs/vfs_uart.c
+index 1f3e0df683..74c308f326 100644
+--- a/components/vfs/vfs_uart.c
++++ b/components/vfs/vfs_uart.c
+@@ -299,6 +299,7 @@ static int uart_fcntl(int fd, int cmd, int arg)
+     assert(fd >=0 && fd < 3);
+     int result = 0;
+     if (cmd == F_GETFL) {
++        result |= O_RDWR;
+         if (s_ctx[fd]->non_blocking) {
+             result |= O_NONBLOCK;
+         }
+diff --git a/components/vfs/vfs_usb_serial_jtag.c b/components/vfs/vfs_usb_serial_jtag.c
+index 20bb4dd4db..74b47509eb 100644
+--- a/components/vfs/vfs_usb_serial_jtag.c
++++ b/components/vfs/vfs_usb_serial_jtag.c
+@@ -242,6 +242,7 @@ static int usb_serial_jtag_fcntl(int fd, int cmd, int arg)
+ {
+     int result = 0;
+     if (cmd == F_GETFL) {
++        result |= O_RDWR;
+         if (s_ctx.non_blocking) {
+             result |= O_NONBLOCK;
+         }
+-- 
+2.25.1
+
