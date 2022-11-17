@@ -27,7 +27,7 @@ esp-wasmachine/
         ├──extended_wasm_native             WebAssembly Native API
             ├──src
                 ├──wm_ext_wasm_native_mqtt.c    WebAssembly Native MQTT API
-                ├──wm_ext_wasm_native.c     WebAssembly Native API 动初始化程序
+                ├──wm_ext_wasm_native.c     WebAssembly Native API 驱动初始化程序
                 ├── ...
         ├──shell                            Shell 命令程序
             ├──src
@@ -43,12 +43,11 @@ esp-wasmachine/
         ├──fs_image                         默认使用的文件系统根目录
             ├──hello_world.wasm             基于 WebAssembly 的应用程序
         ├──wm_main.c                        系统初始化和启动程序
-
 ```
 
 ## 2. 安装开发环境
 
-ESP-WASMachine 在实现原理上可以认为是基于 ESP-IDF 的应用程序，所以需要安装 ESP-IDF 的开发环境，相关流程请参考[文档](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32s3/get-started/index.html#get-started)。
+从实现原理来看，ESP-WASMachine 是基于 ESP-IDF 的应用程序，所以需要安装 ESP-IDF 的开发环境，相关流程请参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32s3/get-started/index.html#get-started)。
 
 当前支持的 ESP-IDF 版本有：
 
@@ -57,9 +56,10 @@ ESP-WASMachine 在实现原理上可以认为是基于 ESP-IDF 的应用程序�
 支持的开发板有：
 
 - [ESP32-S3-BOX](https://github.com/espressif/esp-box/blob/v0.3.0/docs/hardware_overview/esp32_s3_box/hardware_overview_for_box_cn.md)
+
 - [ESP32-S3-BOX-Lite](https://github.com/espressif/esp-box/blob/v0.3.0/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite_cn.md)
 
-除此之外，还需要下载第三方库到 ESP-WASMachine，在`第一次`编译的时候会自动下载对应的版本的第三方库的源码并打上 patch，过程中显示如下的 log：
+除此之外，还需要下载第三方库到 ESP-WASMachine，在第一次编译时会自动下载对应版本的第三方库的源码并打上 patch，过程中显示下列 log：
 
 ```sh
 clone 'https://github.com/joltwallet/esp_littlefs.git' branch 'v1.4.1' into 'components/esp_littlefs'
@@ -73,9 +73,9 @@ patch 'components/wamr/wasm-micro-runtime'
 patch esp-idf
 ```
 
-考虑到用户数据的安全，比如用户基于自己的需求修改这些第三方库，所以编译系统除了 clone 和 patch 这些第三方库之外，不会作其他的修改，如果因为软件版本更新或者其他原因导致的相关编译问题，用户可以手动删除这些第三方库并重试。
+为保护您的数据安全，比如您基于自己的需求修改这些第三方库，所以编译系统除了对这些第三方库进行 clone 和 patch 之外，不会作其他的修改。如果出现因为软件版本更新或者其他原因导致的相关编译问题，您可以手动删除这些第三方库并重试。
 
-为了远程管理 WebAssembly 应用程序，还需要编译生成 `host_tool`，但是 `host_tool` 当前只支持在 Linux 操作系统上编译和使用，相关编译过程如下：
+为了远程管理 WebAssembly 应用程序，还需要编译生成 `host_tool`，但是 `host_tool` 当前只支持在 Linux 操作系统上编译和使用。相关编译过程如下：
 
 ```
 cd components/wamr/wasm-micro-runtime/test-tools/host-tool
@@ -96,7 +96,7 @@ CMakeCache.txt  CMakeFiles  cmake_install.cmake  host_tool  Makefile
 
 ### 3.1 命令行工具
 
-ESP-WASMachine 集成命令行工具，方便用户开发时的调试，支持的命令有：
+ESP-WASMachine 集成命令行工具。方便您开发时进行调试，支持的命令有：
 
 #### 3.1.1 iwasm
 
@@ -125,7 +125,7 @@ iwasm <file> <args> [配置参数]
                         多个地址：--addr-pool=1.2.3.4/15,2.3.4.5/16,...
 ```
 
-其中 `-e/--env`，`-d/--dir` 和 `-a/--addr-pool` 只有在启用 Libc WASI 的场景下使用，配置项为 WAMR_ENABLE_LIBC_WASI，参考命令如下：
+其中 `-e/--env`，`-d/--dir` 和 `-a/--addr-pool` 只有在使能 Libc WASI 时使用，Libc WASI 的配置项为 WAMR_ENABLE_LIBC_WASI，参考命令如下：
 
 非 Libc WASI 模式：
 
@@ -151,7 +151,7 @@ ls <file_or_directory>
 
 #### 3.1.3 free
 
-显示内存信息，包括总共/已使用/剩余，在启用 PSRAM 的场景下能分别显示 DRAM 和 PSRAM 的内存信息，命令格式如下：
+显示内存的堆信息，包括全部堆信息、已使用堆信息以及剩余堆信息。使能 PSRAM 时，能分别显示 DRAM 和 PSRAM 的内存堆信息，命令格式如下：
 
 ```
 free
@@ -167,14 +167,14 @@ sta -s <SSID> -p <password>
 
 ### 3.2 应用管理工具
 
-WebAssembly 远程应用程序管理工具 [host_tool](https://github.com/bytecodealliance/wasm-micro-runtime/tree/main/test-tools/host-tool)，是 wasm-micro-runtime(WAMR) 自带的工具，可以通过 TCP/UART（当前只使用 TCP） 和硬件设备进行通信，来实现在设备上远程安装/卸载 WebAssembly 应用程序。主要的命令格式如下：
+WebAssembly 远程应用程序管理工具 [host_tool](https://github.com/bytecodealliance/wasm-micro-runtime/tree/main/test-tools/host-tool)，是 wasm-micro-runtime(WAMR) 自带的工具，可以通过 TCP/UART（当前只使用 TCP）与硬件设备通信，来实现在设备上远程安装/卸载 WebAssembly 应用程序。主要的命令格式如下：
 
 ```
 ./host_tool -i/-u/-q <app name> [配置参数]
 
-    -i: 安装应用
-    -u: 卸载应用
-    -q: 获取应用信息
+    -i: 安装应用程序
+    -u: 卸载应用程序
+    -q: 获取应用程序信息
 ```
 
 配置参数说明如下：
@@ -185,7 +185,7 @@ WebAssembly 远程应用程序管理工具 [host_tool](https://github.com/byteco
     -P: 硬件设备上运行的 App Manager 程序使用的 TCP 端口号
 ```
 
-其他命令格式和参数可以通过执行 `./host_tool` 查看。
+您可以执行 `./host_tool` 来查看其他命令格式和参数。
 
 ## 4. 编译工程并运行
 
@@ -195,8 +195,7 @@ WebAssembly 远程应用程序管理工具 [host_tool](https://github.com/byteco
 . ./export.sh
 ```
 
-接着切换到 ESP-WASMachine 目录下并执行 ESP-IDF 提供的命令来配置/编译/下载/调试，相关流程如下：
-
+接着切换到 ESP-WASMachine 目录下并执行 ESP-IDF 提供的命令来进行配置/编译/下载/调试，相关流程如下：
 
 ### 4.1 配置系统
 
@@ -204,7 +203,7 @@ WebAssembly 远程应用程序管理工具 [host_tool](https://github.com/byteco
 idf.py -DBOARD=esp-box menuconfig
 ```
 
-其中 `-DBOARD=esp-box` 表示使用 components/boards/esp-box 板级支持包，这个配置项可以省略，即可以使用命令 `idf.py menuconfig`，因为如果不指定 BOARD，编译系统会默认使用 esp-box。
+其中 `-DBOARD=esp-box` 表示使用 components/boards/esp-box 板级支持包，这个配置项可以省略，即可以使用命令 `idf.py menuconfig`。如果不指定 `BOARD`，编译系统会默认使用 esp-box。
 
 在下面的菜单中启用 App Manager 使能 WebAssembly 应用远程管理功能：
 
@@ -216,17 +215,17 @@ WASMachine Configuration  --->
 
 ### 4.2 烧录文件系统
 
-默认启动需要挂载 littlefs 文件系统，所以需要烧录 littlefs image，否则系统启动会失败，相关命令如下：
+默认启动需要挂载 littleFS 文件系统，所以需要烧录 littleFS image，否则系统启动会失败，相关命令如下：
 
 ```
 idf.py storage-flash
 ```
 
-烧录的 image 是由 `main/fs_image` 生成的，所以会包含 `main/fs_image` 目录下的子目录和文件，用户可以把需要的文件放到该目录下并烧录。
+烧录的 image 由 `main/fs_image` 生成，所以会包含 `main/fs_image` 目录下的子目录和文件，您可以把需要的文件放到该目录下并烧录。
 
-- **注**：重新烧录文件系统 image 之后，Flash 里面之前的文件系统存储的数据就没有了
+- **注**：重新烧录文件系统 image 之后，flash 里面之前的文件系统存储的数据就会被覆盖。
 
-### 4.3 编译下载
+### 4.3 编译及下载
 
 ```
 idf.py build flash
@@ -241,21 +240,21 @@ Press TAB when typing command name to auto-complete.
 WASMachine>
 ```
 
-更多编译和调试相关的命令可以参考 ESP-IDF 的[文档](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32s3/api-guides/build-system.html#idf-py)。
+更多编译和调试相关的命令可以参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32s3/api-guides/build-system.html#idf-py)。
 
 ### 4.4 运行 WebAssembly 应用程序
 
-输入命令 `ls wasm`，可以看到存储在 littlefs image 里面的位于 `wasm` 目录下的 WebAssembly 应用程序 hello_world.wasm，执行命令 `iwasm wasm/hello_world.wasm` 运行固件，显示如下 log 信息表示运行成功：
+输入命令 `ls wasm`，可以看到存储在 littleFS image 里面位于 `wasm` 目录下的 WebAssembly 应用程序 `hello_world.wasm`，执行命令 `iwasm wasm/hello_world.wasm` 运行固件，显示如下 log 信息表示运行成功：
 
 ```
 Hello World!
 ```
 
-用户可以参照 [相关说明](#2-烧录文件系统) 烧录自己的 WebAssembly 应用程序到文件系统。
+您可以参照 [相关说明](#2-烧录文件系统) 烧录自己的 WebAssembly 应用程序到文件系统。
 
 ### 4.5 远程安装/卸载 WebAssembly 应用程序
 
-TCP 端口号在配置项 WASMACHINE_TCP_SERVER 定义，默认值是 8080，用户可以在如下的菜单中修改 TCP 端口号：
+TCP 端口号在配置项 WASMACHINE_TCP_SERVER 中定义，默认值是 8080，您可以在下列的菜单中修改 TCP 端口号：
 
 ```
 WASMachine Configuration  --->
@@ -265,8 +264,9 @@ WASMachine Configuration  --->
         (8080)      TCP Port
 ```
 
-运行 `host_tool` 工具安装/卸载/查看 WebAssembly 应用程序，具体命令可以参考[相关说明](#1.3-应用管理工具)。默认配置下，设备最多只支持安装 3 个应用程序，如需安装更多的应用程序，可以修改源码 `components/wamr/wasm-micro-runtime/core/config.h` 里面如下所示的宏定义：
+运行 `host_tool` 工具安装/卸载/查看 WebAssembly 应用程序，具体命令可以参考[相关说明](#1.3-应用管理工具)。
 
+默认配置下，设备最多只支持安装 3 个应用程序，如需安装更多的应用程序，可以修改源文件 `components/wamr/wasm-micro-runtime/core/config.h` 中的宏定义，如下所示：
 
 ```c
 /* Max app number of all modules */
@@ -275,14 +275,13 @@ WASMachine Configuration  --->
 
 #### 4.5.1 连接 AP
 
-输入如下命令（命令里面的 `myssid` 和 `mypassword` 需要根据用户实际情况修改），
-确保 PC 和硬件设备在同一个 AP 网络中，以便于远程安装/卸载 WebAssembly 应用程序：
+输入如下命令（请将 `myssid` 和 `mypassword` 替换为您的 SSID 和密码）。为实现远程安装/卸载 WebAssembly 应用程序，请确保 PC 和硬件设备在同一个 AP 网络中：
 
 ```
 WASMachine> sta -s myssid -p mypassword
 ```
 
-如出现下面的 log，表示连接 AP 并成功获取到 IP 地址（其中 IP 地址具体的值需根据用户实际情况来作判断）：
+如出现下面的 log，表示连接 AP 并成功获取 IP 地址（log 中的 IP 地址应为您的 IP 地址）：
 
 ```
 I (158337) esp_netif_handlers: sta ip: 172.168.30.182, mask: 255.255.255.0, gw: 172.168.30
@@ -290,7 +289,7 @@ I (158337) esp_netif_handlers: sta ip: 172.168.30.182, mask: 255.255.255.0, gw: 
 
 #### 4.5.2 安装
 
-执行以下的命令安装本地的 hello_world.wasm 到硬件设备上，程序名字是 app0，其他操作需要使用这个名字：
+执行以下的命令安装本地的 `hello_world.wasm` 到硬件设备上，程序名称为 `app0`，其他操作需要使用该名称：
 
 ```
 cd esp-wasmachine
@@ -309,7 +308,7 @@ response status 65
 
 #### 4.5.2 查看
 
-执行以下的命令获取 app0 的信息：
+执行以下的命令获取 `app0` 的信息：
 
 ```
 ./components/wamr/wasm-micro-runtime/test-tools/host-tool/build/host_tool \
@@ -331,7 +330,7 @@ response status 69
 
 #### 4.5.3 卸载
 
-执行以下的命令卸载安装的 app0：
+执行以下的命令卸载安装的 `app0`：
 
 ```
 ./components/wamr/wasm-micro-runtime/test-tools/host-tool/build/host_tool \
@@ -348,6 +347,6 @@ response status 66
 
 ## 5. 后续工作安排
 
-ESP-WASMachine 是 WebAssembly 技术在 ESP32 系列芯片上的尝试，当前还有许多问题尚未解决，值得探索，我们将在今后的日子里解决这些问题，并添加更多的丰富易用的功能。通过此基础版本，我们的目标是让用户可以更加方便地开发 WebAssembly 虚拟机程序、添加新的扩展和部署应用程序。
+ESP-WASMachine 是 WebAssembly 技术在 ESP32 系列芯片上的尝试，当前还有一些问题尚未解决，我们会尽力解决这些问题，并添加更多的丰富易用的功能。通过此基础版本，我们的目标是帮助您更加方便地开发 WebAssembly 虚拟机程序、添加新的扩展和部署应用程序。
 
-如果您有一个非常适合此框架的想法或需求，或者如果解决此类问题让您感到快乐，我们很乐意与您进行沟通。
+如果您有基于此框架的想法或需求，或者有兴趣探索此类问题，欢迎您与我们进行沟通。
