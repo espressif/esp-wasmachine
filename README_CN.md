@@ -47,11 +47,11 @@ esp-wasmachine/
 
 ## 2. 安装开发环境
 
-从实现原理来看，ESP-WASMachine 是基于 ESP-IDF 的应用程序，所以需要安装 ESP-IDF 的开发环境，相关流程请参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32s3/get-started/index.html#get-started)。
+从实现原理来看，ESP-WASMachine 是基于 ESP-IDF 的应用程序，所以需要安装 ESP-IDF 的开发环境，相关流程请参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32s3/get-started/index.html#get-started)。
 
 当前支持的 ESP-IDF 版本有：
 
-- [v4.4.1](https://github.com/espressif/esp-idf/tree/v4.4.1)
+- [v4.4.3](https://github.com/espressif/esp-idf/tree/v4.4.3)
 
 支持的开发板有：
 
@@ -240,7 +240,7 @@ Press TAB when typing command name to auto-complete.
 WASMachine>
 ```
 
-更多编译和调试相关的命令可以参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32s3/api-guides/build-system.html#idf-py)。
+更多编译和调试相关的命令可以参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32s3/api-guides/build-system.html#idf-py)。
 
 ### 4.4 运行 WebAssembly 应用程序
 

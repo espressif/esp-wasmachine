@@ -37,16 +37,16 @@ platform/esp-idf: Remove openat and change the errno of readlinkat
  .../include/wasmtime_ssp.h                    |  72 +++++
  .../sandboxed-system-primitives/src/posix.c   | 265 +++++++++++++++++-
  .../src/ssp_config.h                          |  12 +-
- .../shared/platform/esp-idf/espidf_platform.c | 193 +++++++++++++
+ .../shared/platform/esp-idf/espidf_platform.c | 186 ++++++++++++
  core/shared/platform/esp-idf/espidf_socket.c  | 196 +++++++++++++
  core/shared/platform/esp-idf/espidf_thread.c  |  25 ++
  .../platform/esp-idf/platform_internal.h      |  63 +++++
  .../platform/include/platform_api_extension.h |  30 ++
- 13 files changed, 966 insertions(+), 39 deletions(-)
+ 13 files changed, 959 insertions(+), 39 deletions(-)
  create mode 100644 core/shared/platform/esp-idf/espidf_socket.c
 
 diff --git a/core/app-framework/app_framework.cmake b/core/app-framework/app_framework.cmake
-index 8ad43dec..b8a63d85 100644
+index 8ad43de..b8a63d8 100644
 --- a/core/app-framework/app_framework.cmake
 +++ b/core/app-framework/app_framework.cmake
 @@ -33,6 +33,10 @@ function (add_module_native arg)
@@ -61,7 +61,7 @@ index 8ad43dec..b8a63d85 100644
      set (RUNTIME_LIB_HEADER_LIST ${RUNTIME_LIB_HEADER_LIST} PARENT_SCOPE)
  
 diff --git a/core/app-mgr/app-manager/module_wasm_app.c b/core/app-mgr/app-manager/module_wasm_app.c
-index 7b826d6d..8ee0f5f2 100644
+index 7b826d6..8ee0f5f 100644
 --- a/core/app-mgr/app-manager/module_wasm_app.c
 +++ b/core/app-mgr/app-manager/module_wasm_app.c
 @@ -431,6 +431,7 @@ wasm_app_prepare_wasi_dir(wasm_module_t module, const char *module_name,
@@ -121,7 +121,7 @@ index 7b826d6d..8ee0f5f2 100644
  
      /* Enter queue loop run to receive and process applet queue message */
 diff --git a/core/iwasm/libraries/lib-socket/inc/wasi_socket_ext.h b/core/iwasm/libraries/lib-socket/inc/wasi_socket_ext.h
-index 15ec0f51..ee029c4c 100644
+index 15ec0f5..ee029c4 100644
 --- a/core/iwasm/libraries/lib-socket/inc/wasi_socket_ext.h
 +++ b/core/iwasm/libraries/lib-socket/inc/wasi_socket_ext.h
 @@ -95,15 +95,15 @@ socket(int domain, int type, int protocol);
@@ -144,7 +144,7 @@ index 15ec0f51..ee029c4c 100644
  
  /**
 diff --git a/core/iwasm/libraries/lib-socket/src/wasi/wasi_socket_ext.c b/core/iwasm/libraries/lib-socket/src/wasi/wasi_socket_ext.c
-index a96156f7..2983be34 100644
+index a96156f..2983be3 100644
 --- a/core/iwasm/libraries/lib-socket/src/wasi/wasi_socket_ext.c
 +++ b/core/iwasm/libraries/lib-socket/src/wasi/wasi_socket_ext.c
 @@ -96,7 +96,7 @@ accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
@@ -157,7 +157,7 @@ index a96156f7..2983be34 100644
  
      // error = sock_addr_remote(new_sockfd, addr, addrlen);
 diff --git a/core/iwasm/libraries/libc-wasi/libc_wasi_wrapper.c b/core/iwasm/libraries/libc-wasi/libc_wasi_wrapper.c
-index 7611999a..44ffe61d 100644
+index 7611999..44ffe61 100644
 --- a/core/iwasm/libraries/libc-wasi/libc_wasi_wrapper.c
 +++ b/core/iwasm/libraries/libc-wasi/libc_wasi_wrapper.c
 @@ -994,7 +994,7 @@ wasi_random_get(wasm_exec_env_t exec_env, void *buf, uint32 buf_len)
@@ -331,7 +331,7 @@ index 7611999a..44ffe61d 100644
      REG_NATIVE_FUNC(sock_addr_remote, "(i*i)i"),
      REG_NATIVE_FUNC(sock_addr_resolve, "(i*i*i)i"),
 diff --git a/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/include/wasmtime_ssp.h b/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/include/wasmtime_ssp.h
-index 8c9d265a..bc63878a 100644
+index 8c9d265..bc63878 100644
 --- a/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/include/wasmtime_ssp.h
 +++ b/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/include/wasmtime_ssp.h
 @@ -1006,6 +1006,14 @@ wasi_ssp_sock_addr_remote(
@@ -421,7 +421,7 @@ index 8c9d265a..bc63878a 100644
  wasi_ssp_sock_listen(
  #if !defined(WASMTIME_SSP_STATIC_CURFDS)
 diff --git a/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/posix.c b/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/posix.c
-index 4f1a1c99..c03d8324 100644
+index 4f1a1c9..c03d832 100644
 --- a/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/posix.c
 +++ b/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/posix.c
 @@ -2860,8 +2860,18 @@ wasi_ssp_sock_addr_local(
@@ -720,7 +720,7 @@ index 4f1a1c99..c03d8324 100644
  wasmtime_ssp_sock_recv(
  #if !defined(WASMTIME_SSP_STATIC_CURFDS)
 diff --git a/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/ssp_config.h b/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/ssp_config.h
-index 47b65ca8..347569b4 100644
+index 47b65ca..347569b 100644
 --- a/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/ssp_config.h
 +++ b/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/ssp_config.h
 @@ -25,7 +25,7 @@
@@ -774,10 +774,10 @@ index 47b65ca8..347569b4 100644
  #else
  #define CONFIG_HAS_PWRITEV 0
 diff --git a/core/shared/platform/esp-idf/espidf_platform.c b/core/shared/platform/esp-idf/espidf_platform.c
-index af6be88c..a81f29c6 100644
+index af6be88..5038d17 100644
 --- a/core/shared/platform/esp-idf/espidf_platform.c
 +++ b/core/shared/platform/esp-idf/espidf_platform.c
-@@ -58,3 +58,196 @@ os_usleep(uint32 usec)
+@@ -58,3 +58,189 @@ os_usleep(uint32 usec)
  {
      return usleep(usec);
  }
@@ -955,13 +955,6 @@ index af6be88c..a81f29c6 100644
 +}
 +
 +int
-+ftruncate(int fd, off_t length)
-+{
-+    errno = ENOSYS;
-+    return -1;
-+}
-+
-+int
 +futimens(int fd, const struct timespec times[2])
 +{
 +    errno = ENOSYS;
@@ -977,7 +970,7 @@ index af6be88c..a81f29c6 100644
 \ No newline at end of file
 diff --git a/core/shared/platform/esp-idf/espidf_socket.c b/core/shared/platform/esp-idf/espidf_socket.c
 new file mode 100644
-index 00000000..0f18095d
+index 0000000..0f18095
 --- /dev/null
 +++ b/core/shared/platform/esp-idf/espidf_socket.c
 @@ -0,0 +1,196 @@
@@ -1178,7 +1171,7 @@ index 00000000..0f18095d
 +    return BHT_OK;
 +}
 diff --git a/core/shared/platform/esp-idf/espidf_thread.c b/core/shared/platform/esp-idf/espidf_thread.c
-index c8d7a829..637cd417 100644
+index c8d7a82..637cd41 100644
 --- a/core/shared/platform/esp-idf/espidf_thread.c
 +++ b/core/shared/platform/esp-idf/espidf_thread.c
 @@ -44,6 +44,25 @@ os_mutex_init(korp_mutex *mutex)
@@ -1219,7 +1212,7 @@ index c8d7a829..637cd417 100644
 +}
 \ No newline at end of file
 diff --git a/core/shared/platform/esp-idf/platform_internal.h b/core/shared/platform/esp-idf/platform_internal.h
-index fabc43f2..610c7c2b 100644
+index fabc43f..610c7c2 100644
 --- a/core/shared/platform/esp-idf/platform_internal.h
 +++ b/core/shared/platform/esp-idf/platform_internal.h
 @@ -17,6 +17,10 @@
@@ -1300,7 +1293,7 @@ index fabc43f2..610c7c2b 100644
  }
  #endif
 diff --git a/core/shared/platform/include/platform_api_extension.h b/core/shared/platform/include/platform_api_extension.h
-index c13b68f5..4e156d09 100644
+index c13b68f..4e156d0 100644
 --- a/core/shared/platform/include/platform_api_extension.h
 +++ b/core/shared/platform/include/platform_api_extension.h
 @@ -339,6 +339,36 @@ os_socket_shutdown(bh_socket_t socket);

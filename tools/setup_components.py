@@ -47,7 +47,7 @@ COMPONENTS = [ ESP_LITTLEFS, LVGL, RAINMAKER, WAMR ]
 ESP_IDF = { 'name': 'esp-idf',
             'url': 'https://github.com/espressif/esp-idf.git',
             'path': os.environ['IDF_PATH'],
-            'branch': 'v4.4.1',
+            'branch': 'v4.4.3',
             'patch': True }
 
 ROOT_PATH=os.getcwd()
