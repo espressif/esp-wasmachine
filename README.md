@@ -47,11 +47,11 @@ esp-wasmachine/
 
 ## 2. Install Development Environment
 
-ESP-WASMachine can be considered as an application project based on ESP-IDF in the implementation principle, so the development environment of ESP-IDF needs to be installed. For the relevant process, please refer to ESP-IDF [documents](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32s3/get-started/index.html#get-started).
+ESP-WASMachine can be considered as an application project based on ESP-IDF in the implementation principle, so the development environment of ESP-IDF needs to be installed. For the relevant process, please refer to ESP-IDF [documents](https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32s3/get-started/index.html#get-started).
 
 The supported version of ESP-IDF is as follows:
 
-- [v4.4.1](https://github.com/espressif/esp-idf/tree/v4.4.1)
+- [v4.4.3](https://github.com/espressif/esp-idf/tree/v4.4.3)
 
 The supported development boards are as follows:
 
@@ -240,7 +240,7 @@ Press TAB when typing command name to auto-complete.
 WASMachine>
 ```
 
-For more compiling and debugging commands, please refer to ESP-IDF [documents](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32s3/api-guides/build-system.html#idf-py).
+For more compiling and debugging commands, please refer to ESP-IDF [documents](https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32s3/api-guides/build-system.html#idf-py).
 
 ### 4.4 Run WebAssembly Application
 
