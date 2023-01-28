@@ -315,13 +315,13 @@ static void start_iwasm_thread(const char *str, uint8_t *buffer, uint32_t size)
     }
 
     ret = pthread_attr_init(&attr);
-    if (ret < 0) {
+    if (ret != 0) {
         ESP_LOGI(TAG, "failed to init attr errno=%d", errno);
         goto exit;
     }
 
     ret = pthread_attr_setstacksize(&attr, CONFIG_WASMACHINE_SHELL_WASM_TASK_STACK_SIZE);
-    if (ret < 0) {
+    if (ret != 0) {
         ESP_LOGI(TAG, "failed to set stasksize errno=%d", errno);
         return ;
     }
@@ -353,13 +353,13 @@ static void start_iwasm_thread(const char *str, uint8_t *buffer, uint32_t size)
 #endif
 
     ret = pthread_create(&tid, &attr, iwasm_main_thread, &arg);
-    if (ret < 0) {
+    if (ret != 0) {
         ESP_LOGI(TAG, "failed to create task errno=%d", errno);
         return ;
     }
 
     ret = pthread_join(tid, NULL);
-    if (ret < 0) {
+    if (ret != 0) {
         ESP_LOGI(TAG, "failed to join task errno=%d", errno);
         return ;
     }
