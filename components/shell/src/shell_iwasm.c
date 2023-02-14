@@ -495,7 +495,7 @@ void shell_regitser_cmd_iwasm(void)
 #endif
 
 #ifdef CONFIG_WASMACHINE_TASK_STACK_USE_PSRAM
-    iwasm_main_arg.stack_int_psram = arg_lit0(NULL, "ps", "User PSRAM as WASM task's stack buffer");
+    iwasm_main_arg.stack_int_psram = arg_lit0(NULL, "ps", "Use PSRAM as WASM task's stack buffer");
 
     cmd_num += 1;
 #endif

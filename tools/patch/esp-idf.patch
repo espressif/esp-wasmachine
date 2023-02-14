@@ -1,21 +1,141 @@
-From 256f94932225ed82994907f44df58307a4e8a18a Mon Sep 17 00:00:00 2001
-From: Dong Heng <dongheng@espressif.com>
-Date: Mon, 27 Jun 2022 15:56:14 +0800
-Subject: [PATCH] feat(vfs): Add openat for WAMR
-
-feat(vfs): Add O_RDWR to fcntl for WAMR enable WASI
 ---
- components/vfs/include/esp_vfs.h     |  5 +++++
- components/vfs/vfs.c                 | 32 ++++++++++++++++++++++++++++
+ components/freertos/tasks.c          |  2 +
+ components/pthread/pthread.c         | 60 ++++++++++++++++++++++++++++
+ components/vfs/include/esp_vfs.h     |  5 +++
+ components/vfs/vfs.c                 | 32 +++++++++++++++
  components/vfs/vfs_uart.c            |  1 +
  components/vfs/vfs_usb_serial_jtag.c |  1 +
- 4 files changed, 39 insertions(+)
+ 6 files changed, 101 insertions(+)
 
+diff --git a/components/freertos/tasks.c b/components/freertos/tasks.c
+index deff650528..149583e3ad 100644
+--- a/components/freertos/tasks.c
++++ b/components/freertos/tasks.c
+@@ -4592,7 +4592,9 @@ BaseType_t xTaskGetAffinity( TaskHandle_t xTask )
+                 {
+                     /* Neither the stack nor the TCB were allocated dynamically, so
+                      * nothing needs to be freed. */
++#ifndef CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
+                     configASSERT( pxTCB->ucStaticallyAllocated == tskSTATICALLY_ALLOCATED_STACK_AND_TCB );
++#endif
+                     mtCOVERAGE_TEST_MARKER();
+                 }
+             }
+diff --git a/components/pthread/pthread.c b/components/pthread/pthread.c
+index 4adbda8e29..66b71f992a 100644
+--- a/components/pthread/pthread.c
++++ b/components/pthread/pthread.c
+@@ -37,6 +37,9 @@ typedef struct esp_pthread_entry {
+     bool                        detached;       ///< True if pthread is detached
+     void                       *retval;         ///< Value supplied to calling thread during join
+     void                       *task_arg;       ///< Task arguments
++#ifdef CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
++    StaticTask_t               *task_buffer;    ///< FreeRTOS static task buffer
++#endif
+ } esp_pthread_t;
+ 
+ /** pthread wrapper task arg */
+@@ -120,6 +123,11 @@ static esp_pthread_t *pthread_find(TaskHandle_t task_handle)
+ static void pthread_delete(esp_pthread_t *pthread)
+ {
+     SLIST_REMOVE(&s_threads_list, pthread, esp_pthread_entry, list_node);
++#ifdef CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
++    if (pthread->task_buffer) {
++        vPortFree(pthread->task_buffer);
++    }
++#endif
+     free(pthread);
+ }
+ 
+@@ -254,9 +262,11 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+         task_arg->cfg = *pthread_cfg;
+     }
+ 
++    void *stack_addr = NULL;
+     if (attr) {
+         /* Overwrite attributes */
+         stack_size = attr->stacksize;
++        stack_addr = attr->stackaddr;
+ 
+         switch (attr->detachstate) {
+         case PTHREAD_CREATE_DETACHED:
+@@ -266,11 +276,55 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+         default:
+             pthread->detached = false;
+         }
++
++#ifdef CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
++        if (stack_addr) {
++            pthread->task_buffer = pvPortMalloc(sizeof(StaticTask_t));
++            if (!pthread->task_buffer) {
++                ESP_LOGE(TAG, "Failed to allocate freertos task buffer!");
++                free(task_arg);
++                return ENOMEM;
++            }
++        }
++#else
++        (void)stack_addr;
++#endif
+     }
+ 
+     task_arg->func = start_routine;
+     task_arg->arg = arg;
+     pthread->task_arg = task_arg;
++#ifdef CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
++    BaseType_t res;
++
++    if (!stack_addr) {
++        res = xTaskCreatePinnedToCore(&pthread_task_func,
++                                      task_name,
++                                      // stack_size is in bytes. This transformation ensures that the units are
++                                      // transformed to the units used in FreeRTOS.
++                                      // Note: float division of ceil(m / n) ==
++                                      // integer division of (m + n - 1) / n
++                                      (stack_size + sizeof(StackType_t) - 1) / sizeof(StackType_t),
++                                      task_arg,
++                                      prio,
++                                      &xHandle,
++                                      core_id);
++    } else {
++        xHandle = xTaskCreateStaticPinnedToCore(&pthread_task_func,
++                                                task_name,
++                                                (stack_size + sizeof(StackType_t) - 1) / sizeof(StackType_t),
++                                                task_arg,
++                                                prio,
++                                                stack_addr,
++                                                pthread->task_buffer,
++                                                core_id);
++        if (xHandle) {
++            res = pdPASS;
++        } else {
++            res = pdFAIL;
++        }
++    }
++#else
+     BaseType_t res = xTaskCreatePinnedToCore(&pthread_task_func,
+                                              task_name,
+                                              // stack_size is in bytes. This transformation ensures that the units are
+@@ -282,9 +336,15 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+                                              prio,
+                                              &xHandle,
+                                              core_id);
++#endif
+ 
+     if (res != pdPASS) {
+         ESP_LOGE(TAG, "Failed to create task!");
++#ifdef CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
++        if (pthread->task_buffer) {
++            vPortFree(pthread->task_buffer);
++        }
++#endif
+         free(pthread);
+         free(task_arg);
+         if (res == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {
 diff --git a/components/vfs/include/esp_vfs.h b/components/vfs/include/esp_vfs.h
-index 0498a3aa59..e7762eee7a 100644
+index d2634670d4..a524f3922d 100644
 --- a/components/vfs/include/esp_vfs.h
 +++ b/components/vfs/include/esp_vfs.h
-@@ -244,6 +244,11 @@ typedef struct
+@@ -248,6 +248,11 @@ typedef struct
      /** get_socket_select_semaphore returns semaphore allocated in the socket driver; set only for the socket driver */
      esp_err_t (*end_select)(void *end_select_args);
  #endif // CONFIG_VFS_SUPPORT_SELECT
@@ -28,10 +148,10 @@ index 0498a3aa59..e7762eee7a 100644
  
  /**
 diff --git a/components/vfs/vfs.c b/components/vfs/vfs.c
-index 905c636af5..157b904bdd 100644
+index b433c98693..26f1047bae 100644
 --- a/components/vfs/vfs.c
 +++ b/components/vfs/vfs.c
-@@ -1203,6 +1203,38 @@ int tcsendbreak(int fd, int duration)
+@@ -1225,6 +1225,38 @@ int tcsendbreak(int fd, int duration)
  }
  #endif // CONFIG_VFS_SUPPORT_TERMIOS
  
@@ -83,10 +203,10 @@ index 1f3e0df683..74c308f326 100644
              result |= O_NONBLOCK;
          }
 diff --git a/components/vfs/vfs_usb_serial_jtag.c b/components/vfs/vfs_usb_serial_jtag.c
-index 20bb4dd4db..74b47509eb 100644
+index f5ab0b1f79..a0d0771c6c 100644
 --- a/components/vfs/vfs_usb_serial_jtag.c
 +++ b/components/vfs/vfs_usb_serial_jtag.c
-@@ -242,6 +242,7 @@ static int usb_serial_jtag_fcntl(int fd, int cmd, int arg)
+@@ -245,6 +245,7 @@ static int usb_serial_jtag_fcntl(int fd, int cmd, int arg)
  {
      int result = 0;
      if (cmd == F_GETFL) {
