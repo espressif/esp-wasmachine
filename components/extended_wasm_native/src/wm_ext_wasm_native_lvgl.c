@@ -2492,7 +2492,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_msgbox_create)
         }
     }
 
-    btn_txts = malloc(sizeof(char *) * btn_txts_num);
+    btn_txts = wasm_runtime_malloc(sizeof(char *) * btn_txts_num);
     for (int i = 0; i < btn_txts_num - 1; i++) {
         btn_txts[i] = map_ptr(exec_env, origin_btn_txts[i]);
     }
@@ -2670,7 +2670,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_msgbox_close)
     lv_msgbox_close(obj);
 
     if (btn_txts) {
-        free(btn_txts);
+        wasm_runtime_free(btn_txts);
     }
 }
 
