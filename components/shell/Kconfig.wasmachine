@@ -25,6 +25,19 @@ menu "Shell"
                 This stack size is used for WASM task in WASMachine side, this task
                 will handle WASM application load logic.
 
+        config WASMACHINE_TASK_STACK_USE_PSRAM
+            bool "WASM Task Stack Uses PSRAM"
+            default n
+            depends on !WAMR_ENABLE_LIBC_WASI
+            select SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
+            help
+                Enable this option, users can add option "--ps" to command "iwasm",
+                and the WASM task's stack buffer will locate at PSRAM.
+
+                Note: Tasks whose stack buffer locates at PSRAM can't call functions to
+                read/write/erase SPI flash, this also means that this type of tasks
+                can't call file-system functions.
+
         config WASMACHINE_SHELL_PROMPT
             string "Shell prompt"
             default "WASMachine>"

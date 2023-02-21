@@ -93,7 +93,7 @@ static void *_tcp_server_thread(void *arg)
     socklen_t cli_len;
     struct sockaddr_in sock_addr;
 
-    buf = malloc(TCP_TX_BUFFER_SIZE);
+    buf = wasm_runtime_malloc(TCP_TX_BUFFER_SIZE);
     if (!buf) {
         ESP_LOGE(TAG, "failed to malloc buffer");
         return NULL;
@@ -158,7 +158,7 @@ errout_bind_sock:
     close(listenfd);
     listenfd = -1;
 errout_create_sock:
-    free(buf);
+    wasm_runtime_free(buf);
     return NULL;
 }
 #endif
@@ -184,9 +184,11 @@ static void *_app_mgr_thread(void *p)
         goto fail1;
     }
 
+#ifdef CONFIG_WAMR_ENABLE_LIBC_WASI
     if ( !wasm_set_wasi_root_dir(WM_FILE_SYSTEM_BASE_PATH)) {
         goto fail1;
     }
+#endif
 
 #ifdef CONFIG_WASMACHINE_TCP_SERVER
     ESP_ERROR_CHECK(os_thread_create(&tid, _tcp_server_thread, NULL,

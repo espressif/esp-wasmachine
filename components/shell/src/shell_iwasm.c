@@ -25,6 +25,7 @@
 #include "wasm_export.h"
 
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 
 #include "shell_cmd.h"
 
@@ -54,6 +55,11 @@ static struct {
     struct arg_str *dir;
     struct arg_str *addrs;
 #endif
+
+#ifdef CONFIG_WASMACHINE_TASK_STACK_USE_PSRAM
+    struct arg_lit *stack_int_psram;
+#endif
+
     struct arg_end *end;
 } iwasm_main_arg;
 
@@ -77,7 +83,7 @@ static int str2args(const char *str, int *argc, char ***argv)
         len++;
     }
 
-    pbuf = malloc(n * sizeof(char *) + len);
+    pbuf = wasm_runtime_malloc(n * sizeof(char *) + len);
     if (!pbuf) {
         return -ENOMEM;    
     }
@@ -87,7 +93,7 @@ static int str2args(const char *str, int *argc, char ***argv)
     memcpy(s, str, len);
     ret = esp_console_split_argv(s, argv_buf, n);
     if (ret < 0) {
-        free(pbuf);
+        wasm_runtime_free(pbuf);
         return -EINVAL;
     }
 
@@ -308,6 +314,7 @@ static void start_iwasm_thread(const char *str, uint8_t *buffer, uint32_t size)
         ret = str2args(str, &arg.argc, &arg.argv);
         if (ret < 0) {
             ESP_LOGE(TAG, "failed to decode arguments errno=%d", ret);
+            return;
         }
     } else {
         arg.argc = 0;
@@ -317,13 +324,13 @@ static void start_iwasm_thread(const char *str, uint8_t *buffer, uint32_t size)
     ret = pthread_attr_init(&attr);
     if (ret != 0) {
         ESP_LOGI(TAG, "failed to init attr errno=%d", errno);
-        goto exit;
+        goto fail1;
     }
 
     ret = pthread_attr_setstacksize(&attr, CONFIG_WASMACHINE_SHELL_WASM_TASK_STACK_SIZE);
     if (ret != 0) {
         ESP_LOGI(TAG, "failed to set stasksize errno=%d", errno);
-        return ;
+        goto fail1;
     }
 
     if (iwasm_main_arg.stack_size->count) {
@@ -352,21 +359,38 @@ static void start_iwasm_thread(const char *str, uint8_t *buffer, uint32_t size)
     }
 #endif
 
+#ifdef CONFIG_WASMACHINE_TASK_STACK_USE_PSRAM
+    if (iwasm_main_arg.stack_int_psram->count) {
+        attr.stackaddr = heap_caps_malloc(CONFIG_WASMACHINE_SHELL_WASM_TASK_STACK_SIZE,
+                                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (!attr.stackaddr) {
+            ESP_LOGI(TAG, "failed to create task stack in PSRAM");
+            goto fail2;
+        }
+    }
+#endif
+
     ret = pthread_create(&tid, &attr, iwasm_main_thread, &arg);
     if (ret != 0) {
         ESP_LOGI(TAG, "failed to create task errno=%d", errno);
-        return ;
+        goto fail2;
     }
 
     ret = pthread_join(tid, NULL);
     if (ret != 0) {
         ESP_LOGI(TAG, "failed to join task errno=%d", errno);
-        return ;
+        goto fail2;
     }
 
-exit:
+fail2:
+#ifdef CONFIG_WASMACHINE_TASK_STACK_USE_PSRAM
+    if (iwasm_main_arg.stack_int_psram->count) {
+        heap_caps_free(attr.stackaddr);
+    }
+#endif
+fail1:
     if (arg.argv) {
-        free(arg.argv);
+        wasm_runtime_free(arg.argv);
     }
 }
 
@@ -407,7 +431,7 @@ static int iwasm_main(int argc, char **argv)
         goto errout_lseek_end;
     }
 
-    pbuf = malloc(size);
+    pbuf = wasm_runtime_malloc(size);
     if (!pbuf) {
         ESP_LOGE(TAG, "Failed to malloc %lu bytes", size);
         goto errout_lseek_end;
@@ -431,14 +455,14 @@ static int iwasm_main(int argc, char **argv)
 
     start_iwasm_thread(args_str, pbuf, size);
 
-    free(pbuf);
+    wasm_runtime_free(pbuf);
     close(fd);
     free(file_path);
 
     return 0;
 
 errout_read_fs:
-    free(pbuf);
+    wasm_runtime_free(pbuf);
 errout_lseek_end:
     close(fd);
 errout_open_file:
@@ -448,6 +472,8 @@ errout_open_file:
 
 void shell_regitser_cmd_iwasm(void)
 {
+    int cmd_num = 4;
+
     iwasm_main_arg.stack_size =
         arg_int0("s", "stack_size", "<stack_size>", "WASM App's max stack size in bytes, default is " CONFIG_WASMACHINE_SHELL_WASM_APP_STACK_SIZE);
     iwasm_main_arg.heap_size =
@@ -456,6 +482,7 @@ void shell_regitser_cmd_iwasm(void)
         arg_str1(NULL, NULL, "<file>", "File name of WASM App");
     iwasm_main_arg.args =
         arg_str0(NULL, NULL, "<args>", "WASM App's arguments, need to use \"\" to wrap the args");
+
 #if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
     iwasm_main_arg.env =
         arg_str0("e", "env", "<env>", "Pass wasi environment variables with \"key=value\" to the program, seperated with ',', for example: --env=\"key1=value1\",\"key2=value2\"");
@@ -463,8 +490,17 @@ void shell_regitser_cmd_iwasm(void)
         arg_str0("d", "dir", "<dir>", "Grant wasi access to the given host directories to the program, seperated with ',', for example: --dir=<dir1>,<dir2>");
     iwasm_main_arg.addrs =
         arg_str0("a", "addr-pool", "<addrs>", "Grant wasi access to the given network addresses in CIRD notation to the program, seperated with ',', for example: --addr-pool=1.2.3.4/15,2.3.4.5/16");
+
+    cmd_num += 3;
 #endif
-    iwasm_main_arg.end = arg_end(4);
+
+#ifdef CONFIG_WASMACHINE_TASK_STACK_USE_PSRAM
+    iwasm_main_arg.stack_int_psram = arg_lit0(NULL, "ps", "Use PSRAM as WASM task's stack buffer");
+
+    cmd_num += 1;
+#endif
+
+    iwasm_main_arg.end = arg_end(cmd_num);
 
     const esp_console_cmd_t cmd = {
         .command = "iwasm",
