@@ -1,10 +1,18 @@
 if(CONFIG_WASMACHINE_SHELL)
-    set(srcs  "src/shell_init.c")
+    set(srcs  "src/shell_init.c" "src/shell_utils.c")
     set(include_dir "include")
     set(priv_include_dir "private_include")
 
     if(CONFIG_WASMACHINE_SHELL_CMD_IWASM)
         list(APPEND srcs "src/shell_iwasm.c")
+    endif()
+
+    if(CONFIG_WASMACHINE_SHELL_CMD_INSTALL)
+        list(APPEND srcs "src/shell_install.c")
+    endif()
+
+    if(CONFIG_WASMACHINE_SHELL_CMD_UNINSTALL)
+        list(APPEND srcs "src/shell_uninstall.c")
     endif()
 
     if(CONFIG_WASMACHINE_SHELL_CMD_LS)

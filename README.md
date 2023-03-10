@@ -165,6 +165,41 @@ Configure SSID and password of the target AP for Wi-Fi station, and start connec
 sta -s <SSID> -p <password>
 ```
 
+#### 3.1.5 install
+
+Install WebAssembly application in file-system:
+
+```
+install <file> [Configuration parameters]
+
+    file: WebAssembly application file name with full path
+```
+
+The relevant configuration parameters are described as follows:
+
+```
+	-i: name of the application
+	--heap: heap size of app, in bytes
+	--type: type of app
+	--timer: max timers number app can use
+	--watchdog: watchdog interval in ms
+```
+
+#### 3.1.6 uninstall
+
+Uninstall WebAssembly application:
+
+```
+uninstall [Configuration parameters]
+```
+
+The relevant configuration parameters are described as follows:
+
+```
+	-u: name of the application
+	--type: type of app
+```
+
 ### 3.2 Application Management Tool
 
 The remote application management tool [host_tool](https://github.com/bytecodealliance/wasm-micro-runtime/tree/main/test-tools/host-tool) of WebAssembly is a built-in tool of wasm-micro-runtime (WAMR). It allows you to remotely install/uninstall WebAssembly applications on devices by communicating with hardware devices through TCP/UART (currently TCP only). The reference command is as follows:
