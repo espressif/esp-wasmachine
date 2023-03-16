@@ -28,6 +28,7 @@
 #include "esp_heap_caps.h"
 
 #include "shell_cmd.h"
+#include "shell_utils.h"
 
 typedef struct iwasm_main_arg {
     uint8_t *buffer;
@@ -396,52 +397,16 @@ fail1:
 
 static int iwasm_main(int argc, char **argv)
 {
-    int fd;
     int ret;
-    off_t size;
-    uint8_t *pbuf;
-    char *file_path;
+    shell_file_t file;
     const char *args_str;
     
     SHELL_CMD_CHECK(iwasm_main_arg);
 
-    ret = asprintf(&file_path, SHELL_ROOT_FS_PATH"/%s", iwasm_main_arg.file->sval[0]);
+    ret = shell_open_file(&file, iwasm_main_arg.file->sval[0]);
     if (ret < 0) {
-        ESP_LOGE(TAG, "Failed to generate path errno=%d", errno);
-        return -1;
-    }
-
-    ESP_LOGI(TAG, "Opening file %s", file_path);
-
-    fd = open(file_path, O_RDONLY);
-    if (fd < 0) {
-        ESP_LOGE(TAG, "Failed to open file %s errno=%d", file_path, errno);
-        goto errout_open_file;
-    }
-
-    size = lseek(fd, 0, SEEK_END);
-    if (size == -1) {
-        ESP_LOGE(TAG, "Failed to seek file %s errno=%d", file_path, errno);
-        goto errout_lseek_end;
-    }
-
-    ret = lseek(fd, 0, SEEK_SET);
-    if (ret == -1) {
-        ESP_LOGE(TAG, "Failed to seek file %s errno=%d", file_path, errno);
-        goto errout_lseek_end;
-    }
-
-    pbuf = wasm_runtime_malloc(size);
-    if (!pbuf) {
-        ESP_LOGE(TAG, "Failed to malloc %lu bytes", size);
-        goto errout_lseek_end;
-    }
-
-    ESP_LOGI(TAG, "Total %lu bytes", size);
-    ret = read(fd, pbuf, size);
-    if (ret != size) {
-        ESP_LOGE(TAG, "Failed to read ret=%d", ret);
-        goto errout_read_fs;
+        ESP_LOGE(TAG, "Failed to open file %s", iwasm_main_arg.file->sval[0]);
+        return ret;
     }
 
     if (iwasm_main_arg.args->count &&
@@ -453,21 +418,11 @@ static int iwasm_main(int argc, char **argv)
         args_str = NULL;
     }
 
-    start_iwasm_thread(args_str, pbuf, size);
+    start_iwasm_thread(args_str, file.payload, file.size);
 
-    wasm_runtime_free(pbuf);
-    close(fd);
-    free(file_path);
+    shell_close_file(&file);
 
     return 0;
-
-errout_read_fs:
-    wasm_runtime_free(pbuf);
-errout_lseek_end:
-    close(fd);
-errout_open_file:
-    free(file_path);
-    return -1;
 }
 
 void shell_regitser_cmd_iwasm(void)

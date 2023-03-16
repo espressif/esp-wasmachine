@@ -50,10 +50,21 @@ menu "Shell"
             config WASMACHINE_SHELL_CMD_IWASM
                 bool "iwasm"
                 default y
+            
+            config WASMACHINE_SHELL_CMD_INSTALL
+                bool "install"
+                default y
+                depends on WASMACHINE_APP_MGR
+
+            config WASMACHINE_SHELL_CMD_UNINSTALL
+                bool "uninstall"
+                default y
+                depends on WASMACHINE_APP_MGR
 
             config WASMACHINE_SHELL_CMD_LS
                 bool "ls"
                 default y
+
             config WASMACHINE_SHELL_CMD_WIFI
                 bool "sta"
                 default y

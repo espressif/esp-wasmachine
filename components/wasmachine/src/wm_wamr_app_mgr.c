@@ -36,6 +36,7 @@ static const char *TAG = "wm_wamr_app_mgr";
 static int listenfd = -1;
 static int sockfd = -1;
 static pthread_mutex_t sock_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static bool host_init(void)
 {
@@ -135,6 +136,8 @@ static void *_tcp_server_thread(void *arg)
 
         ESP_LOGI(TAG, "host is established!");
 
+        wm_wamr_app_mgr_lock();
+
         for (;;) {
             int n = read(sockfd, buf, TCP_TX_BUFFER_SIZE);
             if (n <= 0) {
@@ -152,6 +155,8 @@ static void *_tcp_server_thread(void *arg)
 
             aee_host_msg_callback(buf, n);
         }
+
+        wm_wamr_app_mgr_unlock();
     }
 
 errout_bind_sock:
@@ -201,6 +206,42 @@ fail1:
     wasm_runtime_destroy();
 
     return NULL;
+}
+
+void wm_wamr_app_mgr_lock(void)
+{
+    assert(pthread_mutex_lock(&app_lock) == 0);
+}
+
+void wm_wamr_app_mgr_unlock(void)
+{
+    assert(pthread_mutex_unlock(&app_lock) == 0);
+}
+
+int wm_wamr_app_send_request(request_t *request, uint16_t msg_type)
+{
+    char *req_p;
+    int req_size, req_size_n;
+    char leading[2] = { 0x12, 0x34 };
+
+    extern int aee_host_msg_callback(void *msg, uint32_t msg_len);
+
+    req_p = pack_request(request, &req_size);
+    if (!req_p) {
+        return -1;
+    }
+
+    msg_type = htons(msg_type);
+    req_size_n = htonl(req_size);
+
+    aee_host_msg_callback(leading, sizeof(leading));
+    aee_host_msg_callback(&msg_type, sizeof(msg_type));
+    aee_host_msg_callback(&req_size_n, sizeof(req_size_n));
+    aee_host_msg_callback(req_p, req_size);
+
+    free_req_resp_packet(req_p);
+
+    return 0;
 }
 
 void wm_wamr_app_mgr_init(void)

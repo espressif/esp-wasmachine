@@ -165,6 +165,41 @@ free
 sta -s <SSID> -p <password>
 ```
 
+#### 3.1.5 install
+
+安装文件系统里面的 WASM 应用程序:
+
+```
+install <file> [配置参数]
+
+    file: 带路径的 WebAssembly 应用程序名
+```
+
+配置参数说明如下：
+
+```
+	-i: WebAssembly 应用程序名字
+	--heap: WebAssembly 应用程序堆空间大小
+	--type: WebAssembly 应用程序类型
+	--timer: WebAssembly 应用程序可以使用的 timer 数量
+	--watchdog: WebAssembly 应用程序看门狗间隔，单位是毫秒
+```
+
+#### 3.1.6 uninstall
+
+卸载 WASM 应用程序:
+
+```
+uninstall [配置参数]
+```
+
+配置参数说明如下：
+
+```
+	-u: WebAssembly 应用程序名字
+	--type: WebAssembly 应用程序类型
+```
+
 ### 3.2 应用管理工具
 
 WebAssembly 远程应用程序管理工具 [host_tool](https://github.com/bytecodealliance/wasm-micro-runtime/tree/main/test-tools/host-tool)，是 wasm-micro-runtime(WAMR) 自带的工具，可以通过 TCP/UART（当前只使用 TCP）与硬件设备通信，来实现在设备上远程安装/卸载 WebAssembly 应用程序。主要的命令格式如下：

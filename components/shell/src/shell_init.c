@@ -42,6 +42,14 @@ void wm_shell_init(void)
     shell_regitser_cmd_iwasm();
 #endif
 
+#ifdef CONFIG_WASMACHINE_SHELL_CMD_INSTALL
+    shell_regitser_cmd_install();
+#endif
+
+#ifdef CONFIG_WASMACHINE_SHELL_CMD_UNINSTALL
+    shell_regitser_cmd_uninstall();
+#endif
+
 #ifdef CONFIG_WASMACHINE_SHELL_CMD_FREE
     shell_regitser_cmd_free();
 #endif

@@ -1,4 +1,4 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
+// Copyright 2023 Espressif Systems (Shanghai) PTE LTD
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,25 +14,19 @@
 
 #pragma once
 
-#include "sdkconfig.h"
-#include "wm_config.h"
-#ifdef CONFIG_WASMACHINE_APP_MGR
-#include "bi-inc/shared_utils.h"
-#include "wa-inc/request.h"
-#endif
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef CONFIG_WASMACHINE_APP_MGR
-void wm_wamr_app_mgr_init(void);
-void wm_wamr_app_mgr_lock(void);
-void wm_wamr_app_mgr_unlock(void);
-int wm_wamr_app_send_request(request_t *request, uint16_t msg_type);
-#endif
+typedef struct shell_file {
+    uint8_t *payload;
+    int size;
+} shell_file_t;
 
-void wm_wamr_init(void);
+int shell_open_file(shell_file_t *file, const char *name);
+void shell_close_file(shell_file_t *file);
 
 #ifdef __cplusplus
 }
