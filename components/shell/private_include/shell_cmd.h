@@ -28,6 +28,7 @@
 void shell_regitser_cmd_iwasm(void);
 void shell_regitser_cmd_install(void);
 void shell_regitser_cmd_uninstall(void);
+void shell_regitser_cmd_query(void);
 void shell_regitser_cmd_ls(void);
 void shell_regitser_cmd_free(void);
 void shell_regitser_cmd_wifi(void);

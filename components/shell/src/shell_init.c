@@ -50,6 +50,10 @@ void wm_shell_init(void)
     shell_regitser_cmd_uninstall();
 #endif
 
+#ifdef CONFIG_WASMACHINE_SHELL_CMD_QUERY
+    shell_regitser_cmd_query();
+#endif
+
 #ifdef CONFIG_WASMACHINE_SHELL_CMD_FREE
     shell_regitser_cmd_free();
 #endif

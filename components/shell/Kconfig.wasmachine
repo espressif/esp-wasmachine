@@ -61,6 +61,11 @@ menu "Shell"
                 default y
                 depends on WASMACHINE_APP_MGR
 
+            config WASMACHINE_SHELL_CMD_QUERY
+                bool "query"
+                default y
+                depends on WASMACHINE_APP_MGR
+
             config WASMACHINE_SHELL_CMD_LS
                 bool "ls"
                 default y
