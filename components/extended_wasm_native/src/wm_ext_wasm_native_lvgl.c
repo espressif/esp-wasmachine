@@ -29,12 +29,7 @@
 #include "wm_ext_wasm_native_lvgl.h"
 
 #include "bsp_board.h"
-#include "bsp_lcd.h"
-#include "lv_port.h"
 #include "lvgl.h"
-
-#define LVGL_TASK_STACK_SIZE    (8192 * 2)
-#define LVGL_TASK_PRIORITY      8
 
 #define LVGL_ARG_BUF_NUM        16
 #define LVGL_ARG_NUM_MAX        64
@@ -67,66 +62,28 @@ static const char *TAG = "wm_lvgl_wrapper";
 static bool lvgl_inited;
 static _lock_t lvgl_lock;
 
-static void esp_lvgl_task(void *p)
-{
-    while(1) {
-        _lock_acquire_recursive(&lvgl_lock);
-        lv_task_handler();
-        _lock_release_recursive(&lvgl_lock);
-
-        vTaskDelay(1);
-    };
-}
-
 static int lvgl_init_wrapper(wasm_exec_env_t exec_env)
 {
-    int ret;
-
     _lock_acquire_recursive(&lvgl_lock);
-
-    if (lvgl_inited) {
-        ret = 0;
-        goto exit;
+    if (!lvgl_inited) {
+        bsp_i2c_init();
+        bsp_display_start();
+        bsp_display_backlight_on();
+        lvgl_inited = true;
     }
-
-    ret = lv_port_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "failed to lv_port_init ret=%d", ret);
-        ret = -1;
-        goto exit;
-    }
-
-    ret = bsp_lcd_set_backlight(true);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "failed to bsp_lcd_set_backlight ret=%d", ret);
-        ret = -1;
-        goto exit;
-    }
-
-    ret = xTaskCreate(esp_lvgl_task, "lvgl", LVGL_TASK_STACK_SIZE, NULL,
-                      LVGL_TASK_PRIORITY, NULL);
-    if (ret != pdTRUE) {
-        ESP_LOGE(TAG, "failed to xTaskCreate ret=%d", ret);
-        ret = -1;
-        goto exit;
-    }
-
-    ret = 0;
-    lvgl_inited = true;
-
-exit:
     _lock_release_recursive(&lvgl_lock);
-    return ret;
+
+    return 0;
 }
 
 static void lvgl_lock_wrapper(void)
 {
-    _lock_acquire_recursive(&lvgl_lock);
+    bsp_display_lock(0);
 }
 
 static void lvgl_unlock_wrapper(void)
 {
-    _lock_release_recursive(&lvgl_lock);
+    bsp_display_unlock();
 }
 
 static bool ptr_is_in_ram_or_rom(const void *ptr)

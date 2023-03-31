@@ -42,7 +42,14 @@ WAMR = { 'name': 'wasm-micro-runtime',
          'branch': 'fast-jit-06-29-2022',
          'patch': True }
 
-COMPONENTS = [ ESP_LITTLEFS, LVGL, RAINMAKER, WAMR ]
+ESP_BOX = { 'name': 'esp-bsp',
+            'url': 'https://github.com/espressif/esp-bsp.git',
+            'path': 'components/esp-bsp',
+            'branch': 'master',
+            'commit_id': '68135f70',
+            'patch': True }
+
+COMPONENTS = [ ESP_LITTLEFS, LVGL, RAINMAKER, WAMR, ESP_BOX ]
 
 ESP_IDF = { 'name': 'esp-idf',
             'url': 'https://github.com/espressif/esp-idf.git',

@@ -1,0 +1,55 @@
+diff --git a/esp-box/esp-box.c b/esp-box/esp-box.c
+index 8cbaf93..85d1502 100644
+--- a/esp-box/esp-box.c
++++ b/esp-box/esp-box.c
+@@ -24,6 +24,7 @@ static lv_disp_draw_buf_t disp_buf; // Contains internal graphic buffer(s) calle
+ static lv_disp_drv_t disp_drv;      // Contains callback functions
+ static esp_lcd_touch_handle_t tp;   // LCD touch handle
+ static SemaphoreHandle_t lvgl_mux;  // LVGL mutex
++static SemaphoreHandle_t lvgl_sem;
+ 
+ void bsp_i2c_init(void)
+ {
+@@ -123,6 +124,7 @@ static bool lvgl_port_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_pa
+ {
+     lv_disp_drv_t *disp_driver = (lv_disp_drv_t *)user_ctx;
+     lv_disp_flush_ready(disp_driver);
++    xSemaphoreGive(lvgl_sem);
+     return false;
+ }
+ 
+@@ -133,6 +135,9 @@ static void lvgl_port_flush_callback(lv_disp_drv_t *drv, const lv_area_t *area,
+     const int offsetx2 = area->x2;
+     const int offsety1 = area->y1;
+     const int offsety2 = area->y2;
++
++    xSemaphoreTake(lvgl_sem, portMAX_DELAY);
++
+     // copy a buffer's content to a specific area of the display
+     esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, color_map);
+ }
+@@ -222,6 +227,9 @@ static lv_disp_t *lvgl_port_display_init(void)
+     };
+     ESP_ERROR_CHECK(spi_bus_initialize(BSP_LCD_SPI_NUM, &buscfg, SPI_DMA_CH_AUTO));
+ 
++    vSemaphoreCreateBinary(lvgl_sem);
++    assert(lvgl_sem);
++
+     ESP_LOGD(TAG, "Install panel IO");
+     esp_lcd_panel_io_handle_t io_handle = NULL;
+     const esp_lcd_panel_io_spi_config_t io_config = {
+@@ -369,9 +377,9 @@ lv_disp_t *bsp_display_start(void)
+     lv_disp_t *disp = lvgl_port_display_init();
+     lvgl_port_indev_init();
+     lvgl_port_tick_init();
+-    lvgl_mux = xSemaphoreCreateMutex();
++    lvgl_mux = xSemaphoreCreateRecursiveMutex();
+     assert(lvgl_mux);
+-    xTaskCreate(lvgl_port_task, "LVGL task", 4096, NULL, CONFIG_BSP_DISPLAY_LVGL_TASK_PRIORITY, NULL);
++    xTaskCreate(lvgl_port_task, "LVGL task", 4096 * 4, NULL, CONFIG_BSP_DISPLAY_LVGL_TASK_PRIORITY, NULL);
+     return disp;
+ }
+ 
+-- 
+2.25.1
+
