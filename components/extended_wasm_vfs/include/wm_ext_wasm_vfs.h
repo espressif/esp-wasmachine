@@ -12,27 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sdkconfig.h"
-#include "esp_err.h"
+#pragma once
 
-#include "wm_ext_vfs.h"
-#include "wm_ext_vfs_export.h"
-
-#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
-#include "esp_vfs_dev.h"
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-void wm_ext_vfs_init(void)
-{
-#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
-    esp_vfs_dev_uart_register();
-#endif
+void wm_ext_wasm_vfs_init(void);
 
-#ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
-    ESP_ERROR_CHECK(wm_ext_vfs_gpio_init());
-#endif
-
-#ifdef CONFIG_WASMACHINE_EXT_VFS_I2C
-    ESP_ERROR_CHECK(wm_ext_vfs_i2c_init());
-#endif
+#ifdef __cplusplus
 }
+#endif

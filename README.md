@@ -19,10 +19,9 @@ esp-wasmachine/
             ├──common                   General purpose drivers of development board
             ├──esp-box                  Specific drivers of ESP-BOX development board
         ├──data_sequence                Data sequences used for parameter transfer between VM and APP
-        ├──extended_vfs                 Hardware drivers based on virtual file system
+        ├──extended_wasm_vfs            Hardware drivers based on virtual file system
             ├──src
-                ├──wm_ext_vfs_gpio.c    GPIO driver based on virtual file system
-                ├──wm_ext_vfs.c         Initialization of hardware drivers
+                ├──wm_ext_vfs.c         Initialization of hardware drivers, depends on extended_vfs of esp-iot-solution
                 ├── ...
         ├──extended_wasm_native         WebAssembly Native API
             ├──src

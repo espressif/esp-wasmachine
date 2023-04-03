@@ -19,10 +19,9 @@ esp-wasmachine/
             ├──common                       开发板公用驱动
             ├──esp-box                      esp-box 开发板专用驱动
         ├──data_sequence                    数据序列，用于虚拟机和应用之间的参数传递
-        ├──extended_vfs                     基于虚拟文件系统的硬件驱动
+        ├──extended_wasm_vfs                基于虚拟文件系统的硬件驱动
                 ├──src
-                    ├──wm_ext_vfs_gpio.c    基于虚拟文件系统的 GPIO 驱动
-                    ├──wm_ext_vfs.c         硬件设备驱动初始化程序
+                    ├──wm_ext_vfs.c         硬件设备驱动初始化程序，依赖于 esp-iot-solution 里面的 extended_vfs
                     ├── ...
         ├──extended_wasm_native             WebAssembly Native API
             ├──src

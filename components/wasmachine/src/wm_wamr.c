@@ -25,7 +25,7 @@
 #endif
 
 #ifdef CONFIG_WASMACHINE_EXT_VFS
-#include "wm_ext_vfs.h"
+#include "wm_ext_wasm_vfs.h"
 #endif
 
 #include "wm_wamr.h"
@@ -92,6 +92,6 @@ void wm_wamr_init(void)
 #endif
 
 #ifdef CONFIG_WASMACHINE_EXT_VFS
-    wm_ext_vfs_init();
+    wm_ext_wasm_vfs_init();
 #endif
 }
