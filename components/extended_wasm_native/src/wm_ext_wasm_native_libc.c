@@ -25,7 +25,7 @@
 
 #include "wm_ext_wasm_native_macro.h"
 #include "wm_ext_wasm_native_export.h"
-#include "wm_ext_wasm_native_vfs_ioctl.h"
+#include "wm_ext_wasm_vfs_ioctl.h"
 
 #define WASM_O_APPEND       (1 << 0)
 #define WASM_O_NONBLOCK     (1 << 2)
@@ -442,16 +442,16 @@ static int ioctl_wrapper(wasm_exec_env_t exec_env, int fd, int cmd, char *va_arg
     int ret;
 
     switch(cmd) {
-#ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
+#ifdef CONFIG_EXTENDED_VFS_GPIO
         case GPIOCSCFG:
-            ret = wm_ext_wasm_native_gpio_ioctl(exec_env, fd, cmd, va_args);
+            ret = wm_ext_wasm_gpio_ioctl(exec_env, fd, cmd, va_args);
             break;
 #endif
-#ifdef CONFIG_WASMACHINE_EXT_VFS_I2C
+#ifdef CONFIG_EXTENDED_VFS_I2C
         case I2CIOCSCFG:
         case I2CIOCRDWR:
         case I2CIOCEXCHANGE:
-            ret = wm_ext_wasm_native_i2c_ioctl(exec_env, fd, cmd, va_args);
+            ret = wm_ext_wasm_i2c_ioctl(exec_env, fd, cmd, va_args);
             break;
 #endif
         default:

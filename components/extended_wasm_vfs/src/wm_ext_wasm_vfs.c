@@ -12,31 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "sdkconfig.h"
-#include "wasm_export.h"
+#include "esp_err.h"
 
-#ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
-#include "ioctl/esp_gpio_ioctl.h"
+#include "wm_ext_wasm_vfs.h"
+#include "ext_vfs.h"
+
+#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
+#include "esp_vfs_dev.h"
 #endif
 
-#ifdef CONFIG_WASMACHINE_EXT_VFS_I2C
-#include "ioctl/esp_i2c_ioctl.h"
+void wm_ext_wasm_vfs_init(void)
+{
+#ifdef CONFIG_WASMACHINE_EXT_VFS_UART
+    esp_vfs_dev_uart_register();
 #endif
 
-#ifdef __cplusplus
-extern "C" {
+#ifdef CONFIG_EXTENDED_VFS
+    ext_vfs_init();
 #endif
-
-#ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
-int wm_ext_wasm_native_gpio_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args);
-#endif
-
-#ifdef CONFIG_WASMACHINE_EXT_VFS_I2C
-int wm_ext_wasm_native_i2c_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args);
-#endif
-
-#ifdef __cplusplus
 }
-#endif

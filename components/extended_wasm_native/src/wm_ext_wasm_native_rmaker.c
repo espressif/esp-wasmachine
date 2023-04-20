@@ -21,7 +21,6 @@
 
 #include "wm_ext_wasm_native_macro.h"
 #include "wm_ext_wasm_native_export.h"
-#include "wm_ext_wasm_native_vfs_ioctl.h"
 
 #include <esp_rmaker_core.h>
 #include <esp_rmaker_standard_params.h>

@@ -4,8 +4,7 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
     set(priv_include_dir "private_include")
 
     if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_LIBC)
-        list(APPEND srcs "src/wm_ext_wasm_native_libc.c"
-                         "src/wm_ext_wasm_native_vfs_ioctl.c")
+        list(APPEND srcs "src/wm_ext_wasm_native_libc.c")
     endif()
 
     if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_MQTT)
@@ -29,10 +28,14 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
     endif()
 endif()
 
+set(requires "extended_wasm_vfs" "mqtt" "wamr"
+             "boards" "lvgl" "wifi_provisioning" "esp_http_client"
+             "esp_rainmaker" "json_generator")
+
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dir}
                        PRIV_INCLUDE_DIRS ${priv_include_dir}
-                       REQUIRES "data_sequence" "extended_vfs" "mqtt" "wamr" "boards" "lvgl" "wifi_provisioning" "esp_http_client" "esp_rainmaker" "json_generator")
+                       REQUIRES ${requires})
 
 if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_RMAKER)
     idf_component_get_property(COMPONENT_DIR esp_rainmaker COMPONENT_DIR)

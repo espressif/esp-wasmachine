@@ -1,4 +1,4 @@
-menu "Extended VFS"
+menu "WASM Extended VFS"
     config WASMACHINE_EXT_VFS
         bool "Enable Extended VFS for WASMachine"
         default y
@@ -16,20 +16,6 @@ menu "Extended VFS"
 
                     Besides above if users use UART0/1/2 for other functions, these devices
                     also can't be used.
-            
-            config WASMACHINE_EXT_VFS_GPIO
-                bool "GPIO"
-                default y
-                help
-                    Select this option, then "/dev/gpio/x" (x=0, 1, ...) will be registered
-                    to VFS.
-
-            config WASMACHINE_EXT_VFS_I2C
-                bool "I2C"
-                default y
-                help
-                    Select this option, then "/dev/i2c/x" (x=0, 1, ...) will be registered
-                    to VFS.
         endmenu
     endif
 endmenu

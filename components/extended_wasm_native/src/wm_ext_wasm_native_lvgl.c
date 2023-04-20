@@ -25,7 +25,6 @@
 
 #include "wm_ext_wasm_native_macro.h"
 #include "wm_ext_wasm_native_export.h"
-#include "wm_ext_wasm_native_vfs_ioctl.h"
 #include "wm_ext_wasm_native_lvgl.h"
 
 #include "bsp_board.h"

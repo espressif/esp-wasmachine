@@ -12,20 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "sdkconfig.h"
+
+#ifdef CONFIG_EXTENDED_VFS
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/errno.h>
 
 #include "esp_log.h"
 
-#include "wm_ext_wasm_native_vfs_ioctl.h"
-#include "wm_ext_wasm_native_data_seq.h"
+#include "wm_ext_wasm_vfs_ioctl.h"
+#include "wm_ext_wasm_vfs_data_seq.h"
 #include "wm_ext_wasm_native_common.h"
 
 static const char *TAG = "wm_vfs_ioctl";
 
-#ifdef CONFIG_WASMACHINE_EXT_VFS_GPIO
-int wm_ext_wasm_native_gpio_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args)
+#ifdef CONFIG_EXTENDED_VFS_GPIO
+int wm_ext_wasm_gpio_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args)
 {
     int ret;
     data_seq_t *ds;
@@ -53,8 +56,8 @@ int wm_ext_wasm_native_gpio_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, cha
 }
 #endif
 
-#ifdef CONFIG_WASMACHINE_EXT_VFS_I2C
-int wm_ext_wasm_native_i2c_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args)
+#ifdef CONFIG_EXTENDED_VFS_I2C
+int wm_ext_wasm_i2c_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args)
 {
     int ret;
     data_seq_t *ds;
@@ -131,4 +134,5 @@ int wm_ext_wasm_native_i2c_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char
 
     return ret;
 }
+#endif
 #endif

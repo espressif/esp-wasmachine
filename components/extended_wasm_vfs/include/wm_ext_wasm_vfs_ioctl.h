@@ -14,11 +14,28 @@
 
 #pragma once
 
+#include "sdkconfig.h"
+#include "wasm_export.h"
+
+#ifdef CONFIG_EXTENDED_VFS_GPIO
+#include "ioctl/esp_gpio_ioctl.h"
+#endif
+
+#ifdef CONFIG_EXTENDED_VFS_I2C
+#include "ioctl/esp_i2c_ioctl.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void wm_ext_vfs_init(void);
+#ifdef CONFIG_EXTENDED_VFS_GPIO
+int wm_ext_wasm_gpio_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args);
+#endif
+
+#ifdef CONFIG_EXTENDED_VFS_I2C
+int wm_ext_wasm_i2c_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args);
+#endif
 
 #ifdef __cplusplus
 }
