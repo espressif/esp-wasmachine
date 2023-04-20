@@ -77,7 +77,7 @@ static int uninstall_main(int argc, char **argv)
     }
 
     for (int i = 0; i < UNISTALL_TIMEOUT; i += portTICK_PERIOD_MS) {
-        if (app_manager_lookup_module_data(m_name)) {
+        if (!app_manager_lookup_module_data(m_name)) {
             uninstalled = true;
             break;
         }
