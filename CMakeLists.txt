@@ -9,6 +9,7 @@ endif()
 message(STATUS "Choose board: ${BOARD}")
 
 set(BOARD_PATH ${CMAKE_CURRENT_LIST_DIR}/components/boards/${BOARD})
+set(ENV{BOARD} ${BOARD})
 
 # Check the ${BOARD} folder exists in components/boards.
 if(EXISTS ${BOARD_PATH})

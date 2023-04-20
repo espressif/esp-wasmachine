@@ -26,6 +26,13 @@ variables: &global-variables
 
 .build_esp_box: &build_esp_box
   - idf.py -DBOARD=esp-box build
+  - mv build esp_box_build
+  - mv sdkconfig esp_box_sdkconfig
+
+.build_esp32s3_devkitc: &build_esp32s3_devkitc
+  - idf.py -DBOARD=esp32s3-devkitc build
+  - mv build esp32s3_devkitc_build
+  - mv sdkconfig esp32s3_devkitc_sdkconfig
 
 cache:
   key: "${CI_PROJECT_NAME}-esp-idf-${IDF_VERSION}"
@@ -49,3 +56,4 @@ build_with_v4.4:
   script:
     - *setup_tools
     - *build_esp_box
+    - *build_esp32s3_devkitc
