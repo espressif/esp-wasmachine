@@ -52,5 +52,10 @@ components/wamr/wasm-micro-runtime
 components/esp_littlefs
 components/lvgl
 components/esp-rainmaker
+components/esp-bsp
 
 fs_image
+
+managed_components
+
+dependencies.lock

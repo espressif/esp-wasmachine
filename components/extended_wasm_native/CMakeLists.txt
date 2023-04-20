@@ -16,7 +16,9 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
         list(APPEND srcs "src/wm_ext_wasm_native_http_client.c")
     endif()
 
-    list(APPEND srcs "src/wm_ext_wasm_native_lvgl.c")
+    if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL)
+        list(APPEND srcs "src/wm_ext_wasm_native_lvgl.c")
+    endif()
 
     if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_WIFI_PROVISIONING)
         list(APPEND srcs "src/wm_ext_wasm_native_wifi_provisioning.c")
