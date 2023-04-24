@@ -199,6 +199,20 @@ uninstall [配置参数]
 	--type: WebAssembly 应用程序类型
 ```
 
+#### 3.1.7 query
+
+获取 WASM 应用程序信息:
+
+```
+query [配置参数]
+```
+
+配置参数说明如下：
+
+```
+	-q: WebAssembly 应用程序名字，如果不带 `-q <app name>` 则获取所有 app 的信息
+```
+
 ### 3.2 应用管理工具
 
 WebAssembly 远程应用程序管理工具 [host_tool](https://github.com/bytecodealliance/wasm-micro-runtime/tree/main/test-tools/host-tool)，是 wasm-micro-runtime(WAMR) 自带的工具，可以通过 TCP/UART（当前只使用 TCP）与硬件设备通信，来实现在设备上远程安装/卸载 WebAssembly 应用程序。主要的命令格式如下：

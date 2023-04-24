@@ -15,6 +15,10 @@ if(CONFIG_WASMACHINE_SHELL)
         list(APPEND srcs "src/shell_uninstall.c")
     endif()
 
+    if(CONFIG_WASMACHINE_SHELL_CMD_QUERY)
+        list(APPEND srcs "src/shell_query.c")
+    endif()
+
     if(CONFIG_WASMACHINE_SHELL_CMD_LS)
         list(APPEND srcs "src/shell_ls.c")
     endif()

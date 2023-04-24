@@ -199,6 +199,20 @@ The relevant configuration parameters are described as follows:
 	--type: type of app
 ```
 
+#### 3.1.7 query
+
+Obtains the WASM application information:
+
+```
+query [Configuration parameters]
+```
+
+The relevant configuration parameters are described as follows:
+
+```
+	-q: name of the application，or obtains all applications' information without `-q <app name>`
+```
+
 ### 3.2 Application Management Tool
 
 The remote application management tool [host_tool](https://github.com/bytecodealliance/wasm-micro-runtime/tree/main/test-tools/host-tool) of WebAssembly is a built-in tool of wasm-micro-runtime (WAMR). It allows you to remotely install/uninstall WebAssembly applications on devices by communicating with hardware devices through TCP/UART (currently TCP only). The reference command is as follows:
