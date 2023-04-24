@@ -454,6 +454,22 @@ static int ioctl_wrapper(wasm_exec_env_t exec_env, int fd, int cmd, char *va_arg
             ret = wm_ext_wasm_i2c_ioctl(exec_env, fd, cmd, va_args);
             break;
 #endif
+#ifdef CONFIG_EXTENDED_VFS_SPI
+        case SPIIOCSCFG:
+        case SPIIOCEXCHANGE:
+            ret = wm_ext_wasm_native_spi_ioctl(exec_env, fd, cmd, va_args);
+            break;
+#endif
+#ifdef CONFIG_EXTENDED_VFS_LEDC
+        case LEDCIOCSCFG:
+        case LEDCIOCSSETFREQ:
+        case LEDCIOCSSETDUTY:
+        case LEDCIOCSSETPHASE:
+        case LEDCIOCSPAUSE:
+        case LEDCIOCSRESUME:
+            ret = wm_ext_wasm_native_ledc_ioctl(exec_env, fd, cmd, va_args);
+            break;
+#endif
         default:
             errno = EINVAL;
             ret = -1;

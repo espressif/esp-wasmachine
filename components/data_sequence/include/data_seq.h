@@ -48,9 +48,11 @@ typedef struct data_seq {
 
 #define DATA_SEQ_PUSH(ds, t, v)         data_seq_push(ds, t, sizeof(v), &(v))   /*!< Push data to data sequence, and this macro calculates data's length by sizeof(data) */
 #define DATA_SEQ_POP(ds, t, v)          data_seq_pop(ds, t, sizeof(v), &(v))    /*!< Pop data from data sequence, and this macro calculates data's length by sizeof(data) */
+#define DATA_SEQ_UPDATE(ds, t, v)       data_seq_pop(ds, t, sizeof(v), &(v))    /*!< Update frame data in data sequence, and this macro calculates data's length by sizeof(data) */
 
 #define DATA_SEQ_FORCE_PUSH(ds, t, v)   assert(DATA_SEQ_PUSH(ds, t, v) == 0)    /*!< Force to push data to data sequence, and this macro calculates data's length by sizeof(data), if failed it will assert */
 #define DATA_SEQ_FORCE_POP(ds, t, v)    assert(DATA_SEQ_POP(ds, t, v) == 0)     /*!< Force to pop data from data sequence, and this macro calculates data's length by sizeof(data), if failed it will assert */
+#define DATA_SEQ_FORCE_UPDATE(ds, t, v) assert(DATA_SEQ_UPDATE(ds, t, v) == 0)  /*!< Force to update frame data in data sequence, and this macro calculates data's length by sizeof(data) */
 
 /**
   * @brief  Create data sequence by given number.
@@ -112,6 +114,19 @@ int data_seq_push(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, co
   *    - -ENOENT: No data is found in data sequence, maybe type is error, or size is error.
   */
 int data_seq_pop(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, void *data);
+
+/**
+  * @brief  Update frame data in data sequence.
+  *
+  * @param  ds   Data sequence pointer which is created by "data_seq_alloc".
+  * @param  type New data type.
+  * @param  size New data size.
+  * @param  data New data pointer.
+  * 
+  * @return
+  *    - Frame data pointer if sucess or NULL if failed.
+  */
+int data_seq_update_frame_data(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, void *data);
 
 #ifdef __cplusplus
 }

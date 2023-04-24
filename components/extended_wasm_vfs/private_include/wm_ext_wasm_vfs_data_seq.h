@@ -54,6 +54,52 @@ extern "C" {
 #define DATA_SEQ_I2C_EX_MSG_RXBUF   6  /*!< i2c_ex_msg->rx_buffer */
 #define DATA_SEQ_I2C_EX_MSG_RXSIZE  7  /*!< i2c_ex_msg->rx_size */ 
 
+/**
+ * @brief SPI ioctl configuration struct member's index of data sequence
+ */
+#define DATA_SEQ_SPI_CFG_CS_PIN     1  /*!< spi_cfg_t->cs_pin */
+#define DATA_SEQ_SPI_CFG_SCLK_PIN   2  /*!< spi_cfg_t->sclk_pin */
+#define DATA_SEQ_SPI_CFG_MOSI_PIN   3  /*!< spi_cfg_t->mosi_pin */
+#define DATA_SEQ_SPI_CFG_MISO_PIN   4  /*!< spi_cfg_t->miso_pin */
+#define DATA_SEQ_SPI_CFG_FLAGS      5  /*!< spi_cfg_t->flags */
+#define DATA_SEQ_SPI_CFG_MASTER_CLK 6  /*!< spi_cfg_t->master.clock */
+
+/**
+ * @brief SPI ioctl exchange message struct member's index of data sequence
+ */
+#define DATA_SEQ_SPI_EX_MSG_TXBUF   1  /*!< spi_ex_msg_t->tx_buffer */
+#define DATA_SEQ_SPI_EX_MSG_RXBUF   2  /*!< spi_ex_msg_t->rx_buffer */
+#define DATA_SEQ_SPI_EX_MSG_SIZE    3  /*!< spi_ex_msg_t->rx_size */ 
+
+
+/**
+ * @brief LEDC ioctl configuration struct member's index of data sequence
+ */
+#define DATA_SEQ_LEDC_CFG_FREQUENCY 1    /*!< ledc_cfg_t->frequency */
+#define DATA_SEQ_LEDC_CFG_CHANNEL_NUM 2  /*!< ledc_cfg_t->channel_num */
+#define DATA_SEQ_LEDC_CFG_CHANNEL_CFG 3  /*!< ledc_cfg_t->channel_cfg */ 
+
+#define DATA_SEQ_LEDC_CFG_CHANNEL_SUB(a, b, c)  ((a) | ((b) << 8) | ((c) << 16))
+
+/**
+ * @brief LEDC ioctl channel configuration struct member's index of data sequence
+ */
+#define DATA_SEQ_LEDC_CHANNEL_CFG_OUTPUT_PIN 1  /*!< ledc_channel_cfg_t->output_pin */
+#define DATA_SEQ_LEDC_CHANNEL_CFG_DUTY 2        /*!< ledc_channel_cfg_t->duty */
+#define DATA_SEQ_LEDC_CHANNEL_CFG_PHASE 3       /*!< ledc_channel_cfg_t->phase */ 
+
+/**
+ * @brief LEDC ioctl duty configuration struct member's index of data sequence
+ */
+#define DATA_SEQ_LEDC_DUTY_CFG_CHANNEL 1    /*!< ledc_duty_cfg_t->channel */
+#define DATA_SEQ_LEDC_DUTY_CFG_DUTY 2       /*!< ledc_duty_cfg_t->duty */ 
+
+/**
+ * @brief LEDC ioctl phase configuration struct member's index of data sequence
+ */
+#define DATA_SEQ_LEDC_PHASE_CFG_CHANNEL 1   /*!< ledc_phase_cfg_t->channel */
+#define DATA_SEQ_LEDC_PHASE_CFG_PHASE 2     /*!< ledc_phase_cfg_t->phase */ 
+
 #ifdef __cplusplus
 }
 #endif

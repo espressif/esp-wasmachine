@@ -99,3 +99,24 @@ int data_seq_pop(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, voi
 
     return ret;
 }
+
+int data_seq_update_frame_data(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, void *data)
+{
+    if (!ds || !size || !data) {
+        return -EINVAL;
+    }
+
+    if (ds->version == DATA_SEQ_V_1) {
+        for (uint32_t i = 0; i < ds->index; i++) {
+            if (ds->frame[i].type == type &&
+                ds->frame[i].size == size) {
+                void *s = (void *)ds->frame[i].ptr;
+
+                memcpy(s, data, size);
+                return 0;
+            }
+        }
+    }
+
+    return -EINVAL;
+}

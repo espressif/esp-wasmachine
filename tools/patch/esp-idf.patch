@@ -1,11 +1,16 @@
+From e281e25db08ab1929fc7413792e78229c86b6348 Mon Sep 17 00:00:00 2001
+From: Dong Heng <dongheng@espressif.com>
+Date: Fri, 21 Apr 2023 14:13:23 +0800
+Subject: [PATCH] add
+
 ---
  components/freertos/tasks.c          |  2 +
  components/pthread/pthread.c         | 60 ++++++++++++++++++++++++++++
  components/vfs/include/esp_vfs.h     |  5 +++
- components/vfs/vfs.c                 | 32 +++++++++++++++
+ components/vfs/vfs.c                 | 38 +++++++++++++++++-
  components/vfs/vfs_uart.c            |  1 +
  components/vfs/vfs_usb_serial_jtag.c |  1 +
- 6 files changed, 101 insertions(+)
+ 6 files changed, 106 insertions(+), 1 deletion(-)
 
 diff --git a/components/freertos/tasks.c b/components/freertos/tasks.c
 index deff650528..149583e3ad 100644
@@ -148,10 +153,23 @@ index d2634670d4..a524f3922d 100644
  
  /**
 diff --git a/components/vfs/vfs.c b/components/vfs/vfs.c
-index b433c98693..26f1047bae 100644
+index b433c98693..9135082a22 100644
 --- a/components/vfs/vfs.c
 +++ b/components/vfs/vfs.c
-@@ -1225,6 +1225,38 @@ int tcsendbreak(int fd, int duration)
+@@ -28,7 +28,11 @@
+ 
+ static const char *TAG = "vfs";
+ 
+-#define VFS_MAX_COUNT   8   /* max number of VFS entries (registered filesystems) */
++#ifdef CONFIG_VFS_MAX_COUNT
++#define VFS_MAX_COUNT   CONFIG_VFS_MAX_COUNT   /* max number of VFS entries (registered filesystems) */
++#else
++#define VFS_MAX_COUNT   8
++#endif
+ #define LEN_PATH_PREFIX_IGNORED SIZE_MAX /* special length value for VFS which is never recognised by open() */
+ #define FD_TABLE_ENTRY_UNUSED   (fd_table_t) { .permanent = false, .has_pending_close = false, .has_pending_select = false, .vfs_index = -1, .local_fd = -1 }
+ 
+@@ -1225,6 +1229,38 @@ int tcsendbreak(int fd, int duration)
  }
  #endif // CONFIG_VFS_SUPPORT_TERMIOS
  
@@ -216,3 +234,4 @@ index f5ab0b1f79..a0d0771c6c 100644
          }
 -- 
 2.25.1
+

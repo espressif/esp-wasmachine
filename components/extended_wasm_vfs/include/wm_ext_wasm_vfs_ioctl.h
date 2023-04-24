@@ -25,6 +25,14 @@
 #include "ioctl/esp_i2c_ioctl.h"
 #endif
 
+#ifdef CONFIG_EXTENDED_VFS_SPI
+#include "ioctl/esp_spi_ioctl.h"
+#endif
+
+#ifdef CONFIG_EXTENDED_VFS_LEDC
+#include "ioctl/esp_ledc_ioctl.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,6 +43,14 @@ int wm_ext_wasm_gpio_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_a
 
 #ifdef CONFIG_EXTENDED_VFS_I2C
 int wm_ext_wasm_i2c_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args);
+#endif
+
+#ifdef CONFIG_EXTENDED_VFS_SPI
+int wm_ext_wasm_native_spi_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args);
+#endif
+
+#ifdef CONFIG_EXTENDED_VFS_LEDC
+int wm_ext_wasm_native_ledc_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args);
 #endif
 
 #ifdef __cplusplus
