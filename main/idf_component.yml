@@ -1,4 +1,4 @@
 ## IDF Component Manager Manifest File
 dependencies:
   idf: ">=4.4.3"
-  espressif/extended_vfs: "^0.1.0"
+  espressif/extended_vfs: "^0.3.1"

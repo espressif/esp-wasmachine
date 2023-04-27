@@ -21,6 +21,9 @@
 extern "C" {
 #endif
 
+#define WASM_INTSIZEOF(n)       (((uint32_t)sizeof(n) + 3) & (uint32_t)~3)
+#define WASM_VA_ARG(ap, t)      (*(t *)((ap += WASM_INTSIZEOF(t)) - WASM_INTSIZEOF(t)))
+
 /**
   * @brief  Check data sequence space and transform pointer address from WASM to runtime.
   *
