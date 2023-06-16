@@ -1,48 +1,21 @@
-From de45088c1c89d2abf083d256d2ae80c8ef98fb53 Mon Sep 17 00:00:00 2001
-From: Dong Heng <dongheng@espressif.com>
-Date: Thu, 12 May 2022 11:44:20 +0800
-Subject: [PATCH] esp32: Fix compile issue when enable app management
-
-esp32: Add missed thread related APIs
-
-os_recursive_mutex_init & os_cond_broadcast
-
-cmake: Support to get WASM APP libs' DIR from upper layer
-
-WASM APP libs' DIR is set inside a function, cannot be gotten from the upper layer. For the platform such as IDF, users need to get this DIR and include it manually.
-
-esp-idf: Add SSP support for esp-idf platform
-
-app-manager: Only excute main if wasi is enabled and app is wasi mode
-
-If libc-wasi is not enabled, and the app is wanted to be loaded by both iwasm and host_tool, we can call on_init in main to make the app compatible when using these two tools. If libc-wasi is enabled, this modification will avoid main and on_init to be excuted both when using host_tool to install the app.
-
-libc-wasi: Update sock_accept interface to match new WASI snapshot1
-
-libc-wasi: Add sock_addr_resolve interface which is similar to `getaddrinfo` in POSIX
-
-libc-wasi: Add sock_addr_remote and sock_addr_local
-
-libc-wasi: Support to get/set recv_buf_size & send_buf_size & reuse_port & reuse_addr
-
-platform/esp-idf: Don't set SO_LINGER when bind process
-
-platform/esp-idf: Remove openat and change the errno of readlinkat
 ---
  core/app-framework/app_framework.cmake        |   4 +
  core/app-mgr/app-manager/module_wasm_app.c    |  34 +--
+ core/iwasm/aot/aot_loader.c                   |   4 +-
+ core/iwasm/aot/arch/aot_reloc_xtensa.c        |  13 +-
  .../lib-socket/inc/wasi_socket_ext.h          |   6 +-
  .../lib-socket/src/wasi/wasi_socket_ext.c     |   2 +-
  .../libraries/libc-wasi/libc_wasi_wrapper.c   | 103 ++++++-
  .../include/wasmtime_ssp.h                    |  72 +++++
  .../sandboxed-system-primitives/src/posix.c   | 265 +++++++++++++++++-
  .../src/ssp_config.h                          |  12 +-
+ core/shared/platform/esp-idf/espidf_memmap.c  |  23 +-
  .../shared/platform/esp-idf/espidf_platform.c | 186 ++++++++++++
  core/shared/platform/esp-idf/espidf_socket.c  | 196 +++++++++++++
  core/shared/platform/esp-idf/espidf_thread.c  |  25 ++
  .../platform/esp-idf/platform_internal.h      |  63 +++++
  .../platform/include/platform_api_extension.h |  30 ++
- 13 files changed, 959 insertions(+), 39 deletions(-)
+ 16 files changed, 995 insertions(+), 43 deletions(-)
  create mode 100644 core/shared/platform/esp-idf/espidf_socket.c
 
 diff --git a/core/app-framework/app_framework.cmake b/core/app-framework/app_framework.cmake
@@ -120,6 +93,67 @@ index 7b826d6..8ee0f5f 100644
      }
  
      /* Enter queue loop run to receive and process applet queue message */
+diff --git a/core/iwasm/aot/aot_loader.c b/core/iwasm/aot/aot_loader.c
+index d6560cc..395b161 100644
+--- a/core/iwasm/aot/aot_loader.c
++++ b/core/iwasm/aot/aot_loader.c
+@@ -1579,7 +1579,7 @@ load_function_section(const uint8 *buf, const uint8 *buf_end, AOTModule *module,
+                           "invalid function code offset");
+             return false;
+         }
+-        module->func_ptrs[i] = (uint8 *)module->code + text_offset;
++        module->func_ptrs[i] = (uint8 *)module->code + text_offset + (SOC_IROM_LOW - SOC_DROM_LOW);
+ #if defined(BUILD_TARGET_THUMB) || defined(BUILD_TARGET_THUMB_VFP)
+         /* bits[0] of thumb function address must be 1 */
+         module->func_ptrs[i] = (void *)((uintptr_t)module->func_ptrs[i] | 1);
+@@ -3254,6 +3254,7 @@ aot_unload(AOTModule *module)
+     if (module->const_str_set)
+         bh_hash_map_destroy(module->const_str_set);
+ 
++#if 0
+     if (module->code && !module->is_indirect_mode) {
+         /* The layout is: literal size + literal + code (with plt table) */
+         uint8 *mmap_addr = module->literal - sizeof(uint32);
+@@ -3261,6 +3262,7 @@ aot_unload(AOTModule *module)
+             sizeof(uint32) + module->literal_size + module->code_size;
+         os_munmap(mmap_addr, total_size);
+     }
++#endif
+ 
+ #if defined(BH_PLATFORM_WINDOWS)
+     if (module->extra_plt_data) {
+diff --git a/core/iwasm/aot/arch/aot_reloc_xtensa.c b/core/iwasm/aot/arch/aot_reloc_xtensa.c
+index b5b262a..86a7648 100644
+--- a/core/iwasm/aot/arch/aot_reloc_xtensa.c
++++ b/core/iwasm/aot/arch/aot_reloc_xtensa.c
+@@ -8,6 +8,10 @@
+ #define R_XTENSA_32 1        /* Direct 32 bit */
+ #define R_XTENSA_SLOT0_OP 20 /* PC relative */
+ 
++#define IN_SPACE(addr, start, size) \
++    (((uintptr_t)(addr) >= (uintptr_t)(start)) && \
++     ((uintptr_t)(addr) <  ((uintptr_t)(start) + (uintptr_t)(size))))
++
+ /* clang-format off */
+ /* for soft-float */
+ void __floatsidf();
+@@ -214,8 +218,15 @@ apply_relocation(AOTModule *module, uint8 *target_section_addr,
+             }
+             CHECK_RELOC_OFFSET(4);
+             initial_addend = *(int32 *)insn_addr;
+-            *(uintptr_t *)insn_addr = (uintptr_t)symbol_addr + initial_addend
++
++            uintptr_t target_addr = (uintptr_t)symbol_addr + initial_addend
+                                       + (intptr_t)reloc_addend;
++
++            if (IN_SPACE(target_addr, module->code, module->code_size)) {
++                target_addr += (SOC_IROM_LOW - SOC_DROM_LOW);
++            }
++
++            *(uintptr_t *)insn_addr = target_addr;
+             break;
+         }
+ 
 diff --git a/core/iwasm/libraries/lib-socket/inc/wasi_socket_ext.h b/core/iwasm/libraries/lib-socket/inc/wasi_socket_ext.h
 index 15ec0f5..ee029c4 100644
 --- a/core/iwasm/libraries/lib-socket/inc/wasi_socket_ext.h
@@ -773,6 +807,59 @@ index 47b65ca..347569b 100644
  #define CONFIG_HAS_PWRITEV 1
  #else
  #define CONFIG_HAS_PWRITEV 0
+diff --git a/core/shared/platform/esp-idf/espidf_memmap.c b/core/shared/platform/esp-idf/espidf_memmap.c
+index 693094a..4c87e39 100644
+--- a/core/shared/platform/esp-idf/espidf_memmap.c
++++ b/core/shared/platform/esp-idf/espidf_memmap.c
+@@ -9,6 +9,9 @@
+ void *
+ os_mmap(void *hint, size_t size, int prot, int flags)
+ {
++#ifdef CONFIG_SPIRAM
++    return heap_caps_aligned_alloc(8, size, MALLOC_CAP_SPIRAM);
++#else
+     if (prot & MMAP_PROT_EXEC) {
+         // Memory allocation with MALLOC_CAP_EXEC will return 4-byte aligned
+         // Reserve extra 4 byte to fixup alignment and size for the pointer to
+@@ -30,6 +33,7 @@ os_mmap(void *hint, size_t size, int prot, int flags)
+     else {
+         return os_malloc(size);
+     }
++#endif
+ }
+ 
+ void
+@@ -37,7 +41,11 @@ os_munmap(void *addr, size_t size)
+ {
+     // We don't need special handling of the executable allocations
+     // here, free() of esp-idf handles it properly
++#ifdef CONFIG_SPIRAM
++    heap_caps_free(addr);
++#else
+     return os_free(addr);
++#endif
+ }
+ 
+ int
+@@ -47,5 +55,16 @@ os_mprotect(void *addr, size_t size, int prot)
+ }
+ 
+ void
+-os_dcache_flush()
+-{}
++IRAM_ATTR os_dcache_flush()
++{
++#ifdef CONFIG_SPIRAM
++    extern void esp_spiram_writeback_cache(void);
++    extern void spi_flash_disable_interrupts_caches_and_other_cpu(void);
++    extern void spi_flash_enable_interrupts_caches_and_other_cpu(void);
++
++    esp_spiram_writeback_cache();
++
++    spi_flash_disable_interrupts_caches_and_other_cpu();
++    spi_flash_enable_interrupts_caches_and_other_cpu();
++#endif
++}
 diff --git a/core/shared/platform/esp-idf/espidf_platform.c b/core/shared/platform/esp-idf/espidf_platform.c
 index af6be88..5038d17 100644
 --- a/core/shared/platform/esp-idf/espidf_platform.c
@@ -1335,4 +1422,3 @@ index c13b68f..4e156d0 100644
  #endif
 -- 
 2.25.1
-
