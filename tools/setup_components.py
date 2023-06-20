@@ -17,12 +17,6 @@
 import os
 import subprocess
 
-ESP_LITTLEFS = { 'name': 'esp_littlefs',
-                 'url': 'https://github.com/joltwallet/esp_littlefs.git',
-                 'path': 'components/esp_littlefs',
-                 'branch': 'v1.4.1',
-                 'patch': True }
-
 LVGL = { 'name': 'lvgl',
          'url': 'https://github.com/lvgl/lvgl.git',
          'path': 'components/lvgl',
@@ -49,7 +43,7 @@ ESP_BOX = { 'name': 'esp-bsp',
             'commit_id': '68135f70',
             'patch': True }
 
-COMPONENTS = [ ESP_LITTLEFS, LVGL, RAINMAKER, WAMR, ESP_BOX ]
+COMPONENTS = [ LVGL, RAINMAKER, WAMR, ESP_BOX ]
 
 ESP_IDF = { 'name': 'esp-idf',
             'url': 'https://github.com/espressif/esp-idf.git',
