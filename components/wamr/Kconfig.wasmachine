@@ -1,7 +1,7 @@
 menu "WASM Micro Runtime"
     config WAMR_ENABLE_AOT
         bool "AOT"
-        default n
+        default y
         depends on WAMR_PLATFORM_AOT_VAILD
 
     config WAMR_ENABLE_APP_FRAMEWORK
@@ -87,7 +87,8 @@ menu "WASM Micro Runtime"
 
     config WAMR_PLATFORM_AOT_VAILD
         bool
-        default y if IDF_TARGET_ESP32 && FREERTOS_UNICORE 
+        default y if IDF_TARGET_ESP32 && FREERTOS_UNICORE
+        default y if IDF_TARGET_ESP32S3
         default n
         select ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY if IDF_TARGET_ESP32
 

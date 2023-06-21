@@ -25,7 +25,9 @@
 
 #include "wm_ext_wasm_native_macro.h"
 #include "wm_ext_wasm_native_export.h"
+#ifdef CONFIG_WASMACHINE_EXT_VFS
 #include "wm_ext_wasm_vfs_ioctl.h"
+#endif
 
 #define WASM_O_APPEND       (1 << 0)
 #define WASM_O_NONBLOCK     (1 << 2)
@@ -437,6 +439,7 @@ static int close_wrapper(wasm_exec_env_t exec_env, int fd)
     return ret;
 }
 
+#ifdef CONFIG_WASMACHINE_EXT_VFS
 static int ioctl_wrapper(wasm_exec_env_t exec_env, int fd, int cmd, char *va_args)
 {
     int ret;
@@ -481,6 +484,7 @@ static int ioctl_wrapper(wasm_exec_env_t exec_env, int fd, int cmd, char *va_arg
 
     return ret;
 }
+#endif
 
 static int fstat_wrapper(wasm_exec_env_t exec_env, int fd, struct stat *st)
 {
@@ -513,7 +517,9 @@ static NativeSymbol wm_libc_wrapper_native_symbol[] = {
     REG_NATIVE_FUNC(fcntl,  "(iii)i"),
     REG_NATIVE_FUNC(fsync,  "(i)i"),
     REG_NATIVE_FUNC(close,  "(i)i"),
+#ifdef CONFIG_WASMACHINE_EXT_VFS
     REG_NATIVE_FUNC(ioctl,  "(ii*)i"),
+#endif
     REG_NATIVE_FUNC(fstat,  "(i*)i"),
     REG_NATIVE_FUNC(sleep,  "(i)i"),
     REG_NATIVE_FUNC(usleep, "(i)i")
