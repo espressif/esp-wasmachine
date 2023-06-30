@@ -5,8 +5,7 @@ stages:
 variables: &global-variables
   GIT_STRATEGY: clone
   PYTHON_VER: 3
-  IDF_VERSION: v4.4.1
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  IDF_VERSION: v4.4.3
 
 .before_script_preparation: &before_script_preparation
   - mkdir -p ~/.ssh
@@ -17,12 +16,14 @@ variables: &global-variables
   - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 
 .setup_tools: &setup_tools
-  - if [ ! -d "esp-idf" ]; then git clone -b ${GITLAB_IDF_BRANCH} --recursive ${GITLAB_SSH_SERVER}/espressif/esp-idf.git; fi
-  - export IDF_PATH=$(pwd)/esp-idf
-  - source $IDF_PATH/tools/ci/configure_ci_environment.sh
+  - cd $IDF_PATH
+  - git checkout $IDF_VERSION
+  - git submodule update --init --recursive
+  - rm /opt/esp/idf-env.json
   - $IDF_PATH/tools/idf_tools.py --non-interactive install cmake || exit 1
   - $IDF_PATH/tools/idf_tools.py --non-interactive install --targets esp32s3 && eval "$($IDF_PATH/tools/idf_tools.py --non-interactive export)" || exit 1
   - $IDF_PATH/tools/idf_tools.py install-python-env
+  - cd -
 
 .build_esp_box: &build_esp_box
   - idf.py -DBOARD=esp-box build
@@ -43,7 +44,7 @@ cache:
 
 build_with_v4.4:
   stage: build
-  image: $CI_DOCKER_REGISTRY/esp-env:v4.4-1
+  image: espressif/idf:release-v4.4
   tags:
     - build
 
