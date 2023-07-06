@@ -150,14 +150,15 @@ static const lv_font_t *map_font(wasm_exec_env_t exec_env, const lv_font_t *_fon
         font = ptr;
     }
 
-    font->env = exec_env;
+    font->module_inst = module_inst;
 
     return font;
 }
 
-static lv_img_dsc_t *map_img_dsc(wasm_exec_env_t exec_env, lv_img_dsc_t *img_dsc)
+static lv_img_dsc_t *map_img_dsc(wasm_exec_env_t exec_env, const lv_img_dsc_t *_img_dsc)
 {
     void *ptr;
+    lv_img_dsc_t *img_dsc = (lv_img_dsc_t *)_img_dsc;
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
     if (ptr_is_in_ram_or_rom(img_dsc)) {
@@ -172,7 +173,7 @@ static lv_img_dsc_t *map_img_dsc(wasm_exec_env_t exec_env, lv_img_dsc_t *img_dsc
         img_dsc = ptr;
     }
 
-    img_dsc->env = exec_env;
+    img_dsc->module_inst = module_inst;
 
     return img_dsc;
 }
@@ -295,9 +296,10 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_disp_set_monitor_cb)
 {
     lvgl_native_get_arg(lv_disp_t *, disp);
     lvgl_native_get_arg(void *, cb);
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
     disp->driver->monitor_cb = cb;
-    disp->driver->env = exec_env;
+    disp->driver->module_inst = module_inst;
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_remove_style)
@@ -599,10 +601,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_create)
     lvgl_native_get_arg(lv_timer_cb_t, timer_xcb);
     lvgl_native_get_arg(uint32_t, period);
     lvgl_native_get_arg(void *, user_data);
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
     _lock_acquire_recursive(&lvgl_lock);
     res = lv_timer_create(timer_xcb, period, user_data);
-    res->env = exec_env;
+    res->module_inst = module_inst;
     _lock_release_recursive(&lvgl_lock);
 
     lvgl_native_set_return(res);
@@ -944,10 +947,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_start)
     lv_anim_t *res;
     lvgl_native_return_type(lv_anim_t *);
     lvgl_native_get_arg(lv_anim_t *, a);
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
     a = map_anim(exec_env, a);
 
-    a->env = exec_env;
+    a->module_inst = module_inst;
     res = lv_anim_start(a);
 
     lvgl_native_set_return(res);
@@ -1200,9 +1204,10 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_event_cb)
     lvgl_native_get_arg(lv_event_cb_t, event_cb);
     lvgl_native_get_arg(lv_event_code_t, filter);
     lvgl_native_get_arg(void *, user_data);
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
     res = lv_obj_add_event_cb(obj, event_cb, filter, user_data);
-    res->env = exec_env; 
+    res->module_inst = module_inst; 
 
     lvgl_native_set_return(res);
 }
@@ -1731,8 +1736,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_bg_img_src)
     lvgl_native_get_arg(lv_img_dsc_t *, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    value = map_ptr(exec_env, value);
-    value->env = exec_env;
+    value = map_img_dsc(exec_env, value);
 
     lv_obj_set_style_bg_img_src(obj, value, selector); 
 }
@@ -1754,6 +1758,8 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_target)
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_event_t *, e);
 
+    e = map_ptr(exec_env, e);
+
     res = lv_event_get_target(e);
 
     lvgl_native_set_return(res);   
@@ -1764,6 +1770,8 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_user_data)
     void *res;
     lvgl_native_return_type(void *);
     lvgl_native_get_arg(lv_event_t *, e);
+
+    e = map_ptr(exec_env, e);
 
     res = lv_event_get_user_data(e);
 
@@ -2762,21 +2770,15 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_imgbtn_set_src)
     lvgl_native_get_arg(const void *, src_right);
 
     if (src_left) {
-        src_left = map_ptr(exec_env, src_left);
-        lv_img_dsc_t *dsc = (lv_img_dsc_t *)src_left;
-        dsc->env = exec_env;
+        src_left = map_img_dsc(exec_env, src_left);
     }
 
     if (src_mid) {
-        src_mid = map_ptr(exec_env, src_mid);
-        lv_img_dsc_t *dsc = (lv_img_dsc_t *)src_mid;
-        dsc->env = exec_env;
+        src_mid = map_img_dsc(exec_env, src_mid);
     }
 
     if (src_right) {
-        src_right = map_ptr(exec_env, src_right);
-        lv_img_dsc_t *dsc = (lv_img_dsc_t *)src_right;
-        dsc->env = exec_env;
+        src_right = map_img_dsc(exec_env, src_right);
     }
 
     lv_imgbtn_set_src(imgbtn, state, src_left, src_mid, src_right);
@@ -3334,6 +3336,326 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_font_get_data)
     lvgl_native_set_return(res); 
 }
 
+DEFINE_LVGL_NATIVE_WRAPPER(lv_label_set_text_static)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(const char *, text);
+
+    text = map_string(exec_env, text);
+
+    lv_label_set_text_static(obj, text);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_border_color)
+{
+    lvgl_native_get_arg(lv_style_t *, style);
+    lvgl_native_get_arg(lv_color_t, value);
+
+    style = map_ptr(exec_env, style);
+
+    lv_style_set_border_color(style, value);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_shadow_color)
+{
+    lvgl_native_get_arg(lv_style_t *, style);
+    lvgl_native_get_arg(lv_color_t, value);
+
+    style = map_ptr(exec_env, style);
+
+    lv_style_set_shadow_color(style, value);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_outline_color)
+{
+    lvgl_native_get_arg(lv_style_t *, style);
+    lvgl_native_get_arg(lv_color_t, value);
+
+    style = map_ptr(exec_env, style);
+
+    lv_style_set_outline_color(style, value);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_outline_width)
+{
+    lvgl_native_get_arg(lv_style_t *, style);
+    lvgl_native_get_arg(lv_coord_t, value);
+
+    style = map_ptr(exec_env, style);
+
+    lv_style_set_outline_width(style, value);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_get_next)
+{
+    lv_indev_t * res;
+    lvgl_native_return_type(lv_indev_t *);
+    lvgl_native_get_arg(lv_indev_t *, indev);
+
+    res = lv_indev_get_next(indev);
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_group_create)
+{
+    lv_group_t * res;
+    lvgl_native_return_type(lv_group_t *);
+
+    res = lv_group_create();
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_set_group)
+{
+    lvgl_native_get_arg(lv_indev_t *, indev);
+    lvgl_native_get_arg(lv_group_t *, group);
+
+    lv_indev_set_group(indev, group);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_shadow_opa)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_opa_t, value);
+    lvgl_native_get_arg(lv_style_selector_t, selector);
+
+    lv_obj_set_style_shadow_opa(obj, value, selector); 
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_enable)
+{
+    lvgl_native_get_arg(lv_indev_t *, indev);
+    lvgl_native_get_arg(bool, en);
+
+    lv_indev_enable(indev, en); 
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_has_flag)
+{
+    bool res;
+    lvgl_native_return_type(bool);
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_obj_flag_t, f);
+
+    res = lv_obj_has_flag(obj, f);
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_arc_set_bg_angles)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(uint16_t, start);
+    lvgl_native_get_arg(uint16_t, end);
+
+    lv_arc_set_bg_angles(obj, start, end);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_arc_set_value)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(int16_t, value);
+
+    lv_arc_set_value(obj, value);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_arc_width)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_coord_t, value);
+    lvgl_native_get_arg(lv_style_selector_t, selector);
+
+    lv_obj_set_style_arc_width(obj, value, selector);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_arc_set_rotation)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(uint16_t, value);
+
+    lv_arc_set_rotation(obj, value);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_img_opa)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_opa_t, value);
+    lvgl_native_get_arg(lv_style_selector_t, selector);
+
+    lv_obj_set_style_img_opa(obj, value, selector);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_del)
+{
+    lvgl_native_get_arg(lv_timer_t *, timer);
+
+    lv_timer_del(timer);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_user_data)
+{
+    void * res;
+    lvgl_native_return_type(void *);
+    lvgl_native_get_arg(lv_obj_t *, obj);
+
+    res = lv_obj_get_user_data(obj);
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_user_data)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(void *, user_data);
+
+    lv_obj_set_user_data(obj, user_data);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_scrollbar_mode)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_scrollbar_mode_t, mode);
+
+    lv_obj_set_scrollbar_mode(obj, mode);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_group_remove_all_objs)
+{
+    lvgl_native_get_arg(lv_group_t *, group);
+
+    lv_group_remove_all_objs(group);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_label_set_recolor)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(bool, en);
+
+    lv_label_set_recolor(obj, en);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_tabview_get_tab_act)
+{
+    uint16_t res;
+    lvgl_native_return_type(uint16_t);
+    lvgl_native_get_arg(lv_obj_t *, obj);
+
+    res = lv_tabview_get_tab_act(obj);
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_shadow_ofs_x)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_coord_t, value);
+    lvgl_native_get_arg(lv_style_selector_t, selector);
+
+    lv_obj_set_style_shadow_ofs_x(obj, value, selector);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_shadow_ofs_y)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_coord_t, value);
+    lvgl_native_get_arg(lv_style_selector_t, selector);
+
+    lv_obj_set_style_shadow_ofs_y(obj, value, selector);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_led_create)
+{
+    lv_obj_t * res;
+    lvgl_native_return_type(lv_obj_t *);
+    lvgl_native_get_arg(lv_obj_t *, obj);
+
+    res = lv_led_create(obj);
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_led_off)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+
+    lv_led_off(obj);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_led_on)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+
+    lv_led_on(obj);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_click_area)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_area_t *, area);
+
+    area = map_ptr(exec_env, area);
+
+    lv_obj_get_click_area(obj, area);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_set_button_points)
+{
+    lvgl_native_get_arg(lv_indev_t *, indev);
+    lvgl_native_get_arg(lv_point_t *, points);
+
+    if (points) {
+        points = map_ptr(exec_env, points);
+    }
+
+    lv_indev_set_button_points(indev, points);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_qrcode_create)
+{
+    lv_obj_t * res;
+    lvgl_native_return_type(lv_obj_t *);
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_coord_t, size);
+    lvgl_native_get_arg(lv_color_t, dark_color);
+    lvgl_native_get_arg(lv_color_t, light_color);
+
+    res = lv_qrcode_create(obj, size, dark_color, light_color);
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_qrcode_update)
+{
+    lv_res_t res;
+    lvgl_native_return_type(lv_res_t);
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(void *, data);
+    lvgl_native_get_arg(uint32_t, data_len);
+
+    data = map_ptr(exec_env, data);
+
+    res = lv_qrcode_update(obj, data, data_len);
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_group_focus_obj)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+
+    lv_group_focus_obj(obj);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_group_focus_freeze)
+{
+    lvgl_native_get_arg(lv_group_t *, group);
+    lvgl_native_get_arg(bool, en);
+
+    lv_group_focus_freeze(group, en);
+}
+
 static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_FONT_GET_FONT, lv_font_get_font, 1),
     LVGL_NATIVE_WRAPPER(LV_DISP_GET_NEXT, lv_disp_get_next, 1),
@@ -3606,6 +3928,40 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_DATA, lv_obj_get_data, 4),
     LVGL_NATIVE_WRAPPER(LV_CHART_SERIES_GET_DATA, lv_chart_series_get_data, 4),
     LVGL_NATIVE_WRAPPER(LV_FONT_GET_DATA, lv_font_get_data, 4),
+    LVGL_NATIVE_WRAPPER(LV_LABEL_SET_TEXT_STATIC, lv_label_set_text_static, 2),
+    LVGL_NATIVE_WRAPPER(LV_STYLE_SET_BORDER_COLOR, lv_style_set_border_color, 2),
+    LVGL_NATIVE_WRAPPER(LV_STYLE_SET_SHADOW_COLOR, lv_style_set_shadow_color, 2),
+    LVGL_NATIVE_WRAPPER(LV_STYLE_SET_OUTLINE_COLOR, lv_style_set_outline_color, 2),
+    LVGL_NATIVE_WRAPPER(LV_STYLE_SET_OUTLINE_WIDTH, lv_style_set_outline_width, 2),
+    LVGL_NATIVE_WRAPPER(LV_INDEV_GET_NEXT, lv_indev_get_next, 1),
+    LVGL_NATIVE_WRAPPER(LV_GROUP_CREATE, lv_group_create, 1),
+    LVGL_NATIVE_WRAPPER(LV_INDEV_SET_GROUP, lv_indev_set_group, 2),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_SHADOW_OPA, lv_obj_set_style_shadow_opa, 3),
+    LVGL_NATIVE_WRAPPER(LV_INDEV_ENABLE, lv_indev_enable, 2),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_HAS_FLAG, lv_obj_has_flag, 2),
+    LVGL_NATIVE_WRAPPER(LV_ARC_SET_BG_ANGLES, lv_arc_set_bg_angles, 3),
+    LVGL_NATIVE_WRAPPER(LV_ARC_SET_VALUE, lv_arc_set_value, 2),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_ARC_WIDTH, lv_obj_set_style_arc_width, 3),
+    LVGL_NATIVE_WRAPPER(LV_ARC_SET_ROTATION, lv_arc_set_rotation, 2),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_IMG_OPA, lv_obj_set_style_img_opa, 3),
+    LVGL_NATIVE_WRAPPER(LV_TIMER_DEL, lv_timer_del, 1),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_GET_USER_DATA, lv_obj_get_user_data, 1),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_USER_DATA, lv_obj_set_user_data, 2),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_SCROLLBAR_MODE, lv_obj_set_scrollbar_mode, 2),
+    LVGL_NATIVE_WRAPPER(LV_GROUP_REMOVE_ALL_OBJS, lv_group_remove_all_objs, 1),
+    LVGL_NATIVE_WRAPPER(LV_LABEL_SET_RECOLOR, lv_label_set_recolor, 2),
+    LVGL_NATIVE_WRAPPER(LV_TABVIEW_GET_TAB_ACT, lv_tabview_get_tab_act, 1),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_SHADOW_OFS_X, lv_obj_set_style_shadow_ofs_x, 3),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_SHADOW_OFS_Y, lv_obj_set_style_shadow_ofs_y, 3),
+    LVGL_NATIVE_WRAPPER(LV_LED_CREATE, lv_led_create, 1),
+    LVGL_NATIVE_WRAPPER(LV_LED_OFF, lv_led_off, 1),
+    LVGL_NATIVE_WRAPPER(LV_LED_ON, lv_led_on, 1),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_GET_CLICK_AREA, lv_obj_get_click_area, 2),
+    LVGL_NATIVE_WRAPPER(LV_INDEV_SET_BUTTON_POINTS, lv_indev_set_button_points, 2),
+    LVGL_NATIVE_WRAPPER(LV_QRCODE_CREATE, lv_qrcode_create, 4),
+    LVGL_NATIVE_WRAPPER(LV_QRCODE_UPDATE, lv_qrcode_update, 3),
+    LVGL_NATIVE_WRAPPER(LV_GROUP_FOCUS_OBJ, lv_group_focus_obj, 1),
+    LVGL_NATIVE_WRAPPER(LV_GROUP_FOCUS_FREEZE, lv_group_focus_freeze, 2),
 };
 
 static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
@@ -3667,11 +4023,11 @@ static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
     }    
 }
 
-void lv_run_wasm(void *env, void *cb, int argc, uint32_t *argv)
+void lv_run_wasm(void *_module_inst, void *cb, int argc, uint32_t *argv)
 {
     bool ret;
-    wasm_exec_env_t origin_exec_env = env;
-    wasm_module_inst_t module_inst = get_module_inst(origin_exec_env);
+    const char *exception;
+    wasm_module_inst_t module_inst = (wasm_module_inst_t)_module_inst;
     wasm_exec_env_t exec_env = wasm_runtime_create_exec_env(module_inst, LVGL_WASM_CALLBACK_STACK_SIZE);
 
     ret = wasm_runtime_call_indirect(exec_env,
@@ -3679,7 +4035,10 @@ void lv_run_wasm(void *env, void *cb, int argc, uint32_t *argv)
                                      argc,
                                      argv);
     if (!ret) {
-        ESP_LOGE(TAG, "failed to run WASM callback cb=%p argc=%d argv=%p", cb, argc, argv);
+        ESP_LOGE(TAG, "failed to run WASM callback cb=%p argc=%d argv=%p ra=%p", cb, argc, argv, __builtin_return_address(0));
+        if ((exception = wasm_runtime_get_exception(module_inst))) {
+            ESP_LOGE(TAG, "%s", exception);
+        }
     }
     
     wasm_runtime_destroy_exec_env(exec_env);
