@@ -1,7 +1,7 @@
 ---
  core/app-framework/app_framework.cmake        |   4 +
- core/app-mgr/app-manager/module_wasm_app.c    |  34 +--
- core/iwasm/aot/aot_loader.c                   |   4 +-
+ core/app-mgr/app-manager/module_wasm_app.c    |  40 +--
+ core/iwasm/aot/aot_loader.c                   |   2 +-
  core/iwasm/aot/arch/aot_reloc_xtensa.c        |  13 +-
  .../lib-socket/inc/wasi_socket_ext.h          |   6 +-
  .../lib-socket/src/wasi/wasi_socket_ext.c     |   2 +-
@@ -15,7 +15,7 @@
  core/shared/platform/esp-idf/espidf_thread.c  |  25 ++
  .../platform/esp-idf/platform_internal.h      |  63 +++++
  .../platform/include/platform_api_extension.h |  30 ++
- 16 files changed, 995 insertions(+), 43 deletions(-)
+ 16 files changed, 996 insertions(+), 46 deletions(-)
  create mode 100644 core/shared/platform/esp-idf/espidf_socket.c
 
 diff --git a/core/app-framework/app_framework.cmake b/core/app-framework/app_framework.cmake
@@ -34,7 +34,7 @@ index 8ad43de..b8a63d8 100644
      set (RUNTIME_LIB_HEADER_LIST ${RUNTIME_LIB_HEADER_LIST} PARENT_SCOPE)
  
 diff --git a/core/app-mgr/app-manager/module_wasm_app.c b/core/app-mgr/app-manager/module_wasm_app.c
-index 7b826d6..8ee0f5f 100644
+index 7b826d6..b4e4df3 100644
 --- a/core/app-mgr/app-manager/module_wasm_app.c
 +++ b/core/app-mgr/app-manager/module_wasm_app.c
 @@ -431,6 +431,7 @@ wasm_app_prepare_wasi_dir(wasm_module_t module, const char *module_name,
@@ -93,8 +93,21 @@ index 7b826d6..8ee0f5f 100644
      }
  
      /* Enter queue loop run to receive and process applet queue message */
+@@ -1667,9 +1669,9 @@ destroy_all_aot_sections(aot_section_list_t sections)
+     while (cur) {
+         aot_section_t *next = cur->next;
+         if (cur->section_body != NULL) {
+-            if (cur->section_type == AOT_SECTION_TYPE_TEXT)
+-                os_munmap(cur->section_body, cur->section_body_size);
+-            else
++            if (cur->section_type == AOT_SECTION_TYPE_TEXT) {
++                // os_munmap(cur->section_body, cur->section_body_size);
++            } else
+                 APP_MGR_FREE(cur->section_body);
+         }
+         APP_MGR_FREE(cur);
 diff --git a/core/iwasm/aot/aot_loader.c b/core/iwasm/aot/aot_loader.c
-index d6560cc..395b161 100644
+index d6560cc..3ecf12b 100644
 --- a/core/iwasm/aot/aot_loader.c
 +++ b/core/iwasm/aot/aot_loader.c
 @@ -1579,7 +1579,7 @@ load_function_section(const uint8 *buf, const uint8 *buf_end, AOTModule *module,
@@ -106,22 +119,6 @@ index d6560cc..395b161 100644
  #if defined(BUILD_TARGET_THUMB) || defined(BUILD_TARGET_THUMB_VFP)
          /* bits[0] of thumb function address must be 1 */
          module->func_ptrs[i] = (void *)((uintptr_t)module->func_ptrs[i] | 1);
-@@ -3254,6 +3254,7 @@ aot_unload(AOTModule *module)
-     if (module->const_str_set)
-         bh_hash_map_destroy(module->const_str_set);
- 
-+#if 0
-     if (module->code && !module->is_indirect_mode) {
-         /* The layout is: literal size + literal + code (with plt table) */
-         uint8 *mmap_addr = module->literal - sizeof(uint32);
-@@ -3261,6 +3262,7 @@ aot_unload(AOTModule *module)
-             sizeof(uint32) + module->literal_size + module->code_size;
-         os_munmap(mmap_addr, total_size);
-     }
-+#endif
- 
- #if defined(BH_PLATFORM_WINDOWS)
-     if (module->extra_plt_data) {
 diff --git a/core/iwasm/aot/arch/aot_reloc_xtensa.c b/core/iwasm/aot/arch/aot_reloc_xtensa.c
 index b5b262a..86a7648 100644
 --- a/core/iwasm/aot/arch/aot_reloc_xtensa.c
@@ -1422,3 +1419,4 @@ index c13b68f..4e156d0 100644
  #endif
 -- 
 2.25.1
+
