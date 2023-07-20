@@ -57,10 +57,6 @@ static struct {
     struct arg_str *addrs;
 #endif
 
-#ifdef CONFIG_WASMACHINE_TASK_STACK_USE_PSRAM
-    struct arg_lit *stack_int_psram;
-#endif
-
     struct arg_end *end;
 } iwasm_main_arg;
 
@@ -360,35 +356,17 @@ static void start_iwasm_thread(const char *str, uint8_t *buffer, uint32_t size)
     }
 #endif
 
-#ifdef CONFIG_WASMACHINE_TASK_STACK_USE_PSRAM
-    if (iwasm_main_arg.stack_int_psram->count) {
-        attr.stackaddr = heap_caps_malloc(CONFIG_WASMACHINE_SHELL_WASM_TASK_STACK_SIZE,
-                                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-        if (!attr.stackaddr) {
-            ESP_LOGI(TAG, "failed to create task stack in PSRAM");
-            goto fail2;
-        }
-    }
-#endif
-
     ret = pthread_create(&tid, &attr, iwasm_main_thread, &arg);
     if (ret != 0) {
         ESP_LOGI(TAG, "failed to create task errno=%d", errno);
-        goto fail2;
+        goto fail1;
     }
 
     ret = pthread_join(tid, NULL);
     if (ret != 0) {
         ESP_LOGI(TAG, "failed to join task errno=%d", errno);
-        goto fail2;
     }
 
-fail2:
-#ifdef CONFIG_WASMACHINE_TASK_STACK_USE_PSRAM
-    if (iwasm_main_arg.stack_int_psram->count) {
-        heap_caps_free(attr.stackaddr);
-    }
-#endif
 fail1:
     if (arg.argv) {
         wasm_runtime_free(arg.argv);
@@ -447,12 +425,6 @@ void shell_regitser_cmd_iwasm(void)
         arg_str0("a", "addr-pool", "<addrs>", "Grant wasi access to the given network addresses in CIRD notation to the program, seperated with ',', for example: --addr-pool=1.2.3.4/15,2.3.4.5/16");
 
     cmd_num += 3;
-#endif
-
-#ifdef CONFIG_WASMACHINE_TASK_STACK_USE_PSRAM
-    iwasm_main_arg.stack_int_psram = arg_lit0(NULL, "ps", "Use PSRAM as WASM task's stack buffer");
-
-    cmd_num += 1;
 #endif
 
     iwasm_main_arg.end = arg_end(cmd_num);

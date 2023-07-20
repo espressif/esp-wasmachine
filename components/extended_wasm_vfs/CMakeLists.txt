@@ -11,5 +11,3 @@ idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dir}
                        PRIV_INCLUDE_DIRS ${priv_include_dir}
                        REQUIRES ${requires})
-
-target_compile_definitions(__idf_vfs PUBLIC "-DCONFIG_VFS_MAX_COUNT=12")
