@@ -1,16 +1,10 @@
-From e281e25db08ab1929fc7413792e78229c86b6348 Mon Sep 17 00:00:00 2001
-From: Dong Heng <dongheng@espressif.com>
-Date: Fri, 21 Apr 2023 14:13:23 +0800
-Subject: [PATCH] add
-
 ---
  components/freertos/tasks.c          |  2 +
  components/pthread/pthread.c         | 60 ++++++++++++++++++++++++++++
- components/vfs/include/esp_vfs.h     |  5 +++
- components/vfs/vfs.c                 | 38 +++++++++++++++++-
+ components/vfs/vfs.c                 |  6 ++-
  components/vfs/vfs_uart.c            |  1 +
  components/vfs/vfs_usb_serial_jtag.c |  1 +
- 6 files changed, 106 insertions(+), 1 deletion(-)
+ 5 files changed, 69 insertions(+), 1 deletion(-)
 
 diff --git a/components/freertos/tasks.c b/components/freertos/tasks.c
 index deff650528..149583e3ad 100644
@@ -136,24 +130,8 @@ index 4adbda8e29..66b71f992a 100644
          free(pthread);
          free(task_arg);
          if (res == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {
-diff --git a/components/vfs/include/esp_vfs.h b/components/vfs/include/esp_vfs.h
-index d2634670d4..a524f3922d 100644
---- a/components/vfs/include/esp_vfs.h
-+++ b/components/vfs/include/esp_vfs.h
-@@ -248,6 +248,11 @@ typedef struct
-     /** get_socket_select_semaphore returns semaphore allocated in the socket driver; set only for the socket driver */
-     esp_err_t (*end_select)(void *end_select_args);
- #endif // CONFIG_VFS_SUPPORT_SELECT
-+
-+    union {
-+        const char* (*get_path_by_fd_p)(void* ctx, int fd);
-+        const char* (*get_path_by_fd)(int fd);
-+    };
- } esp_vfs_t;
- 
- /**
 diff --git a/components/vfs/vfs.c b/components/vfs/vfs.c
-index b433c98693..9135082a22 100644
+index b433c98693..0fa16bd943 100644
 --- a/components/vfs/vfs.c
 +++ b/components/vfs/vfs.c
 @@ -28,7 +28,11 @@
@@ -168,45 +146,6 @@ index b433c98693..9135082a22 100644
 +#endif
  #define LEN_PATH_PREFIX_IGNORED SIZE_MAX /* special length value for VFS which is never recognised by open() */
  #define FD_TABLE_ENTRY_UNUSED   (fd_table_t) { .permanent = false, .has_pending_close = false, .has_pending_select = false, .vfs_index = -1, .local_fd = -1 }
- 
-@@ -1225,6 +1229,38 @@ int tcsendbreak(int fd, int duration)
- }
- #endif // CONFIG_VFS_SUPPORT_TERMIOS
- 
-+int openat(int fd, const char *path, int flags, ...)
-+{
-+    int ret;
-+    char *full_path;
-+    const char *basic_path;
-+    const vfs_entry_t* vfs = get_vfs_for_fd(fd);
-+    const int local_fd = get_local_fd(vfs, fd);
-+    struct _reent* r = __getreent();
-+
-+    if (vfs == NULL || local_fd < 0) {
-+        __errno_r(r) = EBADF;
-+        return -1;
-+    }
-+
-+    CHECK_AND_CALL(basic_path, r, vfs, get_path_by_fd, local_fd);
-+    if (!basic_path) {
-+        __errno_r(r) = EBADF;
-+        return -1;
-+    }
-+
-+    ret = asprintf(&full_path, "%s%s%s", vfs->path_prefix, basic_path, path);
-+    if (ret < 0) {
-+        __errno_r(r) = ENOMEM;
-+        return -1;
-+    }
-+
-+    ret = open(full_path, flags, 0);
-+
-+    free(full_path);
-+
-+    return ret;
-+}
- 
- /* Create aliases for newlib syscalls
  
 diff --git a/components/vfs/vfs_uart.c b/components/vfs/vfs_uart.c
 index 1f3e0df683..74c308f326 100644

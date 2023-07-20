@@ -66,6 +66,7 @@ if (NOT CMAKE_BUILD_EARLY_EXPANSION)
 
     if(CONFIG_WAMR_ENABLE_LIBC_WASI)
         set(WAMR_BUILD_LIBC_WASI 1)
+        list(APPEND srcs "src/openat.c")
     endif()
 
     if(CONFIG_WAMR_ENABLE_LIB_PTHREAD)
@@ -74,8 +75,8 @@ if (NOT CMAKE_BUILD_EARLY_EXPANSION)
 
     include(${COMPONENT_PATH}/wasm-micro-runtime/build-scripts/runtime_lib.cmake)
 
-    set(srcs "${WAMR_RUNTIME_LIB_SOURCE}"
-             "${PLATFORM_SHARED_SOURCE}")
+    list(APPEND srcs "${WAMR_RUNTIME_LIB_SOURCE}"
+                     "${PLATFORM_SHARED_SOURCE}")
 
     set(include_dirs "${IWASM_DIR}/include"
                      "${UTILS_SHARED_DIR}"
@@ -94,4 +95,4 @@ endif()
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dirs}
-                       REQUIRES pthread esp_timer)
+                       REQUIRES pthread esp_timer littlefs)

@@ -26,11 +26,13 @@ variables: &global-variables
   - cd -
 
 .build_esp_box: &build_esp_box
+  - rm -rf managed_components # Building littlefs will generate binary `mklittlefs`
   - idf.py -DBOARD=esp-box build
   - mv build esp_box_build
   - mv sdkconfig esp_box_sdkconfig
 
 .build_esp32s3_devkitc: &build_esp32s3_devkitc
+  - rm -rf managed_components # Building littlefs will generate binary `mklittlefs`
   - idf.py -DBOARD=esp32s3-devkitc build
   - mv build esp32s3_devkitc_build
   - mv sdkconfig esp32s3_devkitc_sdkconfig
