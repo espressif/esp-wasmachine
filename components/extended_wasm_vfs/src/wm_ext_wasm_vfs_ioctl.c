@@ -18,6 +18,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/errno.h>
+#include <inttypes.h>
 
 #include "esp_log.h"
 #include "driver/ledc.h"
@@ -218,13 +219,13 @@ int wm_ext_wasm_native_ledc_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, cha
         DATA_SEQ_POP(ds, DATA_SEQ_LEDC_CFG_FREQUENCY,   cfg.frequency);
         DATA_SEQ_POP(ds, DATA_SEQ_LEDC_CFG_CHANNEL_NUM, cfg.channel_num);
 
-        ESP_LOGD(TAG, "frequency=%d channel_num=%d\n", cfg.frequency, cfg.channel_num);
+        ESP_LOGD(TAG, "frequency=%"PRIu32" channel_num=%"PRIu8"\n", cfg.frequency, cfg.channel_num);
 
         for (int i = 0; i < cfg.channel_num; i++) {
             DATA_SEQ_POP_LEDC_CFG(ds, DATA_SEQ_LEDC_CHANNEL_CFG_OUTPUT_PIN, i, channel_cfg[i].output_pin);
             DATA_SEQ_POP_LEDC_CFG(ds, DATA_SEQ_LEDC_CHANNEL_CFG_DUTY, i, channel_cfg[i].duty);
             DATA_SEQ_POP_LEDC_CFG(ds, DATA_SEQ_LEDC_CHANNEL_CFG_PHASE, i, channel_cfg[i].phase);
-            ESP_LOGD(TAG, "channel=%d: output_pin=%d duty=%d phase=%d\n", i,
+            ESP_LOGD(TAG, "channel=%d: output_pin=%"PRIu8" duty=%"PRIu32" phase=%"PRIu32"\n", i,
                      channel_cfg->output_pin, channel_cfg->duty, channel_cfg->phase);
         }
 

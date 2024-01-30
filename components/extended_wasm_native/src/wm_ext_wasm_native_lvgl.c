@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <sys/lock.h>
+#include <inttypes.h>
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -3974,14 +3975,14 @@ static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
     const lvgl_func_desc_t *func_desc = &lvgl_func_desc_table[func_id];
 
     if (func_id >= func_num) {
-        ESP_LOGE(TAG, "func_id=%d is out of range", func_id);
+        ESP_LOGE(TAG, "func_id=%"PRIi32" is out of range", func_id);
         return;
     }
 
     if (!wasm_runtime_validate_native_addr(module_inst,
                                            argv,
                                            argc * sizeof(uint32_t))) {
-        ESP_LOGE(TAG, "argv=%p argc=%d is out of range", argv, argc);
+        ESP_LOGE(TAG, "argv=%p argc=%"PRIu32" is out of range", argv, argc);
         return;
     }
 
@@ -3992,7 +3993,7 @@ static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
 
         if (argc > LVGL_ARG_BUF_NUM) {
             if (argc > LVGL_ARG_NUM_MAX) {
-                ESP_LOGE(TAG, "argc=%d is out of range", argc);
+                ESP_LOGE(TAG, "argc=%"PRIu32" is out of range", argc);
                 return;
             }
 
@@ -4010,16 +4011,16 @@ static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
             argv_copy[i] = argv[i];
         }
 
-        ESP_LOGD(TAG, "func_id=%d start", func_id);
+        ESP_LOGD(TAG, "func_id=%"PRIi32" start", func_id);
 
         func_desc->func(exec_env, argv_copy, argv);
 
         if (argv_copy != argv_copy_buf)
             wasm_runtime_free(argv_copy);
 
-        ESP_LOGD(TAG, "func_id=%d done", func_id);
+        ESP_LOGD(TAG, "func_id=%"PRIi32" done", func_id);
     } else {
-        ESP_LOGE(TAG, "func_id=%d is not found", func_id);
+        ESP_LOGE(TAG, "func_id=%"PRIi32" is not found", func_id);
     }    
 }
 
