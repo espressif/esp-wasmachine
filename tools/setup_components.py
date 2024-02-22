@@ -27,7 +27,7 @@ RAINMAKER = { 'name': 'esp-rainmaker',
               'url': 'https://github.com/espressif/esp-rainmaker.git', 
               'path': 'components/esp-rainmaker',
               'branch': 'master',
-              'commit_id': '00bcf4c0',
+              'commit_id': 'fa00c1b0',
               'patch': False }
 
 WAMR = { 'name': 'wasm-micro-runtime',
@@ -40,7 +40,7 @@ ESP_BOX = { 'name': 'esp-bsp',
             'url': 'https://github.com/espressif/esp-bsp.git',
             'path': 'components/esp-bsp',
             'branch': 'master',
-            'commit_id': '68135f70',
+            'commit_id': '2fe2ed4a',
             'patch': True }
 
 COMPONENTS = [ LVGL, RAINMAKER, WAMR, ESP_BOX ]
@@ -48,8 +48,8 @@ COMPONENTS = [ LVGL, RAINMAKER, WAMR, ESP_BOX ]
 ESP_IDF = { 'name': 'esp-idf',
             'url': 'https://github.com/espressif/esp-idf.git',
             'path': os.environ['IDF_PATH'],
-            'branch': 'v4.4.3',
-            'patch': True }
+            'branch': 'v5.0.5',
+            'patch': False }
 
 ROOT_PATH=os.getcwd()
 

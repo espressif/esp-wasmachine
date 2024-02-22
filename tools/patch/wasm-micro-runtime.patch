@@ -1,23 +1,3 @@
----
- core/app-framework/app_framework.cmake        |   4 +
- core/app-mgr/app-manager/module_wasm_app.c    |  40 +--
- core/iwasm/aot/aot_loader.c                   |   2 +-
- core/iwasm/aot/arch/aot_reloc_xtensa.c        |  13 +-
- .../lib-socket/inc/wasi_socket_ext.h          |   6 +-
- .../lib-socket/src/wasi/wasi_socket_ext.c     |   2 +-
- .../libraries/libc-wasi/libc_wasi_wrapper.c   | 103 ++++++-
- .../include/wasmtime_ssp.h                    |  72 +++++
- .../sandboxed-system-primitives/src/posix.c   | 265 +++++++++++++++++-
- .../src/ssp_config.h                          |  12 +-
- core/shared/platform/esp-idf/espidf_memmap.c  |  23 +-
- .../shared/platform/esp-idf/espidf_platform.c | 186 ++++++++++++
- core/shared/platform/esp-idf/espidf_socket.c  | 196 +++++++++++++
- core/shared/platform/esp-idf/espidf_thread.c  |  25 ++
- .../platform/esp-idf/platform_internal.h      |  63 +++++
- .../platform/include/platform_api_extension.h |  30 ++
- 16 files changed, 996 insertions(+), 46 deletions(-)
- create mode 100644 core/shared/platform/esp-idf/espidf_socket.c
-
 diff --git a/core/app-framework/app_framework.cmake b/core/app-framework/app_framework.cmake
 index 8ad43de..b8a63d8 100644
 --- a/core/app-framework/app_framework.cmake
@@ -805,7 +785,7 @@ index 47b65ca..347569b 100644
  #else
  #define CONFIG_HAS_PWRITEV 0
 diff --git a/core/shared/platform/esp-idf/espidf_memmap.c b/core/shared/platform/esp-idf/espidf_memmap.c
-index 693094a..4c87e39 100644
+index 693094a..709a8e8 100644
 --- a/core/shared/platform/esp-idf/espidf_memmap.c
 +++ b/core/shared/platform/esp-idf/espidf_memmap.c
 @@ -9,6 +9,9 @@
@@ -847,21 +827,29 @@ index 693094a..4c87e39 100644
 +IRAM_ATTR os_dcache_flush()
 +{
 +#ifdef CONFIG_SPIRAM
-+    extern void esp_spiram_writeback_cache(void);
++    extern void Cache_WriteBack_All(void);
 +    extern void spi_flash_disable_interrupts_caches_and_other_cpu(void);
 +    extern void spi_flash_enable_interrupts_caches_and_other_cpu(void);
 +
-+    esp_spiram_writeback_cache();
++    Cache_WriteBack_All();
 +
 +    spi_flash_disable_interrupts_caches_and_other_cpu();
 +    spi_flash_enable_interrupts_caches_and_other_cpu();
 +#endif
 +}
 diff --git a/core/shared/platform/esp-idf/espidf_platform.c b/core/shared/platform/esp-idf/espidf_platform.c
-index af6be88..5038d17 100644
+index af6be88..905217b 100644
 --- a/core/shared/platform/esp-idf/espidf_platform.c
 +++ b/core/shared/platform/esp-idf/espidf_platform.c
-@@ -58,3 +58,189 @@ os_usleep(uint32 usec)
+@@ -5,6 +5,7 @@
+ 
+ #include "platform_api_vmcore.h"
+ #include "platform_api_extension.h"
++#include "esp_idf_version.h"
+ 
+ int
+ bh_platform_init()
+@@ -58,3 +59,197 @@ os_usleep(uint32 usec)
  {
      return usleep(usec);
  }
@@ -1025,7 +1013,11 @@ index af6be88..5038d17 100644
 +}
 +
 +int
++#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
 +utimensat(int fd, const char *path, const struct timespec ts[2], int flag)
++#else
++utimensat(int fd, const char *path, const struct timespec *ts, int flag)
++#endif
 +{
 +    errno = ENOSYS;
 +    return -1;
@@ -1039,7 +1031,11 @@ index af6be88..5038d17 100644
 +}
 +
 +int
++#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
 +futimens(int fd, const struct timespec times[2])
++#else
++futimens(int fd, const struct timespec *times)
++#endif
 +{
 +    errno = ENOSYS;
 +    return -1;
@@ -1417,6 +1413,3 @@ index c13b68f..4e156d0 100644
  #ifdef __cplusplus
  }
  #endif
--- 
-2.25.1
-

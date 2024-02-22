@@ -451,7 +451,7 @@ static int wasm_mqtt_publish_wrapper(wasm_exec_env_t exec_env, uint32_t mqtt_han
     return esp_mqtt_client_publish(wrapper_mqtt_ctx->client, topic, data, data_len, qos, 0);
 }
 
-static int wasm_mqtt_subscribe_wrapper(wasm_exec_env_t exec_env, uint32_t mqtt_handle, const char *topic, uint8_t qos)
+static int wasm_mqtt_subscribe_wrapper(wasm_exec_env_t exec_env, uint32_t mqtt_handle, char *topic, uint8_t qos)
 {
     mqtt_wrapper_ctx_t *wrapper_mqtt_ctx = (mqtt_wrapper_ctx_t *)mqtt_handle;
     if (!wrapper_mqtt_ctx) {
