@@ -1,62 +1,52 @@
 stages:
+  - pre_check
   - build
 
-# global variables
-variables: &global-variables
-  GIT_STRATEGY: clone
-  PYTHON_VER: 3
-  IDF_VERSION: v5.0.5
+variables:
+# System environment
 
-.before_script_preparation: &before_script_preparation
-  - mkdir -p ~/.ssh
-  - chmod 700 ~/.ssh
-  - echo -n $GITLAB_KEY >> ~/.ssh/id_rsa_base64
-  - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-  - chmod 600 ~/.ssh/id_rsa
-  - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+# GitLab-CI environment
+  # Docker images
+  ESP_ENV_IMAGE: "${CI_DOCKER_REGISTRY}/esp-env-v5.3:1"
 
-.setup_tools: &setup_tools
-  - cd $IDF_PATH
-  - git checkout $IDF_VERSION
-  - git submodule update --init --recursive
-  - rm /opt/esp/idf-env.json
-  - $IDF_PATH/tools/idf_tools.py --non-interactive install cmake || exit 1
-  - $IDF_PATH/tools/idf_tools.py --non-interactive install --targets esp32s3 && eval "$($IDF_PATH/tools/idf_tools.py --non-interactive export)" || exit 1
-  - $IDF_PATH/tools/idf_tools.py install-python-env
-  - cd -
+workflow:
+  rules:
+    # Disable those non-protected push triggered pipelines
+    - if: '$CI_COMMIT_REF_NAME != "main" && $CI_COMMIT_BRANCH !~ /^release\/v/ && $CI_COMMIT_TAG !~ /^v\d+\.\d+(\.\d+)?($|-)/ && $CI_PIPELINE_SOURCE == "push"'
+      when: never
+    # when running merged result pipelines, CI_COMMIT_SHA represents the temp commit it created.
+    # Please use PIPELINE_COMMIT_SHA at all places that require a commit sha of the original commit.
+    - if: $CI_OPEN_MERGE_REQUESTS != null
+      variables:
+        PIPELINE_COMMIT_SHA: $CI_MERGE_REQUEST_SOURCE_BRANCH_SHA
+        IS_MR_PIPELINE: 1
+    - if: $CI_OPEN_MERGE_REQUESTS == null
+      variables:
+        PIPELINE_COMMIT_SHA: $CI_COMMIT_SHA
+        IS_MR_PIPELINE: 0
+    - when: always
 
-.build_esp_box: &build_esp_box
-  - rm -rf managed_components # Building littlefs will generate binary `mklittlefs`
-  - idf.py -DBOARD=esp-box build
-  - mv build esp_box_build
-  - mv sdkconfig esp_box_sdkconfig
+################################################
+# `before_script` and `after_script` Templates #
+################################################
+.common_before_scripts: &common-before_scripts |
+  source tools/ci/utils.sh
 
-.build_esp32s3_devkitc: &build_esp32s3_devkitc
-  - rm -rf managed_components # Building littlefs will generate binary `mklittlefs`
-  - idf.py -DBOARD=esp32s3-devkitc build
-  - mv build esp32s3_devkitc_build
-  - mv sdkconfig esp32s3_devkitc_sdkconfig
+.setup_tools_and_idf_python_venv: &setup_tools_and_idf_python_venv |
+  # must use after setup_tools_except_target_test
+  # otherwise the export.sh won't work properly
 
-cache:
-  key: "${CI_PROJECT_NAME}-esp-idf-${IDF_VERSION}"
-  paths:
-    - .cache/pip
-    - esp-idf/
-  policy: pull
+  # Install esp-clang if necessary
+  if [[ "$IDF_TOOLCHAIN" == "clang" ]]; then
+    $IDF_PATH/tools/idf_tools.py --non-interactive install esp-clang
+  fi
 
-build_with_v4.4:
-  stage: build
-  image: espressif/idf:release-v4.4
-  tags:
-    - build
+  source $IDF_PATH/export.sh
 
-  variables:
-    <<: *global-variables
-
+.before_script:build:
   before_script:
-    - *before_script_preparation
+    - *common-before_scripts
+    - *setup_tools_and_idf_python_venv
 
-  script:
-    - *setup_tools
-    - *build_esp_box
-    - *build_esp32s3_devkitc
+include:
+  - '.gitlab/ci/build.yml'
