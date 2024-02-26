@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "bsp/esp-box.h"
+#include "sdkconfig.h"
+#include "esp_err.h"
 
 #pragma once
 

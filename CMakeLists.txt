@@ -53,7 +53,7 @@ else()
 endif()
 
 if(${BOARD} STREQUAL "esp-box")
-    list(APPEND EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components/esp-bsp/bsp/esp-box")
+#    list(APPEND EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components/esp-bsp/bsp/esp-box")
 endif()
 
 list(APPEND EXTRA_COMPONENT_DIRS "$ENV{IDF_PATH}/examples/common_components/protocol_examples_common")

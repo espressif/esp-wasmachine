@@ -43,7 +43,7 @@ ESP_BOX = { 'name': 'esp-bsp',
             'commit_id': '2fe2ed4a',
             'patch': True }
 
-COMPONENTS = [ LVGL, RAINMAKER, WAMR, ESP_BOX ]
+COMPONENTS = [ LVGL, RAINMAKER, WAMR ]
 
 ESP_IDF = { 'name': 'esp-idf',
             'url': 'https://github.com/espressif/esp-idf.git',
