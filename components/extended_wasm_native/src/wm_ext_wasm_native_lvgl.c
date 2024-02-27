@@ -24,11 +24,11 @@
 #include "wasm_native.h"
 #include "wasm_runtime_common.h"
 
+#include "wm_ext_wasm_native.h"
 #include "wm_ext_wasm_native_macro.h"
 #include "wm_ext_wasm_native_export.h"
 #include "wm_ext_wasm_native_lvgl.h"
 
-#include "bsp_board.h"
 #include "lvgl.h"
 
 #define LVGL_ARG_BUF_NUM        16
@@ -59,31 +59,22 @@ typedef struct lvgl_func_desc {
 
 static const char *TAG = "wm_lvgl_wrapper";
 
-static bool lvgl_inited;
 static _lock_t lvgl_lock;
+static wm_ext_wasm_native_lvgl_ops_t s_lvgl_ops;
 
 static int lvgl_init_wrapper(wasm_exec_env_t exec_env)
 {
-    _lock_acquire_recursive(&lvgl_lock);
-    if (!lvgl_inited) {
-        bsp_i2c_init();
-        bsp_display_start();
-        bsp_display_backlight_on();
-        lvgl_inited = true;
-    }
-    _lock_release_recursive(&lvgl_lock);
-
-    return 0;
+    return s_lvgl_ops.backlight_on();
 }
 
 static void lvgl_lock_wrapper(void)
 {
-    bsp_display_lock(0);
+    s_lvgl_ops.lock(0);
 }
 
 static void lvgl_unlock_wrapper(void)
 {
-    bsp_display_unlock();
+    s_lvgl_ops.unlock();
 }
 
 static bool ptr_is_in_ram_or_rom(const void *ptr)
@@ -4064,3 +4055,13 @@ int wm_ext_wasm_native_lvgl_export(void)
     return 0;
 }
 
+esp_err_t wm_ext_wasm_native_lvgl_register_ops(wm_ext_wasm_native_lvgl_ops_t *ops)
+{
+    if (!ops) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    memcpy(&s_lvgl_ops, ops, sizeof(wm_ext_wasm_native_lvgl_ops_t));
+
+    return ESP_OK;
+}

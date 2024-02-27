@@ -1,5 +1,9 @@
 ## IDF Component Manager Manifest File
 dependencies:
-  idf: ">=4.4.3"
+  idf: ">=5.0"
   espressif/extended_vfs: "^0.3.1"
   joltwallet/littlefs: ^1.6.0
+  esp-box:
+    version: "^3.0.5"
+    rules:
+      - if: target in [esp32s3]
