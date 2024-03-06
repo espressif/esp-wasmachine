@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 1d473e0e..fd8d0835 100644
+index 1d473e0..fd8d083 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -7,10 +7,11 @@ if(ESP_PLATFORM)
@@ -17,7 +17,7 @@ index 1d473e0e..fd8d0835 100644
  
      target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_CONF_INCLUDE_SIMPLE")
 diff --git a/Kconfig b/Kconfig
-index e18ff356..04cd5abf 100644
+index e18ff35..04cd5ab 100644
 --- a/Kconfig
 +++ b/Kconfig
 @@ -39,6 +39,7 @@ menu "LVGL configuration"
@@ -29,7 +29,7 @@ index e18ff356..04cd5abf 100644
          config LV_COLOR_SCREEN_TRANSP
              bool "Enable more complex drawing routines to manage screens transparency."
 diff --git a/src/core/lv_event.c b/src/core/lv_event.c
-index c9671fa8..b6276c3f 100644
+index c9671fa..b6276c3 100644
 --- a/src/core/lv_event.c
 +++ b/src/core/lv_event.c
 @@ -17,11 +17,6 @@
@@ -68,7 +68,7 @@ index c9671fa8..b6276c3f 100644
              /*Stop if the object is deleted*/
              if(e->deleted) return LV_RES_INV;
 diff --git a/src/core/lv_event.h b/src/core/lv_event.h
-index dd425543..b00221d6 100644
+index dd42554..b00221d 100644
 --- a/src/core/lv_event.h
 +++ b/src/core/lv_event.h
 @@ -24,7 +24,6 @@ extern "C" {
@@ -96,7 +96,7 @@ index dd425543..b00221d6 100644
   * GLOBAL PROTOTYPES
   **********************/
 diff --git a/src/core/lv_refr.c b/src/core/lv_refr.c
-index a44060a5..177f0ca6 100644
+index a44060a..177f0ca 100644
 --- a/src/core/lv_refr.c
 +++ b/src/core/lv_refr.c
 @@ -229,7 +229,17 @@ void _lv_disp_refr_timer(lv_timer_t * tmr)
@@ -119,7 +119,7 @@ index a44060a5..177f0ca6 100644
      }
  
 diff --git a/src/draw/lv_draw_arc.c b/src/draw/lv_draw_arc.c
-index 44084f4d..5a644533 100644
+index 44084f4..5a64453 100644
 --- a/src/draw/lv_draw_arc.c
 +++ b/src/draw/lv_draw_arc.c
 @@ -106,7 +106,7 @@ void lv_draw_arc(lv_coord_t center_x, lv_coord_t center_y, uint16_t radius,  uin
@@ -132,7 +132,7 @@ index 44084f4d..5a644533 100644
          lv_draw_mask_radius_init(&mask_in_param, &area_in, LV_RADIUS_CIRCLE, true);
          mask_in_id = lv_draw_mask_add(&mask_in_param, NULL);
 diff --git a/src/draw/lv_img_buf.c b/src/draw/lv_img_buf.c
-index 07ea03c5..2926fce2 100644
+index 07ea03c..2926fce 100644
 --- a/src/draw/lv_img_buf.c
 +++ b/src/draw/lv_img_buf.c
 @@ -38,6 +38,20 @@
@@ -202,7 +202,7 @@ index 07ea03c5..2926fce2 100644
  }
  
 diff --git a/src/draw/lv_img_buf.h b/src/draw/lv_img_buf.h
-index 984483e5..501924e4 100644
+index 984483e..501924e 100644
 --- a/src/draw/lv_img_buf.h
 +++ b/src/draw/lv_img_buf.h
 @@ -136,6 +136,8 @@ typedef struct {
@@ -215,7 +215,7 @@ index 984483e5..501924e4 100644
  
  typedef struct {
 diff --git a/src/draw/lv_img_decoder.c b/src/draw/lv_img_decoder.c
-index 3678a571..5433e695 100644
+index 3678a57..5433e69 100644
 --- a/src/draw/lv_img_decoder.c
 +++ b/src/draw/lv_img_decoder.c
 @@ -50,6 +50,20 @@ static lv_res_t lv_img_decoder_built_in_line_indexed(lv_img_decoder_dsc_t * dsc,
@@ -279,7 +279,7 @@ index 3678a571..5433e695 100644
      else {
          lv_fs_seek(&user_data->f, ofs + 4, LV_FS_SEEK_SET); /*+4 to skip the header*/
 diff --git a/src/font/lv_font.c b/src/font/lv_font.c
-index cf3d374f..d154207e 100644
+index cf3d374..d154207 100644
 --- a/src/font/lv_font.c
 +++ b/src/font/lv_font.c
 @@ -8,6 +8,7 @@
@@ -340,7 +340,7 @@ index cf3d374f..d154207e 100644
  
  /**
 diff --git a/src/font/lv_font.h b/src/font/lv_font.h
-index b68f5b9a..11c659af 100644
+index b68f5b9..11c659a 100644
 --- a/src/font/lv_font.h
 +++ b/src/font/lv_font.h
 @@ -76,6 +76,7 @@ typedef struct _lv_font_t {
@@ -352,7 +352,7 @@ index b68f5b9a..11c659af 100644
  
  /**********************
 diff --git a/src/font/lv_font_fmt_txt.c b/src/font/lv_font_fmt_txt.c
-index 991b23e6..20ea0c5b 100644
+index 991b23e..20ea0c5 100644
 --- a/src/font/lv_font_fmt_txt.c
 +++ b/src/font/lv_font_fmt_txt.c
 @@ -70,6 +70,26 @@ static int32_t kern_pair_16_compare(const void * ref, const void * element);
@@ -582,7 +582,7 @@ index 991b23e6..20ea0c5b 100644
  
      }
 diff --git a/src/hal/lv_hal_disp.h b/src/hal/lv_hal_disp.h
-index 3626a34e..9047f9e1 100644
+index 3626a34..9047f9e 100644
 --- a/src/hal/lv_hal_disp.h
 +++ b/src/hal/lv_hal_disp.h
 @@ -143,6 +143,7 @@ typedef struct _lv_disp_drv_t {
@@ -593,8 +593,21 @@ index 3626a34e..9047f9e1 100644
  } lv_disp_drv_t;
  
  /**
+diff --git a/src/hal/lv_hal_indev.h b/src/hal/lv_hal_indev.h
+index fcda8f9..37e3233 100644
+--- a/src/hal/lv_hal_indev.h
++++ b/src/hal/lv_hal_indev.h
+@@ -222,6 +222,8 @@ lv_indev_t * lv_indev_get_next(lv_indev_t * indev);
+  */
+ void _lv_indev_read(lv_indev_t * indev, lv_indev_data_t * data);
+ 
++#define lv_indev_delete(indev)
++
+ /**********************
+  *      MACROS
+  **********************/
 diff --git a/src/lv_conf_internal.h b/src/lv_conf_internal.h
-index b3e6748b..e19ca306 100644
+index b3e6748..e19ca30 100644
 --- a/src/lv_conf_internal.h
 +++ b/src/lv_conf_internal.h
 @@ -1930,4 +1930,11 @@ LV_EXPORT_CONST_INT(LV_DPI_DEF);
@@ -610,7 +623,7 @@ index b3e6748b..e19ca306 100644
 +
  #endif  /*LV_CONF_INTERNAL_H*/
 diff --git a/src/misc/lv_anim.c b/src/misc/lv_anim.c
-index ecb95840..87172eba 100644
+index ecb9584..87172eb 100644
 --- a/src/misc/lv_anim.c
 +++ b/src/misc/lv_anim.c
 @@ -103,7 +103,18 @@ lv_anim_t * lv_anim_start(const lv_anim_t * a)
@@ -689,7 +702,7 @@ index ecb95840..87172eba 100644
      }
      /*If the animation is not deleted then restart it*/
 diff --git a/src/misc/lv_anim.h b/src/misc/lv_anim.h
-index 6f51bf00..b451f782 100644
+index 6f51bf0..b451f78 100644
 --- a/src/misc/lv_anim.h
 +++ b/src/misc/lv_anim.h
 @@ -91,6 +91,8 @@ typedef struct _lv_anim_t {
@@ -702,7 +715,7 @@ index 6f51bf00..b451f782 100644
  
  /**********************
 diff --git a/src/misc/lv_timer.c b/src/misc/lv_timer.c
-index d8dd55b7..5ef9f288 100644
+index d8dd55b..5ef9f28 100644
 --- a/src/misc/lv_timer.c
 +++ b/src/misc/lv_timer.c
 @@ -178,6 +178,7 @@ lv_timer_t * lv_timer_create(lv_timer_cb_t timer_xcb, uint32_t period, void * us
@@ -731,7 +744,7 @@ index d8dd55b7..5ef9f288 100644
          LV_ASSERT_MEM_INTEGRITY();
          exec = true;
 diff --git a/src/misc/lv_timer.h b/src/misc/lv_timer.h
-index ce94c7b0..ae2b0058 100644
+index ce94c7b..ae2b005 100644
 --- a/src/misc/lv_timer.h
 +++ b/src/misc/lv_timer.h
 @@ -47,6 +47,8 @@ typedef struct _lv_timer_t {
@@ -743,3 +756,5 @@ index ce94c7b0..ae2b0058 100644
  } lv_timer_t;
  
  /**********************
+-- 
+2.34.1
