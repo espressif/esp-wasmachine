@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <sys/lock.h>
+#include <inttypes.h>
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -23,11 +24,11 @@
 #include "wasm_native.h"
 #include "wasm_runtime_common.h"
 
+#include "wm_ext_wasm_native.h"
 #include "wm_ext_wasm_native_macro.h"
 #include "wm_ext_wasm_native_export.h"
 #include "wm_ext_wasm_native_lvgl.h"
 
-#include "bsp_board.h"
 #include "lvgl.h"
 
 #define LVGL_ARG_BUF_NUM        16
@@ -58,31 +59,22 @@ typedef struct lvgl_func_desc {
 
 static const char *TAG = "wm_lvgl_wrapper";
 
-static bool lvgl_inited;
 static _lock_t lvgl_lock;
+static wm_ext_wasm_native_lvgl_ops_t s_lvgl_ops;
 
 static int lvgl_init_wrapper(wasm_exec_env_t exec_env)
 {
-    _lock_acquire_recursive(&lvgl_lock);
-    if (!lvgl_inited) {
-        bsp_i2c_init();
-        bsp_display_start();
-        bsp_display_backlight_on();
-        lvgl_inited = true;
-    }
-    _lock_release_recursive(&lvgl_lock);
-
-    return 0;
+    return s_lvgl_ops.backlight_on();
 }
 
 static void lvgl_lock_wrapper(void)
 {
-    bsp_display_lock(0);
+    s_lvgl_ops.lock(0);
 }
 
 static void lvgl_unlock_wrapper(void)
 {
-    bsp_display_unlock();
+    s_lvgl_ops.unlock();
 }
 
 static bool ptr_is_in_ram_or_rom(const void *ptr)
@@ -3974,14 +3966,14 @@ static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
     const lvgl_func_desc_t *func_desc = &lvgl_func_desc_table[func_id];
 
     if (func_id >= func_num) {
-        ESP_LOGE(TAG, "func_id=%d is out of range", func_id);
+        ESP_LOGE(TAG, "func_id=%"PRIi32" is out of range", func_id);
         return;
     }
 
     if (!wasm_runtime_validate_native_addr(module_inst,
                                            argv,
                                            argc * sizeof(uint32_t))) {
-        ESP_LOGE(TAG, "argv=%p argc=%d is out of range", argv, argc);
+        ESP_LOGE(TAG, "argv=%p argc=%"PRIu32" is out of range", argv, argc);
         return;
     }
 
@@ -3992,7 +3984,7 @@ static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
 
         if (argc > LVGL_ARG_BUF_NUM) {
             if (argc > LVGL_ARG_NUM_MAX) {
-                ESP_LOGE(TAG, "argc=%d is out of range", argc);
+                ESP_LOGE(TAG, "argc=%"PRIu32" is out of range", argc);
                 return;
             }
 
@@ -4010,16 +4002,16 @@ static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
             argv_copy[i] = argv[i];
         }
 
-        ESP_LOGD(TAG, "func_id=%d start", func_id);
+        ESP_LOGD(TAG, "func_id=%"PRIi32" start", func_id);
 
         func_desc->func(exec_env, argv_copy, argv);
 
         if (argv_copy != argv_copy_buf)
             wasm_runtime_free(argv_copy);
 
-        ESP_LOGD(TAG, "func_id=%d done", func_id);
+        ESP_LOGD(TAG, "func_id=%"PRIi32" done", func_id);
     } else {
-        ESP_LOGE(TAG, "func_id=%d is not found", func_id);
+        ESP_LOGE(TAG, "func_id=%"PRIi32" is not found", func_id);
     }    
 }
 
@@ -4063,3 +4055,13 @@ int wm_ext_wasm_native_lvgl_export(void)
     return 0;
 }
 
+esp_err_t wm_ext_wasm_native_lvgl_register_ops(wm_ext_wasm_native_lvgl_ops_t *ops)
+{
+    if (!ops) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    memcpy(&s_lvgl_ops, ops, sizeof(wm_ext_wasm_native_lvgl_ops_t));
+
+    return ESP_OK;
+}

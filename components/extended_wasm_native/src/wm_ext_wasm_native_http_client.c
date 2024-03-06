@@ -16,6 +16,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include "bh_common.h"
 #include "bh_log.h"
@@ -568,14 +569,14 @@ static int wasm_http_client_call_native_func_wrapper(wasm_exec_env_t exec_env, i
     const http_client_func_desc_t *func_desc = &http_client_func_desc_table[func_id];
 
     if (func_id >= func_num) {
-        ESP_LOGE(TAG, "func_id=%d is out of range", func_id);
+        ESP_LOGE(TAG, "func_id=%"PRIi32" is out of range", func_id);
         return ESP_ERR_INVALID_ARG;
     }
 
     if (!wasm_runtime_validate_native_addr(module_inst,
                                            argv,
                                            argc * sizeof(uint32_t))) {
-        ESP_LOGE(TAG, "argv=%p argc=%d is out of range", argv, argc);
+        ESP_LOGE(TAG, "argv=%p argc=%"PRIu32" is out of range", argv, argc);
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -586,7 +587,7 @@ static int wasm_http_client_call_native_func_wrapper(wasm_exec_env_t exec_env, i
 
         if (argc > HTTP_CLIENT_ARG_BUF_NUM) {
             if (argc > HTTP_CLIENT_ARG_NUM_MAX) {
-                ESP_LOGE(TAG, "argc=%d is out of range", argc);
+                ESP_LOGE(TAG, "argc=%"PRIu32" is out of range", argc);
                 return ESP_ERR_INVALID_ARG;
             }
 
@@ -604,18 +605,18 @@ static int wasm_http_client_call_native_func_wrapper(wasm_exec_env_t exec_env, i
             argv_copy[i] = argv[i];
         }
 
-        ESP_LOGD(TAG, "func_id=%x is to do", func_id);
+        ESP_LOGD(TAG, "func_id=%"PRIx32" is to do", func_id);
 
         int ret = func_desc->func(exec_env, argv_copy, argv);
 
         if (argv_copy != argv_copy_buf)
             wasm_runtime_free(argv_copy);
 
-        ESP_LOGD(TAG, "func_id=%x is done", func_id);
+        ESP_LOGD(TAG, "func_id=%"PRIx32" is done", func_id);
 
         return ret;
     } else {
-        ESP_LOGE(TAG, "func_id=%d is not found", func_id);
+        ESP_LOGE(TAG, "func_id=%"PRIi32" is not found", func_id);
     }
 
     return ESP_ERR_INVALID_ARG;

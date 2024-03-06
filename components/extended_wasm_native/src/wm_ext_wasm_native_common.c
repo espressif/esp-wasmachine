@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <inttypes.h>
+
 #include "esp_log.h"
 
 #include "wm_ext_wasm_native_macro.h"
@@ -33,7 +35,7 @@ int wm_ext_data_seq_addr_wasm2c(wasm_exec_env_t exec_env, data_seq_t *ds)
 
         ptr = (uintptr_t)addr_app_to_native(ds->frame[i].ptr);
         if (!ds->frame[i].ptr) {
-            ESP_LOGE(TAG, "failed to transform ptr[%d]=%x", i, ds->frame[i].ptr);
+            ESP_LOGE(TAG, "failed to transform ptr[%"PRIx32"]=%x", i, ds->frame[i].ptr);
             return -1;
         } else {
             ds->frame[i].ptr = ptr;

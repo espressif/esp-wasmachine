@@ -9,7 +9,6 @@ endif()
 message(STATUS "Choose board: ${BOARD}")
 
 set(BOARD_PATH ${CMAKE_CURRENT_LIST_DIR}/components/boards/${BOARD})
-set(ENV{BOARD} ${BOARD})
 
 # Check the ${BOARD} folder exists in components/boards.
 if(EXISTS ${BOARD_PATH})
@@ -53,7 +52,7 @@ else()
 endif()
 
 if(${BOARD} STREQUAL "esp-box")
-    list(APPEND EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components/esp-bsp/esp-box")
+#    list(APPEND EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components/esp-bsp/bsp/esp-box")
 endif()
 
 list(APPEND EXTRA_COMPONENT_DIRS "$ENV{IDF_PATH}/examples/common_components/protocol_examples_common")

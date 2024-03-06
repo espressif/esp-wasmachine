@@ -73,6 +73,8 @@ static const char *TAG = "mqtt_wrapper";
 #define MQTT_EVENT_ATTR_SESSION     "session"                   /*!< MQTT session_present flag for connection event */
 #define MQTT_EVENT_ATTR_ERROR_CODE  "error_code"                /*!< MQTT error handle including esp-tls errors as well as internal mqtt errors */
 #define MQTT_EVENT_ATTR_RETAIN      "retain"                    /*!< Retained flag of the message associated with this event */
+#define MQTT_EVENT_ATTR_QOS         "qos"                       /*!< QoS of the messages associated with this event */
+#define MQTT_EVENT_ATTR_DUP         "dup"                       /*!< dup flag of the message associated with this event */
 
 typedef struct __mqtt_wrapper_ctx_t {
     /* Handle to interact with wasm app */
@@ -198,9 +200,10 @@ static void mqtt_wrapper_event_callback(module_data *m_data, bh_message_t msg)
     }
 }
 
-static esp_err_t wrapper_mqtt_event_handler(esp_mqtt_event_handle_t event)
+static esp_err_t mqtt_event_handler_callback(void *handler_args, void *event_data)
 {
-    mqtt_wrapper_ctx_t *wrapper_mqtt_ctx = event->user_context;
+    esp_mqtt_event_handle_t event = event_data;
+    mqtt_wrapper_ctx_t *wrapper_mqtt_ctx = handler_args;
     if (!wrapper_mqtt_ctx) {
         return ESP_FAIL;
     }
@@ -235,6 +238,8 @@ static esp_err_t wrapper_mqtt_event_handler(esp_mqtt_event_handle_t event)
             ATTR_CONTAINER_SET_BOOL(MQTT_EVENT_ATTR_RETAIN, event->retain)
             ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_TOTAL_LEN, event->total_data_len)
             ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_DATA_OFFSET, event->current_data_offset)
+            ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_QOS, event->qos)
+            ATTR_CONTAINER_SET_BOOL(MQTT_EVENT_ATTR_DUP, event->dup)
 
             /* Topic can be NULL, for data longer than the MQTT buffer */
             if (event->topic) {
@@ -276,33 +281,40 @@ fail:
     return ESP_OK;
 }
 
+static void wrapper_mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+{
+    /* The argument passed to esp_mqtt_client_register_event can de accessed as handler_args*/
+    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%"PRIu32"", base, event_id);
+    mqtt_event_handler_callback(handler_args, event_data);
+}
+
 static bool wasm_mqtt_unpack(esp_mqtt_client_config_t *config, attr_container_t *args)
 {
     bool container_set_flag = false;
 
-    ATTR_CONTAINER_GET_STRING(MQTT_HOST, config->host)
-    ATTR_CONTAINER_GET_STRING(MQTT_URI, config->uri)
-    ATTR_CONTAINER_GET_UINT16(MQTT_PORT, config->port)
-    ATTR_CONTAINER_GET_STRING(MQTT_CLIENT_ID, config->client_id)
-    ATTR_CONTAINER_GET_STRING(MQTT_USERNAME, config->username)
-    ATTR_CONTAINER_GET_STRING(MQTT_PASSWORD, config->password)
-    ATTR_CONTAINER_GET_STRING(MQTT_LWT_TOPIC, config->lwt_topic)
-    ATTR_CONTAINER_GET_STRING(MQTT_LWT_MSG, config->lwt_msg)
-    ATTR_CONTAINER_GET_INT(MQTT_LWT_QOS, config->lwt_qos)
-    ATTR_CONTAINER_GET_INT(MQTT_LWT_RETAIN, config->lwt_retain)
-    ATTR_CONTAINER_GET_INT(MQTT_LWT_MSG_LEN, config->lwt_msg_len)
-    ATTR_CONTAINER_GET_INT(MQTT_DISABLE_CLEAN_SESSION, config->disable_clean_session)
-    ATTR_CONTAINER_GET_INT(MQTT_KEEPALIVE, config->keepalive)
-    ATTR_CONTAINER_GET_BOOL(MQTT_DISABLE_AUTO_RECONNECT, config->disable_auto_reconnect)
-    ATTR_CONTAINER_GET_STRING(MQTT_CERT_PEM, config->cert_pem)
-    ATTR_CONTAINER_GET_UINT16(MQTT_CERT_LEN, config->cert_len)
-    ATTR_CONTAINER_GET_STRING(MQTT_CLIENT_CERT_PEM, config->client_cert_pem)
-    ATTR_CONTAINER_GET_UINT16(MQTT_CLIENT_CERT_LEN, config->client_cert_len)
-    ATTR_CONTAINER_GET_STRING(MQTT_CLIENT_KEY_PEM, config->client_key_pem)
-    ATTR_CONTAINER_GET_UINT16(MQTT_CLIENT_KEY_LEN, config->client_key_len)
-    ATTR_CONTAINER_GET_STRING(MQTT_CLIENTKEY_PASSWORD, config->clientkey_password)
-    ATTR_CONTAINER_GET_UINT16(MQTT_CLIENTKEY_PASSWORD_LEN, config->clientkey_password_len)
-    ATTR_CONTAINER_GET_STRING(MQTT_URI_PATH, config->path)
+    ATTR_CONTAINER_GET_STRING(MQTT_HOST, config->broker.address.hostname)
+    ATTR_CONTAINER_GET_STRING(MQTT_URI, config->broker.address.uri)
+    ATTR_CONTAINER_GET_UINT16(MQTT_PORT, config->broker.address.port)
+    ATTR_CONTAINER_GET_STRING(MQTT_CLIENT_ID, config->credentials.client_id)
+    ATTR_CONTAINER_GET_STRING(MQTT_USERNAME, config->credentials.username)
+    ATTR_CONTAINER_GET_STRING(MQTT_PASSWORD, config->credentials.authentication.password)
+    ATTR_CONTAINER_GET_STRING(MQTT_LWT_TOPIC, config->session.last_will.topic)
+    ATTR_CONTAINER_GET_STRING(MQTT_LWT_MSG, config->session.last_will.msg)
+    ATTR_CONTAINER_GET_INT(MQTT_LWT_QOS, config->session.last_will.qos)
+    ATTR_CONTAINER_GET_INT(MQTT_LWT_RETAIN, config->session.last_will.retain)
+    ATTR_CONTAINER_GET_INT(MQTT_LWT_MSG_LEN, config->session.last_will.msg_len)
+    ATTR_CONTAINER_GET_BOOL(MQTT_DISABLE_CLEAN_SESSION, config->session.disable_clean_session)
+    ATTR_CONTAINER_GET_INT(MQTT_KEEPALIVE, config->session.keepalive)
+    ATTR_CONTAINER_GET_BOOL(MQTT_DISABLE_AUTO_RECONNECT, config->network.disable_auto_reconnect)
+    ATTR_CONTAINER_GET_STRING(MQTT_CERT_PEM, config->broker.verification.certificate)
+    ATTR_CONTAINER_GET_UINT16(MQTT_CERT_LEN, config->broker.verification.certificate_len)
+    ATTR_CONTAINER_GET_STRING(MQTT_CLIENT_CERT_PEM, config->credentials.authentication.certificate)
+    ATTR_CONTAINER_GET_UINT16(MQTT_CLIENT_CERT_LEN, config->credentials.authentication.certificate_len)
+    ATTR_CONTAINER_GET_STRING(MQTT_CLIENT_KEY_PEM, config->credentials.authentication.key)
+    ATTR_CONTAINER_GET_UINT16(MQTT_CLIENT_KEY_LEN, config->credentials.authentication.key_len)
+    ATTR_CONTAINER_GET_STRING(MQTT_CLIENTKEY_PASSWORD, config->credentials.authentication.key_password)
+    ATTR_CONTAINER_GET_UINT16(MQTT_CLIENTKEY_PASSWORD_LEN, config->credentials.authentication.key_password_len)
+    ATTR_CONTAINER_GET_STRING(MQTT_URI_PATH, config->broker.address.path)
     container_set_flag = true;
 
 fail:
@@ -340,14 +352,13 @@ static int wasm_mqtt_init_wrapper(wasm_exec_env_t exec_env, uint32_t *mqtt_handl
         goto fail;
     }
 
-    wrapper_mqtt_ctx->config.event_handle = wrapper_mqtt_event_handler;
-    wrapper_mqtt_ctx->config.user_context = wrapper_mqtt_ctx;
     wrapper_mqtt_ctx->client = esp_mqtt_client_init(&wrapper_mqtt_ctx->config);
     if (!wrapper_mqtt_ctx->client) {
         ESP_LOGE(TAG, "Failed to allocate memory for mqtt client");
         goto fail;
     }
 
+    esp_mqtt_client_register_event(wrapper_mqtt_ctx->client, MQTT_EVENT_ANY, wrapper_mqtt_event_handler, wrapper_mqtt_ctx);
     if (!wasm_register_msg_callback(MQTT_EVENT_WASM, mqtt_wrapper_event_callback)) {
         goto fail;
     }
@@ -440,7 +451,7 @@ static int wasm_mqtt_publish_wrapper(wasm_exec_env_t exec_env, uint32_t mqtt_han
     return esp_mqtt_client_publish(wrapper_mqtt_ctx->client, topic, data, data_len, qos, 0);
 }
 
-static int wasm_mqtt_subscribe_wrapper(wasm_exec_env_t exec_env, uint32_t mqtt_handle, const char *topic, uint8_t qos)
+static int wasm_mqtt_subscribe_wrapper(wasm_exec_env_t exec_env, uint32_t mqtt_handle, char *topic, uint8_t qos)
 {
     mqtt_wrapper_ctx_t *wrapper_mqtt_ctx = (mqtt_wrapper_ctx_t *)mqtt_handle;
     if (!wrapper_mqtt_ctx) {

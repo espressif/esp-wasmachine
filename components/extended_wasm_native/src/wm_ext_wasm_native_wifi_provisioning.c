@@ -16,6 +16,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include "bh_common.h"
 #include "bh_log.h"
@@ -171,7 +172,7 @@ static int wasm_wifi_prov_mgr_init_wrapper(wasm_exec_env_t exec_env, uint32_t fu
 
     wasm_module_inst_t module_inst = get_module_inst(exec_env);   
     if (!wasm_runtime_validate_native_addr(module_inst, argv, argc * sizeof(uint32_t))) {
-        ESP_LOGE(TAG, "argv=%p argc=%d is out of range", argv, argc);
+        ESP_LOGE(TAG, "argv=%p argc=%"PRIu32" is out of range", argv, argc);
         return ESP_FAIL;
     }
 

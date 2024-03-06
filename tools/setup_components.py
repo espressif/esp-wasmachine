@@ -27,7 +27,7 @@ RAINMAKER = { 'name': 'esp-rainmaker',
               'url': 'https://github.com/espressif/esp-rainmaker.git', 
               'path': 'components/esp-rainmaker',
               'branch': 'master',
-              'commit_id': '00bcf4c0',
+              'commit_id': 'fa00c1b0',
               'patch': False }
 
 WAMR = { 'name': 'wasm-micro-runtime',
@@ -36,20 +36,7 @@ WAMR = { 'name': 'wasm-micro-runtime',
          'branch': 'fast-jit-06-29-2022',
          'patch': True }
 
-ESP_BOX = { 'name': 'esp-bsp',
-            'url': 'https://github.com/espressif/esp-bsp.git',
-            'path': 'components/esp-bsp',
-            'branch': 'master',
-            'commit_id': '68135f70',
-            'patch': True }
-
-COMPONENTS = [ LVGL, RAINMAKER, WAMR, ESP_BOX ]
-
-ESP_IDF = { 'name': 'esp-idf',
-            'url': 'https://github.com/espressif/esp-idf.git',
-            'path': os.environ['IDF_PATH'],
-            'branch': 'v4.4.3',
-            'patch': True }
+COMPONENTS = [ LVGL, RAINMAKER, WAMR]
 
 ROOT_PATH=os.getcwd()
 
@@ -110,18 +97,8 @@ def patch_components():
 
         clone_repo(c['name'], c['url'], c['path'], c['branch'], commit_id, patch)
 
-def patch_esp_idf():
-    if 'patch' in ESP_IDF and ESP_IDF['patch'] == True:
-        print('patch \'esp-idf\'')
-
-        cmd = 'cd %s && git apply %s/%s'%(ESP_IDF['path'], ROOT_PATH, 'tools/patch/esp-idf.patch')
-        ret, dsc, err = run(cmd)
-        if ret != 0:
-            print('patch esp-idf failed and skip this process')
-
 def main():
     patch_components()
-    patch_esp_idf()
 
 def _main():
     try:
