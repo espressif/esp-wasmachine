@@ -10,6 +10,16 @@
     V: "0"
     WARNING_STR: ""
 
+
+.build_sdk: &build_sdk |
+  if [ "${SDKCONFIG_DEFAULTS}" ]; then
+    idf.py -DSDKCONFIG_DEFAULTS="${SDKCONFIG_DEFAULTS}" set-target ${IDF_TARGET}
+  else
+    idf.py set-target ${IDF_TARGET}
+  fi
+
+  idf.py build
+
 .build_examples_template: &build_examples_template
   <<: *build_template
   artifacts:
@@ -32,7 +42,7 @@
   variables:
     IDF_CI_BUILD: "1"
   script:
-    - idf.py -DBOARD=${EXAMPLE_BOARD} build
+    - *build_sdk
 
 build_platform_esp32s3_box:
   extends:
@@ -41,8 +51,11 @@ build_platform_esp32s3_box:
     matrix:
       - IMAGE: espressif/idf:release-v5.0
       - IMAGE: espressif/idf:release-v5.1
+      - IMAGE: espressif/idf:release-v5.2
+      - IMAGE: espressif/idf:latest # v5.3
   variables:
-    EXAMPLE_BOARD: esp-box
+    IDF_TARGET: esp32s3
+    SDKCONFIG_DEFAULTS: sdkconfig.defaults;sdkconfig.esp-box
 
 build_platform_esp32s3_devkitc:
   extends:
@@ -51,5 +64,18 @@ build_platform_esp32s3_devkitc:
     matrix:
       - IMAGE: espressif/idf:release-v5.0
       - IMAGE: espressif/idf:release-v5.1
+      - IMAGE: espressif/idf:release-v5.2
+      - IMAGE: espressif/idf:latest # v5.3
   variables:
-    EXAMPLE_BOARD: esp32s3-devkitc
+    IDF_TARGET: esp32s3
+
+build_platform_esp32c6_devkitc:
+  extends:
+    - .build_examples_template
+  parallel:
+    matrix:
+      - IMAGE: espressif/idf:release-v5.1
+      - IMAGE: espressif/idf:release-v5.2
+      - IMAGE: espressif/idf:latest # v5.3
+  variables:
+    IDF_TARGET: esp32c6

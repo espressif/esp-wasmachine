@@ -15,9 +15,6 @@ The main directory structure of ESP-WASMachine is as follows:
 ```
 esp-wasmachine/
     ├── components
-        ├──boards                       Board support package
-            ├──common                   General purpose drivers of development board
-            ├──esp-box                  Specific drivers of ESP-BOX development board
         ├──data_sequence                Data sequences used for parameter transfer between VM and APP
         ├──extended_wasm_vfs            Hardware drivers based on virtual file system
             ├──src
@@ -46,11 +43,14 @@ esp-wasmachine/
 
 ## 2. Install Development Environment
 
-ESP-WASMachine can be considered as an application project based on ESP-IDF in the implementation principle, so the development environment of ESP-IDF needs to be installed. For the relevant process, please refer to ESP-IDF [documents](https://docs.espressif.com/projects/esp-idf/en/v4.4.5/esp32s3/get-started/index.html#get-started).
+ESP-WASMachine can be considered as an application project based on ESP-IDF in the implementation principle, so the development environment of ESP-IDF needs to be installed. For the relevant process, please refer to ESP-IDF [documents](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/get-started/index.html#get-started).
 
-The supported version of ESP-IDF is as follows:
+The supported version of ESP-IDF contains v5.0.x, v5.1.x, v5.2.x and master, related versions are as follows:
 
-- [v4.4.5](https://github.com/espressif/esp-idf/tree/v4.4.5)
+- [v5.0.6](https://github.com/espressif/esp-idf/tree/v5.0.6)
+- [v5.1.3](https://github.com/espressif/esp-idf/tree/v5.1.3)
+- [v5.2.1](https://github.com/espressif/esp-idf/tree/v5.2.1)
+- [master](https://github.com/espressif/esp-idf/tree/master)
 
 The supported development boards are as follows:
 
@@ -58,18 +58,19 @@ The supported development boards are as follows:
 
 - [ESP32-S3-BOX-Lite](https://github.com/espressif/esp-box/blob/v0.3.0/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite_cn.md)
 
+- [ESP32-S3-DevKitC](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/hw-reference/esp32s3/user-guide-devkitc-1.html)
+
+- [ESP32-C6-DevKitC](https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitc-1/user_guide.html)
+
 In addition, it is also necessary to download the third-party software to ESP-WASMachine. The source code of the third-party software in the corresponding version will be automatically downloaded and patched when it is compiled for the first time. The relevant log information is as follows:
 
 ```sh
-clone 'https://github.com/joltwallet/esp_littlefs.git' branch 'v1.4.1' into 'components/esp_littlefs'
-patch 'components/esp_littlefs'
 clone 'https://github.com/lvgl/lvgl.git' branch 'v8.1.0' into 'components/LVGL'
 patch 'components/lvgl'
 clone 'https://github.com/espressif/esp-rainmaker.git' branch 'master' into 'components/esp-rainmaker'
 checkout 'components/esp-rainmaker' to commit id '00bcf4c0'
 clone 'https://github.com/bytecodealliance/wasm-micro-runtime.git' branch 'fast-jit-06-29-2022' into 'components/wamr/wasm-micro-runtime'
 patch 'components/wamr/wasm-micro-runtime'
-patch esp-idf
 ```
 
 To ensure safety of your data (for example, you want to modify third-party software source code according to requirements), the compilation system only clones and patches these third-party software. If compiling problems occur because of software updating or other reasons, you can delete these third-party software manually and retry.
@@ -247,19 +248,28 @@ Then switch to the ESP-WASMachine directory and run the commands provided by ESP
 
 ### 4.1 Configure the system
 
-```
-idf.py -DBOARD=esp-box menuconfig
+1. Compile the firmware for the ESP32-S3-BOX development board:
+
+```sh
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.esp-box" set-target esp32s3
+idf.py build
 ```
 
-The parameter `-DBOARD=esp-box` indicates using the components/boards/esp-box board support packages. This parameter is optional. If you only run the command `idf.py menuconfig`, the build system will use esp-box by default because `BOARD` is not specified.
+2. Compile the firmware for the ESP32-S3-DevKitC development board:
 
-Enable App Manager to enable remote management of WebAssembly application as follows:
+```sh
+idf.py set-target esp32s3
+idf.py build
+```
 
+3. Compile the firmware for the ESP32-C3-DevKitC development board:
+
+```sh
+idf.py set-target esp32c6
+idf.py build
 ```
-WASMachine Configuration --->
-    Generic --->
-        [*] Enable WAMR APP Management
-```
+
+* Note: ESP32-C6-DevKitC 4MB flash development board uses partitions.4mb.singleapp.csv as the partition table file.
 
 ### 4.2 Burn File-System
 
