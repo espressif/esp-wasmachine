@@ -14,6 +14,7 @@
 
 #include <inttypes.h>
 
+#include "esp_memory_utils.h"
 #include "esp_log.h"
 
 #include "bh_platform.h"

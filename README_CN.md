@@ -15,9 +15,6 @@ ESP-WASMachine 的主要目录结构如下：
 ```
 esp-wasmachine/
     ├──components
-        ├──boards                           板级支持包
-            ├──common                       开发板公用驱动
-            ├──esp-box                      esp-box 开发板专用驱动
         ├──data_sequence                    数据序列，用于虚拟机和应用之间的参数传递
         ├──extended_wasm_vfs                基于虚拟文件系统的硬件驱动
                 ├──src
@@ -46,11 +43,14 @@ esp-wasmachine/
 
 ## 2. 安装开发环境
 
-从实现原理来看，ESP-WASMachine 是基于 ESP-IDF 的应用程序，所以需要安装 ESP-IDF 的开发环境，相关流程请参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/en/v4.4.5/esp32s3/get-started/index.html#get-started)。
+从实现原理来看，ESP-WASMachine 是基于 ESP-IDF 的应用程序，所以需要安装 ESP-IDF 的开发环境，相关流程请参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32s3/get-started/index.html#id1)。
 
-当前支持的 ESP-IDF 版本有：
+支持的 ESP-IDF 版本有 v5.0.x, v5.1.x, v5.2.x 和 master，相关版本如下：
 
-- [v4.4.5](https://github.com/espressif/esp-idf/tree/v4.4.5)
+- [v5.0.6](https://github.com/espressif/esp-idf/tree/v5.0.6)
+- [v5.1.3](https://github.com/espressif/esp-idf/tree/v5.1.3)
+- [v5.2.1](https://github.com/espressif/esp-idf/tree/v5.2.1)
+- [master](https://github.com/espressif/esp-idf/tree/master)
 
 支持的开发板有：
 
@@ -58,18 +58,19 @@ esp-wasmachine/
 
 - [ESP32-S3-BOX-Lite](https://github.com/espressif/esp-box/blob/v0.3.0/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite_cn.md)
 
+- [ESP32-S3-DevKitC](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/hw-reference/esp32s3/user-guide-devkitc-1.html)
+
+- [ESP32-C6-DevKitC](https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitc-1/user_guide.html)
+
 除此之外，还需要下载第三方库到 ESP-WASMachine，在第一次编译时会自动下载对应版本的第三方库的源码并打上 patch，过程中显示下列 log：
 
 ```sh
-clone 'https://github.com/joltwallet/esp_littlefs.git' branch 'v1.4.1' into 'components/esp_littlefs'
-patch 'components/esp_littlefs'
 clone 'https://github.com/lvgl/lvgl.git' branch 'v8.1.0' into 'components/lvgl'
 patch 'components/lvgl'
 clone 'https://github.com/espressif/esp-rainmaker.git' branch 'master' into 'components/esp-rainmaker'
 checkout 'components/esp-rainmaker' to commit id '00bcf4c0'
 clone 'https://github.com/bytecodealliance/wasm-micro-runtime.git' branch 'fast-jit-06-29-2022' into 'components/wamr/wasm-micro-runtime'
 patch 'components/wamr/wasm-micro-runtime'
-patch esp-idf
 ```
 
 为保护您的数据安全，比如您基于自己的需求修改这些第三方库，所以编译系统除了对这些第三方库进行 clone 和 patch 之外，不会作其他的修改。如果出现因为软件版本更新或者其他原因导致的相关编译问题，您可以手动删除这些第三方库并重试。
@@ -247,19 +248,28 @@ WebAssembly 远程应用程序管理工具 [host_tool](https://github.com/byteco
 
 ### 4.1 配置系统
 
-```
-idf.py -DBOARD=esp-box menuconfig
+1. 编译 ESP32-S3-BOX 开发板固件:
+
+```sh
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.esp-box" set-target esp32s3
+idf.py build
 ```
 
-其中 `-DBOARD=esp-box` 表示使用 components/boards/esp-box 板级支持包，这个配置项可以省略，即可以使用命令 `idf.py menuconfig`。如果不指定 `BOARD`，编译系统会默认使用 esp-box。
+2. 编译 ESP32-S3-DevKitC 开发板固件:
 
-在下面的菜单中启用 App Manager 使能 WebAssembly 应用远程管理功能：
+```sh
+idf.py set-target esp32s3
+idf.py build
+```
 
+3. 编译 ESP32-C6-DevKitC 开发板固件:
+
+```sh
+idf.py set-target esp32c6
+idf.py build
 ```
-WASMachine Configuration  --->
-    Generic  --->
-        [*] Enable WAMR APP Management
-```
+
+* 注意：ESP32-C6-DevKitC 4MB flash 开发板使用 partitions.4mb.single_app.csv 作为 partition table 文件。
 
 ### 4.2 烧录文件系统
 

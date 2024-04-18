@@ -607,10 +607,10 @@ index fcda8f9..37e3233 100644
   *      MACROS
   **********************/
 diff --git a/src/lv_conf_internal.h b/src/lv_conf_internal.h
-index b3e6748..e19ca30 100644
+index b3e6748..b63eae6 100644
 --- a/src/lv_conf_internal.h
 +++ b/src/lv_conf_internal.h
-@@ -1930,4 +1930,11 @@ LV_EXPORT_CONST_INT(LV_DPI_DEF);
+@@ -1930,4 +1930,12 @@ LV_EXPORT_CONST_INT(LV_DPI_DEF);
  #  endif
  #endif  /*defined(LV_CONF_SKIP)*/
  
@@ -618,6 +618,7 @@ index b3e6748..e19ca30 100644
 +#include "wasm_export.h"
 +#include "wasm_native.h"
 +#include "wasm_runtime_common.h"
++#include "esp_memory_utils.h"
 +
 +void lv_run_wasm(void *module_inst, void *cb, int argc, uint32_t *argv);
 +

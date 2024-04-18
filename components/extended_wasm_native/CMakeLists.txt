@@ -33,7 +33,7 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
 endif()
 
 set(requires "extended_wasm_vfs" "mqtt" "wamr"
-             "boards" "lvgl" "wifi_provisioning" "esp_http_client"
+             "lvgl" "wifi_provisioning" "esp_http_client"
              "esp_rainmaker" "json_generator")
 
 idf_component_register(SRCS ${srcs}
