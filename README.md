@@ -262,7 +262,7 @@ idf.py set-target esp32s3
 idf.py build
 ```
 
-3. Compile the firmware for the ESP32-C3-DevKitC development board:
+3. Compile the firmware for the ESP32-C6-DevKitC development board:
 
 ```sh
 idf.py set-target esp32c6
