@@ -30,7 +30,6 @@ esp-wasmachine/
                 ├──shell_iwasm.c        Command 'iwasm'
                 ├──shell_init.c         Initialization of shell command line interface
                 ├── ...
-        ├──wamr                         wasm-micro-runtime (WAMR)
         ├──wasmachine                   WAMR platform adapter and extension
             ├──src
                 ├──wm_wamr_app_mgr.c    App manager adapter and initialization
@@ -69,8 +68,6 @@ clone 'https://github.com/lvgl/lvgl.git' branch 'v8.1.0' into 'components/LVGL'
 patch 'components/lvgl'
 clone 'https://github.com/espressif/esp-rainmaker.git' branch 'master' into 'components/esp-rainmaker'
 checkout 'components/esp-rainmaker' to commit id '00bcf4c0'
-clone 'https://github.com/bytecodealliance/wasm-micro-runtime.git' branch 'fast-jit-06-29-2022' into 'components/wamr/wasm-micro-runtime'
-patch 'components/wamr/wasm-micro-runtime'
 ```
 
 To ensure safety of your data (for example, you want to modify third-party software source code according to requirements), the compilation system only clones and patches these third-party software. If compiling problems occur because of software updating or other reasons, you can delete these third-party software manually and retry.
@@ -78,7 +75,8 @@ To ensure safety of your data (for example, you want to modify third-party softw
 To remotely manage WebAssembly applications, you also need to compile and generate `host_tool`. However, `host_tool` can only be compiled and used in Linux. The relevant compilation process is as follows:
 
 ```
-cd components/wamr/wasm-micro-runtime/test-tools/host-tool
+git clone -b WAMR-1.3.2 https://github.com/espressif/wasm-micro-runtime.git
+cd wasm-micro-runtime/test-tools/host-tool
 mkdir build
 cd build
 cmake ..
@@ -324,12 +322,7 @@ WASMachine Configuration --->
 
 Run the command `host_tool` to install/uninstall/view the WebAssembly application. For details, please refer to [Related Instructions](#3.2-application-management-tool).
 
-By default, the device can only install three applications at most. If you want to install more applications, please modify the macro definition in the source `components/wamr/wasm-micro-runtime/core/config.h`. The macro is shown as follows:
-
-```c
-/* Max app number of all modules */
-#define MAX_APP_INSTALLATIONS 3
-```
+By default, the device can only install three applications at most.
 
 #### 4.5.1 Connect to AP
 
@@ -350,8 +343,8 @@ I (158337) esp_netif_handlers: STA IP: 172.168.30.182, mask: 255.255.255.0, GW: 
 Run the following command to install the local `hello_world.wasm` on the hardware device remotely. `app0` is the application name.
 
 ```
-cd esp-wasmachine
-./components/wamr/wasm-micro-runtime/test-tools/host-tool/build/host_tool \
+cd wasm-micro-runtime
+./test-tools/host-tool/build/host_tool \
     -i app0 \
     -f main/fs_image/wasm/hello_world.wasm \
     -S 172.168.30.182 \
@@ -369,7 +362,8 @@ response status 65
 Run the following command to obtain the information about `app0`:
 
 ```
-./components/wamr/wasm-micro-runtime/test-tools/host-tool/build/host_tool \
+cd wasm-micro-runtime
+./test-tools/host-tool/build/host_tool \
     -q app0 \
     -S 172.168.30.182 \
     -P 8080
@@ -391,7 +385,8 @@ response status 69
 Run the following command to uninstall the installed `app0`:
 
 ```
-./components/wamr/wasm-micro-runtime/test-tools/host-tool/build/host_tool \
+cd wasm-micro-runtime
+./test-tools/host-tool/build/host_tool \
     -u app0 \
     The -s 172.168.30.182 \
     -P 8080

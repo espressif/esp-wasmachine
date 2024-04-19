@@ -7,3 +7,5 @@ dependencies:
     version: "^3.0.5"
     rules:
       - if: target in [esp32s3]
+  wasm-micro-runtime:
+    version: "^1.3"

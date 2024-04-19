@@ -237,7 +237,7 @@ esp_err_t wasm_rmaker_read_cb(const esp_rmaker_device_t *device, const esp_rmake
 
 /* Event handler for catching RainMaker events */
 static void wasm_rmaker_event_handler(void* arg, esp_event_base_t event_base,
-                          int event_id, void* event_data)
+                          int32_t event_id, void* event_data)
 {
     if (event_base == RMAKER_EVENT) {
         switch (event_id) {
@@ -254,7 +254,7 @@ static void wasm_rmaker_event_handler(void* arg, esp_event_base_t event_base,
                 ESP_LOGI(TAG, "RainMaker Claim Failed.");
                 break;
             default:
-                ESP_LOGW(TAG, "Unhandled RainMaker Event: %d", event_id);
+                ESP_LOGW(TAG, "Unhandled RainMaker Event: %" PRId32, event_id);
         }
     } else if (event_base == RMAKER_COMMON_EVENT) {
         switch (event_id) {
@@ -268,7 +268,7 @@ static void wasm_rmaker_event_handler(void* arg, esp_event_base_t event_base,
                 ESP_LOGI(TAG, "Node reset to factory defaults.");
                 break;
             default:
-                ESP_LOGW(TAG, "Unhandled RainMaker Common Event: %d", event_id);
+                ESP_LOGW(TAG, "Unhandled RainMaker Common Event: %" PRId32, event_id);
         }
     } else {
         ESP_LOGW(TAG, "Invalid event received!");

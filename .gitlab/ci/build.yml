@@ -12,6 +12,9 @@
 
 
 .build_sdk: &build_sdk |
+  export EXTRA_CFLAGS="-Werror"
+  export EXTRA_CXXFLAGS="-Werror"
+
   if [ "${SDKCONFIG_DEFAULTS}" ]; then
     idf.py -DSDKCONFIG_DEFAULTS="${SDKCONFIG_DEFAULTS}" set-target ${IDF_TARGET}
   else
@@ -52,7 +55,7 @@ build_platform_esp32s3_box:
       - IMAGE: espressif/idf:release-v5.0
       - IMAGE: espressif/idf:release-v5.1
       - IMAGE: espressif/idf:release-v5.2
-      - IMAGE: espressif/idf:latest # v5.3
+      - IMAGE: espressif/idf:release-v5.3
   variables:
     IDF_TARGET: esp32s3
     SDKCONFIG_DEFAULTS: sdkconfig.defaults;sdkconfig.esp-box
@@ -65,7 +68,7 @@ build_platform_esp32s3_devkitc:
       - IMAGE: espressif/idf:release-v5.0
       - IMAGE: espressif/idf:release-v5.1
       - IMAGE: espressif/idf:release-v5.2
-      - IMAGE: espressif/idf:latest # v5.3
+      - IMAGE: espressif/idf:release-v5.3
   variables:
     IDF_TARGET: esp32s3
 
@@ -76,6 +79,6 @@ build_platform_esp32c6_devkitc:
     matrix:
       - IMAGE: espressif/idf:release-v5.1
       - IMAGE: espressif/idf:release-v5.2
-      - IMAGE: espressif/idf:latest # v5.3
+      - IMAGE: espressif/idf:release-v5.3
   variables:
     IDF_TARGET: esp32c6

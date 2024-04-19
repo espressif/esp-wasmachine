@@ -30,7 +30,6 @@ esp-wasmachine/
                 ├──shell_iwasm.c            iwasm 命令
                 ├──shell_init.c             Shell 命令初始化程序
                 ├── ...
-        ├──wamr                             wasm-micro-runtime(WAMR)
         ├──wasmachine                       WAMR 软件平台适配和扩展程序 
             ├──src
                 ├──wm_wamr_app_mgr.c        App Manager 适配和启动程序
@@ -69,8 +68,6 @@ clone 'https://github.com/lvgl/lvgl.git' branch 'v8.1.0' into 'components/lvgl'
 patch 'components/lvgl'
 clone 'https://github.com/espressif/esp-rainmaker.git' branch 'master' into 'components/esp-rainmaker'
 checkout 'components/esp-rainmaker' to commit id '00bcf4c0'
-clone 'https://github.com/bytecodealliance/wasm-micro-runtime.git' branch 'fast-jit-06-29-2022' into 'components/wamr/wasm-micro-runtime'
-patch 'components/wamr/wasm-micro-runtime'
 ```
 
 为保护您的数据安全，比如您基于自己的需求修改这些第三方库，所以编译系统除了对这些第三方库进行 clone 和 patch 之外，不会作其他的修改。如果出现因为软件版本更新或者其他原因导致的相关编译问题，您可以手动删除这些第三方库并重试。
@@ -78,7 +75,8 @@ patch 'components/wamr/wasm-micro-runtime'
 为了远程管理 WebAssembly 应用程序，还需要编译生成 `host_tool`，但是 `host_tool` 当前只支持在 Linux 操作系统上编译和使用。相关编译过程如下：
 
 ```
-cd components/wamr/wasm-micro-runtime/test-tools/host-tool
+git clone -b WAMR-1.3.2 https://github.com/espressif/wasm-micro-runtime.git
+cd wasm-micro-runtime/test-tools/host-tool
 mkdir build
 cd build
 cmake ..
@@ -324,12 +322,7 @@ WASMachine Configuration  --->
 
 运行 `host_tool` 工具安装/卸载/查看 WebAssembly 应用程序，具体命令可以参考[相关说明](#1.3-应用管理工具)。
 
-默认配置下，设备最多只支持安装 3 个应用程序，如需安装更多的应用程序，可以修改源文件 `components/wamr/wasm-micro-runtime/core/config.h` 中的宏定义，如下所示：
-
-```c
-/* Max app number of all modules */
-#define MAX_APP_INSTALLATIONS 3
-```
+默认配置下，设备最多只支持安装 3 个应用程序。
 
 #### 4.5.1 连接 AP
 
@@ -350,8 +343,8 @@ I (158337) esp_netif_handlers: sta ip: 172.168.30.182, mask: 255.255.255.0, gw: 
 执行以下的命令安装本地的 `hello_world.wasm` 到硬件设备上，程序名称为 `app0`，其他操作需要使用该名称：
 
 ```
-cd esp-wasmachine
-./components/wamr/wasm-micro-runtime/test-tools/host-tool/build/host_tool \
+cd wasm-micro-runtime
+./test-tools/host-tool/build/host_tool \
     -i app0 \
     -f main/fs_image/wasm/hello_world.wasm \
     -S 172.168.30.182 \
@@ -369,7 +362,8 @@ response status 65
 执行以下的命令获取 `app0` 的信息：
 
 ```
-./components/wamr/wasm-micro-runtime/test-tools/host-tool/build/host_tool \
+cd wasm-micro-runtime
+./test-tools/host-tool/build/host_tool \
     -q app0 \
     -S 172.168.30.182 \
     -P 8080
@@ -391,7 +385,8 @@ response status 69
 执行以下的命令卸载安装的 `app0`：
 
 ```
-./components/wamr/wasm-micro-runtime/test-tools/host-tool/build/host_tool \
+cd wasm-micro-runtime
+./test-tools/host-tool/build/host_tool \
     -u app0 \
     -S 172.168.30.182 \
     -P 8080

@@ -527,7 +527,7 @@ DEFINE_HTTP_CLIENT_NATIVE_WRAPPER(http_client_common)
     esp_err_t ret = ESP_FAIL;
 
     http_client_native_get_arg(const int, mode);
-    http_client_native_get_arg(const http_client_wrapper_ctx_t *, http_client_wrapper);
+    http_client_native_get_arg(http_client_wrapper_ctx_t *, http_client_wrapper);
 
     switch (mode) {
         case HTTP_CLIENT_PERFORM:

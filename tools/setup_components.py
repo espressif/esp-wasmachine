@@ -30,13 +30,7 @@ RAINMAKER = { 'name': 'esp-rainmaker',
               'commit_id': 'fa00c1b0',
               'patch': False }
 
-WAMR = { 'name': 'wasm-micro-runtime',
-         'url': 'https://github.com/bytecodealliance/wasm-micro-runtime.git', 
-         'path': 'components/wamr/wasm-micro-runtime',
-         'branch': 'fast-jit-06-29-2022',
-         'patch': True }
-
-COMPONENTS = [ LVGL, RAINMAKER, WAMR]
+COMPONENTS = [ LVGL, RAINMAKER]
 
 ROOT_PATH=os.getcwd()
 

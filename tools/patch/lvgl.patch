@@ -7,12 +7,12 @@ index 1d473e0..fd8d083 100644
          idf_component_register(SRCS ${SOURCES}
                                 INCLUDE_DIRS . src ../
 -                               REQUIRES main)
-+                               REQUIRES main wamr)
++                               REQUIRES main wasm-micro-runtime)
      else()
          idf_component_register(SRCS ${SOURCES}
 -                               INCLUDE_DIRS . src ../)
 +                               INCLUDE_DIRS . src ../
-+                               REQUIRES wamr)
++                               REQUIRES wasm-micro-runtime)
      endif()
  
      target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_CONF_INCLUDE_SIMPLE")

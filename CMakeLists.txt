@@ -11,7 +11,7 @@ else()
                     OUTPUT_FILE /dev/stdout)
 endif()
 
-list(APPEND EXTRA_COMPONENT_DIRS "$ENV{IDF_PATH}/examples/common_components/protocol_examples_common")
+set(EXTRA_COMPONENT_DIRS "$ENV{IDF_PATH}/examples/common_components/protocol_examples_common")
 
 if(DEFINED ENV{RMAKER_PATH})
   set(RMAKER_PATH $ENV{RMAKER_PATH})
