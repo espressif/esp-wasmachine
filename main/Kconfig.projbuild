@@ -3,5 +3,4 @@ menu "WASMachine Configuration"
     rsource "../components/wasmachine/Kconfig.wasmachine"
     rsource "../components/shell/Kconfig.wasmachine"
     rsource "../components/extended_wasm_native/Kconfig.wasmachine"
-    rsource "../components/wamr/Kconfig.wasmachine"
 endmenu

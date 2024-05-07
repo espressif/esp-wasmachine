@@ -48,11 +48,8 @@ cmake-build-*/
 .mypy_cache
 flake8_output.txt
 
-components/wamr/wasm-micro-runtime
-components/esp_littlefs
 components/lvgl
 components/esp-rainmaker
-components/esp-bsp
 
 fs_image
 

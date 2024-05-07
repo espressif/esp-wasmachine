@@ -36,9 +36,9 @@ typedef struct iwasm_main_arg {
     uint32_t stack_size;
     uint32_t heap_size;
 #if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
-    char *env;
-    char *dir;
-    char *addrs;
+    const char *env;
+    const char *dir;
+    const char *addrs;
 #endif
     int argc;
     char **argv;
@@ -175,7 +175,7 @@ static void *iwasm_main_thread(void *p)
     /* Process options. */
 #if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
     if (arg->dir) {
-        char *tmp_dir = strtok(arg->dir, ",");
+        char *tmp_dir = strtok((char *)arg->dir, ",");
         while (tmp_dir) {
             if (dir_list_size >= sizeof(dir_list) / sizeof(char *)) {
                 ESP_LOGE(TAG, "Only allow max dir number %d\n", (int)(sizeof(dir_list) / sizeof(char *)));
@@ -197,7 +197,7 @@ static void *iwasm_main_thread(void *p)
     }
 
     if (arg->env) {
-        char *tmp_env = strtok(arg->env, ",");
+        char *tmp_env = strtok((char *)arg->env, ",");
         while (tmp_env) {
             if (env_list_size >= sizeof(env_list) / sizeof(char *)) {
                 ESP_LOGE(TAG, "Only allow max env number %d\n", (int)(sizeof(env_list) / sizeof(char *)));
@@ -214,7 +214,7 @@ static void *iwasm_main_thread(void *p)
     }
     if (arg->addrs) {
         /* like: --addr-pool=100.200.244.255/30 */
-        char *token = strtok(arg->addrs, ",");
+        char *token = strtok((char *)arg->addrs, ",");
         while (token) {
             if (addr_pool_size >= sizeof(addr_pool) / sizeof(char *)) {
                 ESP_LOGE(TAG, "Only allow max address number %d\n",

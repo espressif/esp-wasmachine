@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 1d473e0..fd8d083 100644
+index 1d473e0..81f48c3 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -7,10 +7,11 @@ if(ESP_PLATFORM)
@@ -7,17 +7,17 @@ index 1d473e0..fd8d083 100644
          idf_component_register(SRCS ${SOURCES}
                                 INCLUDE_DIRS . src ../
 -                               REQUIRES main)
-+                               REQUIRES main wamr)
++                               REQUIRES main wasm-micro-runtime)
      else()
          idf_component_register(SRCS ${SOURCES}
 -                               INCLUDE_DIRS . src ../)
 +                               INCLUDE_DIRS . src ../
-+                               REQUIRES wamr)
++                               REQUIRES wasm-micro-runtime)
      endif()
  
      target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_CONF_INCLUDE_SIMPLE")
 diff --git a/Kconfig b/Kconfig
-index e18ff35..04cd5ab 100644
+index e18ff35..59eb9b1 100644
 --- a/Kconfig
 +++ b/Kconfig
 @@ -39,6 +39,7 @@ menu "LVGL configuration"
@@ -28,6 +28,38 @@ index e18ff35..04cd5ab 100644
  
          config LV_COLOR_SCREEN_TRANSP
              bool "Enable more complex drawing routines to manage screens transparency."
+@@ -786,25 +787,22 @@ menu "LVGL configuration"
+ 
+     menu "3rd Party Libraries"
+         config LV_USE_FS_STDIO
+-            int "File system on top of stdio API"
+-            default 0
++            bool "File system on top of stdio API"
+         config LV_FS_STDIO_PATH
+             string "Set the working directory"
+-            depends on LV_USE_FS_STDIO
++            depends on LV_USE_FS_STDIO != 0
+ 
+         config LV_USE_FS_POSIX
+-            int "File system on top of posix API"
+-            default 0
++            bool "File system on top of posix API"
+         config LV_FS_POSIX_PATH
+             string "Set the working directory"
+-            depends on LV_USE_FS_POSIX
++            depends on LV_USE_FS_POSIX != 0
+ 
+         config LV_USE_FS_WIN32
+-            int "File system on top of Win32 API"
+-            default 0
++            bool "File system on top of Win32 API"
+         config LV_FS_WIN32_PATH
+             string "Set the working directory"
+-            depends on LV_USE_FS_WIN32
++            depends on LV_USE_FS_WIN32 != 0
+ 
+         config LV_USE_FS_FATFS
+             int "File system on top of FatFS"
 diff --git a/src/core/lv_event.c b/src/core/lv_event.c
 index c9671fa..b6276c3 100644
 --- a/src/core/lv_event.c
@@ -757,5 +789,3 @@ index ce94c7b..ae2b005 100644
  } lv_timer_t;
  
  /**********************
--- 
-2.34.1

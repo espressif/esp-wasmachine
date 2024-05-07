@@ -57,7 +57,7 @@ typedef enum {
 } wifi_prov_method_t;
 
 typedef struct {
-    char                    *ep_name;
+    const char              *ep_name;
     protocomm_req_handler_t handler;
     void                    *user_ctx;
 } wifi_prov_endpoint_handler_t;
@@ -311,7 +311,7 @@ static int wasm_wifi_prov_mgr_set_app_info_wrapper(wasm_exec_env_t exec_env, con
 
     capabilities = (const char **)addr_app_to_native(capabilities_offset);
     for (int i = 0; i < total_capabilities; i ++) {
-        capabilities[i] = (const char *)addr_app_to_native(capabilities[i]);
+        capabilities[i] = (const char *)addr_app_to_native((uint32_t)capabilities[i]);
     }
 
     return wifi_prov_mgr_set_app_info(label, version, capabilities, total_capabilities);

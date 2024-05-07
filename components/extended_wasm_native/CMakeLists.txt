@@ -32,7 +32,7 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
     endif()
 endif()
 
-set(requires "extended_wasm_vfs" "mqtt" "wamr"
+set(requires "extended_wasm_vfs" "mqtt" "wasm-micro-runtime"
              "lvgl" "wifi_provisioning" "esp_http_client"
              "esp_rainmaker" "json_generator")
 
