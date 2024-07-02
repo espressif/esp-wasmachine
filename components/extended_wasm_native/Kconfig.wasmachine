@@ -9,32 +9,32 @@ menu "WASM Extended Native"
         depends on WASMACHINE_WASM_EXT_NATIVE
     
     config WASMACHINE_WASM_EXT_NATIVE_LIBMATH
-        bool "Export WASM extended lib math native APIs"
-        default y
-        depends on WASMACHINE_WASM_EXT_NATIVE
-
-    config WASMACHINE_WASM_EXT_NATIVE_MQTT
-        bool "Export WASM extended mqtt native APIs"
+        bool "Export WASM extended libm native APIs"
         default y
         depends on WASMACHINE_WASM_EXT_NATIVE
 
     config WASMACHINE_WASM_EXT_NATIVE_HTTP_CLIENT
         bool "Export WASM extended HTTP client native APIs"
-        default y
+        default n
         depends on WASMACHINE_WASM_EXT_NATIVE
-    
+
     config WASMACHINE_WASM_EXT_NATIVE_LVGL
         bool "Export WASM extended LVGL native APIs"
         default n
         depends on WASMACHINE_WASM_EXT_NATIVE
 
-    config WASMACHINE_WASM_EXT_NATIVE_WIFI_PROVISIONING
-        bool "Export WASM extended wifi provisioning native APIs"
-        default y
+    config WASMACHINE_WASM_EXT_NATIVE_MQTT
+        bool "Export WASM extended MQTT native APIs"
+        default n
         depends on WASMACHINE_WASM_EXT_NATIVE
 
     config WASMACHINE_WASM_EXT_NATIVE_RMAKER
         bool "Export WASM extended RainMaker native APIs"
-        default y
+        default n
+        depends on WASMACHINE_WASM_EXT_NATIVE
+
+    config WASMACHINE_WASM_EXT_NATIVE_WIFI_PROVISIONING
+        bool "Export WASM extended WiFi provisioning native APIs"
+        default n
         depends on WASMACHINE_WASM_EXT_NATIVE
 endmenu

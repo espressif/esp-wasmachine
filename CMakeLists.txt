@@ -13,13 +13,5 @@ endif()
 
 set(EXTRA_COMPONENT_DIRS "$ENV{IDF_PATH}/examples/common_components/protocol_examples_common")
 
-if(DEFINED ENV{RMAKER_PATH})
-  set(RMAKER_PATH $ENV{RMAKER_PATH})
-else()
-  set(RMAKER_PATH ${CMAKE_CURRENT_LIST_DIR}/components/esp-rainmaker)
-endif()
-
-list(APPEND EXTRA_COMPONENT_DIRS "${RMAKER_PATH}/components")
-
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(wasmachine)
