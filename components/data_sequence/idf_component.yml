@@ -1,0 +1,10 @@
+version: "0.1.0"
+description: Data sequence component for Espressif WASMachine
+url: https://github.com/espressif/esp-wasmachine/tree/master/data_sequence
+repository: https://github.com/espressif/esp-wasmachine.git
+issues: https://github.com/espressif/esp-wasmachine/issues
+dependencies:
+  idf:
+    version: ">=5.0"
+  cmake_utilities:
+    version: "^0.5"
