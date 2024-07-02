@@ -25,6 +25,7 @@ GPATH
 sdkconfig
 sdkconfig.old
 build
+build_esp*
 spiffs.bin
 
 # gcov coverage reports
@@ -47,6 +48,10 @@ cmake-build-*/
 # Results for the checking of the Python coding style and static analysis
 .mypy_cache
 flake8_output.txt
+
+**/components/lvgl
+
+fs_image
 
 managed_components
 
