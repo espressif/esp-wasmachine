@@ -32,7 +32,7 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
     endif()
 endif()
 
-set(requires "extended_wasm_vfs" "wasm-micro-runtime")
+set(requires "wasmachine_ext_wasm_vfs" "wasm-micro-runtime")
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dir}

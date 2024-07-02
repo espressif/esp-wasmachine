@@ -1,6 +1,6 @@
 version: "0.1.0"
 description: shell component for Espressif WASMachine
-url: https://github.com/espressif/esp-wasmachine/tree/master/shell
+url: https://github.com/espressif/esp-wasmachine/tree/master/wasmachine_shell
 repository: https://github.com/espressif/esp-wasmachine.git
 issues: https://github.com/espressif/esp-wasmachine/issues
 dependencies:

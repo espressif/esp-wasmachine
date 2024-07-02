@@ -1,0 +1,6 @@
+menu "WASMachine Configuration"
+    rsource "../wasmachine_core/Kconfig.wasmachine"
+    rsource "../wasmachine_ext_wasm_native/Kconfig.wasmachine"
+    rsource "../wasmachine_ext_wasm_vfs/Kconfig.wasmachine"
+    rsource "../wasmachine_shell/Kconfig.wasmachine"
+endmenu

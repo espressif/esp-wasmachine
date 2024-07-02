@@ -10,6 +10,6 @@ dependencies:
   joltwallet/littlefs:
     version: ^1.6.0
 
-  wasmachine:
+  wasmachine_core:
     version: "^0.1.0"
-    override_path: "../../../components/wasmachine"
+    override_path: "../../../components/wasmachine_core"

@@ -1,22 +1,22 @@
 version: "0.1.0"
 description: Espressif WASMachine core component
-url: https://github.com/espressif/esp-wasmachine/tree/master/wasmachine
+url: https://github.com/espressif/esp-wasmachine/tree/master/wasmachine_core
 repository: https://github.com/espressif/esp-wasmachine.git
 issues: https://github.com/espressif/esp-wasmachine/issues
 dependencies:
   idf: ">=5.0"
-  data_sequence:
+  wasmachine_data_sequence:
     version: "^0.1"
-    override_path: "../data_sequence"
-  extended_wasm_native:
+    override_path: "../wasmachine_data_sequence"
+  wasmachine_ext_wasm_native:
     version: "^0.1"
-    override_path: "../extended_wasm_native"
-  extended_wasm_vfs:
+    override_path: "../wasmachine_ext_wasm_native"
+  wasmachine_ext_wasm_vfs:
     version: "^0.1"
-    override_path: "../extended_wasm_vfs"
-  shell:
+    override_path: "../wasmachine_ext_wasm_vfs"
+  wasmachine_shell:
     version: ">=0.1.0"
-    override_path: "../shell"
+    override_path: "../wasmachine_shell"
   wasm-micro-runtime:
     version: "^1.3"
   cmake_utilities:
