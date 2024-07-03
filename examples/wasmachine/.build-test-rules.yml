@@ -1,0 +1,9 @@
+examples/wasmachine:
+  enable:
+    - if: IDF_TARGET in ["esp32s3", "esp32c6"]
+  depends_components:
+    - components/wasmachine_core
+    - components/wasmachine_data_sequence
+    - components/wasmachine_ext_wasm_native
+    - components/wasmachine_ext_wasm_vfs
+    - components/wasmachine_shell

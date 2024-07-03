@@ -1,0 +1,45 @@
+.pre_check_template:
+  stage: pre_check
+  image: $ESP_ENV_IMAGE
+  tags:
+    - host_test
+  dependencies: []
+
+check_pre_commit:
+  extends:
+    - .pre_check_template
+  before_script:
+    - pip install pre-commit
+  script:
+    - |
+      # merged results pipelines, by default
+      if [[ -n $CI_MERGE_REQUEST_SOURCE_BRANCH_SHA ]]; then
+        git fetch origin $CI_MERGE_REQUEST_DIFF_BASE_SHA --depth=1 ${GIT_FETCH_EXTRA_FLAGS}
+        git fetch origin $CI_MERGE_REQUEST_SOURCE_BRANCH_SHA --depth=1 ${GIT_FETCH_EXTRA_FLAGS}
+        export GIT_DIFF_OUTPUT=$(git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA $CI_MERGE_REQUEST_SOURCE_BRANCH_SHA)
+      # merge request pipelines, when the mr got conflicts
+      elif [[ -n $CI_MERGE_REQUEST_DIFF_BASE_SHA ]]; then
+        git fetch origin $CI_MERGE_REQUEST_DIFF_BASE_SHA --depth=1 ${GIT_FETCH_EXTRA_FLAGS}
+        git fetch origin $CI_COMMIT_SHA --depth=1 ${GIT_FETCH_EXTRA_FLAGS}
+        export GIT_DIFF_OUTPUT=$(git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA $CI_COMMIT_SHA)
+      # other pipelines, like the protected branches pipelines
+      elif [[ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+        git fetch origin $CI_COMMIT_BEFORE_SHA --depth=1 ${GIT_FETCH_EXTRA_FLAGS}
+        git fetch origin $CI_COMMIT_SHA --depth=1 ${GIT_FETCH_EXTRA_FLAGS}
+        export GIT_DIFF_OUTPUT=$(git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA)
+      else
+        # pipeline source could be web, scheduler, etc.
+        git fetch origin $CI_COMMIT_SHA --depth=2 ${GIT_FETCH_EXTRA_FLAGS}
+        export GIT_DIFF_OUTPUT=$(git diff --name-only $CI_COMMIT_SHA~1 $CI_COMMIT_SHA)
+      fi
+    - MODIFIED_FILES=$(echo $GIT_DIFF_OUTPUT | xargs)
+    - echo "MODIFIED_FILES=$MODIFIED_FILES" >> pipeline.env
+    - pre-commit install --allow-missing-config -t pre-commit -t commit-msg
+    - pre-commit run --files $MODIFIED_FILES
+  artifacts:
+    reports:
+      dotenv: pipeline.env
+    paths:
+      - pipeline.env
+    expire_in: 1 week
+    when: always
