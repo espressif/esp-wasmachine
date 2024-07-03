@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #pragma once
 
@@ -24,16 +16,16 @@ extern "C" {
 
 #define DATA_SEQ_V_1    0x1 /*!< Data sequence data frame format version 1 */
 
-typedef uint16_t    data_seq_type_t; /*!< Data type of frame type */ 
+typedef uint16_t    data_seq_type_t; /*!< Data type of frame type */
 typedef uint16_t    data_seq_size_t; /*!< Data type of frame size */
 
 /**
  * @brief Data sequence data frame.
  */
 typedef struct data_seq_frame {
-    data_seq_type_t type;   /*!< Frame type */ 
-    data_seq_size_t size;   /*!< Frame size */ 
-    uintptr_t       ptr;    /*!< Frame pointer */ 
+    data_seq_type_t type;   /*!< Frame type */
+    data_seq_size_t size;   /*!< Frame size */
+    uintptr_t       ptr;    /*!< Frame pointer */
 } data_seq_frame_t;
 
 /**
@@ -43,7 +35,7 @@ typedef struct data_seq {
     uint32_t            version;    /*!< Frame data format version */
     uint32_t            num;        /*!< Total number of frame */
     uint32_t            index;      /*!< Pointer of free frame */
-    data_seq_frame_t    frame[0];   /*!< Frame array */ 
+    data_seq_frame_t    frame[0];   /*!< Frame array */
 } data_seq_t;
 
 #define DATA_SEQ_PUSH(ds, t, v)         data_seq_push(ds, t, sizeof(v), &(v))   /*!< Push data to data sequence, and this macro calculates data's length by sizeof(data) */
@@ -91,7 +83,7 @@ void data_seq_reset(data_seq_t *ds);
   * @param  size Pushed data size.
   * @param  data Pushed data pointer, and this data can't be free after pushed until others pop data
   *              from this data sequence.
-  * 
+  *
   * @return
   *    - 0: succeed
   *    - -EINVAL: Input parameters are invalid
@@ -103,11 +95,11 @@ int data_seq_push(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, co
   * @brief  Pop data from data sequence if its type and size are all matched.
   *
   * @param  ds   Data sequence pointer which is created by "data_seq_alloc".
-  * @param  type Poped data type, and this must be different from other all pushed data types,
+  * @param  type Popped data type, and this must be different from other all pushed data types,
   *              this means all pushed data type is unequal.
-  * @param  size Poped data size.
-  * @param  data Poped data pointer, and all data will be copied to this data pointer.
-  * 
+  * @param  size Popped data size.
+  * @param  data Popped data pointer, and all data will be copied to this data pointer.
+  *
   * @return
   *    - 0: succeed
   *    - -EINVAL: Input parameters are invalid
@@ -122,9 +114,9 @@ int data_seq_pop(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, voi
   * @param  type New data type.
   * @param  size New data size.
   * @param  data New data pointer.
-  * 
+  *
   * @return
-  *    - Frame data pointer if sucess or NULL if failed.
+  *    - Frame data pointer if success or NULL if failed.
   */
 int data_seq_update_frame_data(data_seq_t *ds, data_seq_type_t type, data_seq_size_t size, void *data);
 

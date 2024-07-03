@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -264,7 +256,7 @@ static uint32_t errno_c2wasm(int error)
 #endif
     };
     if (error < 0 || (size_t)error >= sizeof(errors) / sizeof(errors[0]) ||
-        errors[error] == 0) {
+            errors[error] == 0) {
         return WASI_ENOSYS;
     }
 
@@ -311,7 +303,7 @@ static int open_wrapper(wasm_exec_env_t exec_env,
     return ret;
 }
 
-static ssize_t read_wrapper(wasm_exec_env_t exec_env, int fd, void *buffer, size_t n) 
+static ssize_t read_wrapper(wasm_exec_env_t exec_env, int fd, void *buffer, size_t n)
 {
     int ret;
 
@@ -327,7 +319,7 @@ static ssize_t read_wrapper(wasm_exec_env_t exec_env, int fd, void *buffer, size
     return ret;
 }
 
-static ssize_t write_wrapper(wasm_exec_env_t exec_env, int fd, const void *buffer, size_t n) 
+static ssize_t write_wrapper(wasm_exec_env_t exec_env, int fd, const void *buffer, size_t n)
 {
     int ret;
 
@@ -388,7 +380,7 @@ static off_t lseek_wrapper(wasm_exec_env_t exec_env, int fd, int64_t offset, int
 
     ESP_LOGV(TAG, "lseek(%d, %llx, %x)=%d", fd, offset, whence, ret);
 
-    return (int64_t)ret;    
+    return (int64_t)ret;
 }
 
 static int fcntl_wrapper(wasm_exec_env_t exec_env, int fd, int cmd, int arg)
@@ -444,38 +436,38 @@ static int ioctl_wrapper(wasm_exec_env_t exec_env, int fd, int cmd, char *va_arg
 {
     int ret;
 
-    switch(cmd) {
+    switch (cmd) {
 #ifdef CONFIG_EXTENDED_VFS_GPIO
-        case GPIOCSCFG:
-            ret = wm_ext_wasm_gpio_ioctl(exec_env, fd, cmd, va_args);
-            break;
+    case GPIOCSCFG:
+        ret = wm_ext_wasm_gpio_ioctl(exec_env, fd, cmd, va_args);
+        break;
 #endif
 #ifdef CONFIG_EXTENDED_VFS_I2C
-        case I2CIOCSCFG:
-        case I2CIOCRDWR:
-        case I2CIOCEXCHANGE:
-            ret = wm_ext_wasm_i2c_ioctl(exec_env, fd, cmd, va_args);
-            break;
+    case I2CIOCSCFG:
+    case I2CIOCRDWR:
+    case I2CIOCEXCHANGE:
+        ret = wm_ext_wasm_i2c_ioctl(exec_env, fd, cmd, va_args);
+        break;
 #endif
 #ifdef CONFIG_EXTENDED_VFS_SPI
-        case SPIIOCSCFG:
-        case SPIIOCEXCHANGE:
-            ret = wm_ext_wasm_native_spi_ioctl(exec_env, fd, cmd, va_args);
-            break;
+    case SPIIOCSCFG:
+    case SPIIOCEXCHANGE:
+        ret = wm_ext_wasm_native_spi_ioctl(exec_env, fd, cmd, va_args);
+        break;
 #endif
 #ifdef CONFIG_EXTENDED_VFS_LEDC
-        case LEDCIOCSCFG:
-        case LEDCIOCSSETFREQ:
-        case LEDCIOCSSETDUTY:
-        case LEDCIOCSSETPHASE:
-        case LEDCIOCSPAUSE:
-        case LEDCIOCSRESUME:
-            ret = wm_ext_wasm_native_ledc_ioctl(exec_env, fd, cmd, va_args);
-            break;
+    case LEDCIOCSCFG:
+    case LEDCIOCSSETFREQ:
+    case LEDCIOCSSETDUTY:
+    case LEDCIOCSSETPHASE:
+    case LEDCIOCSPAUSE:
+    case LEDCIOCSRESUME:
+        ret = wm_ext_wasm_native_ledc_ioctl(exec_env, fd, cmd, va_args);
+        break;
 #endif
-        default:
-            errno = EINVAL;
-            ret = -1;
+    default:
+        errno = EINVAL;
+        ret = -1;
     }
 
     if (ret < 0) {

@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdint.h>
 #include <time.h>
@@ -95,7 +87,7 @@ typedef struct __mqtt_wrapper_ctx_t {
 
 typedef struct mqtt_wrapper_event {
     uint32_t handle;                    /*!< MQTT handle for this event */
-    char *data;                         /*!< Data associated with this event */                     
+    char *data;                         /*!< Data associated with this event */
     uint32_t data_len;                  /*!< Length of the data for this event */
 } mqtt_wrapper_event_t;
 
@@ -114,12 +106,14 @@ static void mqtt_wrapper_event_to_module(mqtt_wrapper_ctx_t *wrapper_mqtt_ctx, c
     mqtt_wrapper_event_t *mqtt_wrapper_event;
     bh_message_t msg;
 
-    if (module == NULL)
+    if (module == NULL) {
         return;
+    }
 
     mqtt_wrapper_event = (mqtt_wrapper_event_t *)wasm_runtime_malloc(sizeof(*mqtt_wrapper_event));
-    if (mqtt_wrapper_event == NULL)
+    if (mqtt_wrapper_event == NULL) {
         return;
+    }
 
     if (len > 0) {
         data_copy = (char *)wasm_runtime_malloc(len);
@@ -154,8 +148,9 @@ static void mqtt_wrapper_event_callback(module_data *m_data, bh_message_t msg)
     mqtt_wrapper_event_t *conn_event = (mqtt_wrapper_event_t *)bh_message_payload(msg);
     int32 data_offset;
 
-    if (conn_event == NULL)
+    if (conn_event == NULL) {
         return;
+    }
 
     func_on_conn_data = wasm_runtime_lookup_function(inst, "on_mqtt_dispatch_event", "(i32i32i32)");
     if (!func_on_conn_data) {
@@ -221,57 +216,57 @@ static esp_err_t mqtt_event_handler_callback(void *handler_args, void *event_dat
     }
 
     switch (event->event_id) {
-        case MQTT_EVENT_CONNECTED:
-            ESP_LOGD(TAG, "MQTT_EVENT_CONNECTED");
-            ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_SESSION, event->session_present)
-            break;
-        case MQTT_EVENT_DISCONNECTED:
-            ESP_LOGD(TAG, "MQTT_EVENT_DISCONNECTED");
-            break;
-        case MQTT_EVENT_SUBSCRIBED:
-        case MQTT_EVENT_UNSUBSCRIBED:
-        case MQTT_EVENT_PUBLISHED:
-            ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_MSG_ID, event->msg_id)
-            break;
-        case MQTT_EVENT_DATA:
-            ESP_LOGD(TAG, "MQTT_EVENT_DATA");
-            ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_MSG_ID, event->msg_id)
-            ATTR_CONTAINER_SET_BOOL(MQTT_EVENT_ATTR_RETAIN, event->retain)
-            ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_TOTAL_LEN, event->total_data_len)
-            ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_DATA_OFFSET, event->current_data_offset)
-            ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_QOS, event->qos)
-            ATTR_CONTAINER_SET_BOOL(MQTT_EVENT_ATTR_DUP, event->dup)
+    case MQTT_EVENT_CONNECTED:
+        ESP_LOGD(TAG, "MQTT_EVENT_CONNECTED");
+        ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_SESSION, event->session_present)
+        break;
+    case MQTT_EVENT_DISCONNECTED:
+        ESP_LOGD(TAG, "MQTT_EVENT_DISCONNECTED");
+        break;
+    case MQTT_EVENT_SUBSCRIBED:
+    case MQTT_EVENT_UNSUBSCRIBED:
+    case MQTT_EVENT_PUBLISHED:
+        ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_MSG_ID, event->msg_id)
+        break;
+    case MQTT_EVENT_DATA:
+        ESP_LOGD(TAG, "MQTT_EVENT_DATA");
+        ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_MSG_ID, event->msg_id)
+        ATTR_CONTAINER_SET_BOOL(MQTT_EVENT_ATTR_RETAIN, event->retain)
+        ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_TOTAL_LEN, event->total_data_len)
+        ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_DATA_OFFSET, event->current_data_offset)
+        ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_QOS, event->qos)
+        ATTR_CONTAINER_SET_BOOL(MQTT_EVENT_ATTR_DUP, event->dup)
 
-            /* Topic can be NULL, for data longer than the MQTT buffer */
-            if (event->topic) {
-                ESP_LOGD(TAG, "TOPIC=%.*s\r\n", event->topic_len, event->topic);
-                ATTR_CONTAINER_SET_STRING(MQTT_EVENT_ATTR_TOPIC, event->topic)
-                ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_TOPIC_LEN, event->topic_len)
-            }
-            ESP_LOGD(TAG, "DATA=%.*s\r\n", event->data_len, event->data);
-            ATTR_CONTAINER_SET_STRING(MQTT_EVENT_ATTR_DATA, event->data)
-            ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_DATA_LEN, event->data_len)
-            break;
-        case MQTT_EVENT_ERROR:
-            ESP_LOGD(TAG, "MQTT_EVENT_ERROR");
-            if (!attr_container_set_bytearray(&args, MQTT_EVENT_ATTR_ERROR_CODE, (const int8_t *)event->error_handle, sizeof(esp_mqtt_error_codes_t))) {
-                goto fail;
-            }
+        /* Topic can be NULL, for data longer than the MQTT buffer */
+        if (event->topic) {
+            ESP_LOGD(TAG, "TOPIC=%.*s\r\n", event->topic_len, event->topic);
+            ATTR_CONTAINER_SET_STRING(MQTT_EVENT_ATTR_TOPIC, event->topic)
+            ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_TOPIC_LEN, event->topic_len)
+        }
+        ESP_LOGD(TAG, "DATA=%.*s\r\n", event->data_len, event->data);
+        ATTR_CONTAINER_SET_STRING(MQTT_EVENT_ATTR_DATA, event->data)
+        ATTR_CONTAINER_SET_INT(MQTT_EVENT_ATTR_DATA_LEN, event->data_len)
+        break;
+    case MQTT_EVENT_ERROR:
+        ESP_LOGD(TAG, "MQTT_EVENT_ERROR");
+        if (!attr_container_set_bytearray(&args, MQTT_EVENT_ATTR_ERROR_CODE, (const int8_t *)event->error_handle, sizeof(esp_mqtt_error_codes_t))) {
+            goto fail;
+        }
 
-            if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
-                ESP_LOGD(TAG, "Last error code reported from esp-tls: 0x%x", event->error_handle->esp_tls_last_esp_err);
-                ESP_LOGD(TAG, "Last tls stack error number: 0x%x", event->error_handle->esp_tls_stack_err);
-                ESP_LOGD(TAG, "Last captured errno : %d (%s)",  event->error_handle->esp_transport_sock_errno,
-                        strerror(event->error_handle->esp_transport_sock_errno));
-            } else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
-                ESP_LOGD(TAG, "Connection refused error: 0x%x", event->error_handle->connect_return_code);
-            } else {
-                ESP_LOGD(TAG, "Unknown error type: 0x%x", event->error_handle->error_type);
-            }
-            break;
-        default:
-            ESP_LOGD(TAG, "Other event id:%d", event->event_id);
-            break;
+        if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+            ESP_LOGD(TAG, "Last error code reported from esp-tls: 0x%x", event->error_handle->esp_tls_last_esp_err);
+            ESP_LOGD(TAG, "Last tls stack error number: 0x%x", event->error_handle->esp_tls_stack_err);
+            ESP_LOGD(TAG, "Last captured errno : %d (%s)",  event->error_handle->esp_transport_sock_errno,
+                     strerror(event->error_handle->esp_transport_sock_errno));
+        } else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
+            ESP_LOGD(TAG, "Connection refused error: 0x%x", event->error_handle->connect_return_code);
+        } else {
+            ESP_LOGD(TAG, "Unknown error type: 0x%x", event->error_handle->error_type);
+        }
+        break;
+    default:
+        ESP_LOGD(TAG, "Other event id:%d", event->event_id);
+        break;
     }
 
     mqtt_wrapper_event_to_module(wrapper_mqtt_ctx, (char *)args, attr_container_get_serialize_length(args));
@@ -327,7 +322,7 @@ static int wasm_mqtt_init_wrapper(wasm_exec_env_t exec_env, uint32_t *mqtt_handl
     mqtt_wrapper_ctx_t *wrapper_mqtt_ctx = NULL;
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
     uint32_t module_id = app_manager_get_module_id(Module_WASM_App, module_inst);
-    
+
     if (!args) {
         return ESP_FAIL;
     }
@@ -335,7 +330,7 @@ static int wasm_mqtt_init_wrapper(wasm_exec_env_t exec_env, uint32_t *mqtt_handl
     bh_assert(module_id != ID_NONE);
 
     if (!validate_native_addr((void *)mqtt_handle, sizeof(uint32))
-        || !validate_native_addr((void *)args, sizeof(attr_container_t))) {
+            || !validate_native_addr((void *)args, sizeof(attr_container_t))) {
         ESP_LOGE(TAG, "Failed to check for mqtt_wrapper_ctx_t or args by runtime");
         goto fail;
     }
@@ -401,7 +396,7 @@ static int wasm_mqtt_start_wrapper(wasm_exec_env_t exec_env, uint32_t mqtt_handl
     if (!wrapper_mqtt_ctx) {
         return ESP_FAIL;
     }
-    
+
     return esp_mqtt_client_start(wrapper_mqtt_ctx->client);
 }
 

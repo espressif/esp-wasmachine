@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdint.h>
 #include <time.h>
@@ -166,7 +158,7 @@ static char *map_string(wasm_exec_env_t exec_env, const char *str)
         str = ptr;
     }
 
-    return (char *)str; 
+    return (char *)str;
 }
 
 static bool http_client_run_wasm(wasm_exec_env_t env, uint32_t cb, int argc, uint32_t *argv)
@@ -175,8 +167,8 @@ static bool http_client_run_wasm(wasm_exec_env_t env, uint32_t cb, int argc, uin
     if (!exec_env) {
         ESP_LOGE(TAG, "failed to create execution environment");
         return false;
-    } 
-    
+    }
+
     bool ret = wasm_runtime_call_indirect(exec_env, cb, argc, argv);
     if (!ret) {
         ESP_LOGE(TAG, "failed to run WASM callback as %s", wasm_runtime_get_exception(get_module_inst(exec_env)));
@@ -192,42 +184,42 @@ static esp_err_t wasm_http_client_event_handler(esp_http_client_event_t *evt)
     http_client_wrapper_ctx_t *http_client_wrapper = evt->user_data;
     wasm_module_inst_t module_inst = get_module_inst(http_client_wrapper->exec_env);
     uint32_t key = 0, value = 0;
-    
+
     uint32_t argv[4] = { 0 };
 
     argv[0] = (uint32_t)evt->event_id;
     argv[1] = (uint32_t)http_client_wrapper->user_data;
 
     switch (evt->event_id) {
-        case HTTP_EVENT_ERROR:
-            ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
-            break;
-        case HTTP_EVENT_ON_CONNECTED:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
-            break;
-        case HTTP_EVENT_HEADER_SENT:
-            ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
-            break;
-        case HTTP_EVENT_ON_HEADER:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
-            argv[2] = key = (uint32_t)wasm_runtime_module_dup_data(module_inst, evt->header_key, strlen(evt->header_key));
-            argv[3] = value = (uint32_t)wasm_runtime_module_dup_data(module_inst, evt->header_value, strlen(evt->header_value));
-            break;
-        case HTTP_EVENT_ON_DATA:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-            argv[2] = key = (uint32_t)wasm_runtime_module_dup_data(module_inst, evt->data, evt->data_len);
-            argv[3] = (uint32_t)evt->data_len;
-            break;
-        case HTTP_EVENT_ON_FINISH:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
-            break;
-        case HTTP_EVENT_DISCONNECTED:
-            ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
-            argv[2] = (uint32_t)evt->data;
-            argv[3] = (uint32_t)evt->data_len;
-            break;
-        default:
-            break;
+    case HTTP_EVENT_ERROR:
+        ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
+        break;
+    case HTTP_EVENT_ON_CONNECTED:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
+        break;
+    case HTTP_EVENT_HEADER_SENT:
+        ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
+        break;
+    case HTTP_EVENT_ON_HEADER:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+        argv[2] = key = (uint32_t)wasm_runtime_module_dup_data(module_inst, evt->header_key, strlen(evt->header_key));
+        argv[3] = value = (uint32_t)wasm_runtime_module_dup_data(module_inst, evt->header_value, strlen(evt->header_value));
+        break;
+    case HTTP_EVENT_ON_DATA:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+        argv[2] = key = (uint32_t)wasm_runtime_module_dup_data(module_inst, evt->data, evt->data_len);
+        argv[3] = (uint32_t)evt->data_len;
+        break;
+    case HTTP_EVENT_ON_FINISH:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
+        break;
+    case HTTP_EVENT_DISCONNECTED:
+        ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
+        argv[2] = (uint32_t)evt->data;
+        argv[3] = (uint32_t)evt->data_len;
+        break;
+    default:
+        break;
     }
 
     http_client_run_wasm(http_client_wrapper->exec_env, http_client_wrapper->event_handler, sizeof(argv) / sizeof(argv[0]), argv);
@@ -340,36 +332,36 @@ DEFINE_HTTP_CLIENT_NATIVE_WRAPPER(http_client_set_str)
     buffer = map_string(exec_env, buffer);
 
     switch (mode) {
-        case HTTP_CLIENT_SET_URL:
-            ret = esp_http_client_set_url(http_client_wrapper->client, buffer);
-            break;
-        case HTTP_CLIENT_SET_POST_FILED: {
-                http_client_native_get_arg(const int, len);
-                ret = esp_http_client_set_post_field(http_client_wrapper->client, buffer, len);
-            }
-            break;
-        case HTTP_CLIENT_SET_HEADER: {
-                http_client_native_get_arg(const char *, value);
-                value = map_string(exec_env, value);
-                ret = esp_http_client_set_header(http_client_wrapper->client, buffer, value);
-            }
-            break;
-        case HTTP_CLIENT_SET_USERNAME:
-            ret = esp_http_client_set_username(http_client_wrapper->client, buffer);
-            break;
-        case HTTP_CLIENT_SET_PASSWORD:
-            ret = esp_http_client_set_password(http_client_wrapper->client, buffer);
-            break;
-        case HTTP_CLIENT_DELETE_HEADER:
-            ret = esp_http_client_delete_header(http_client_wrapper->client, buffer);
-            break;
-        case HTTP_CLIENT_WRITE_DATA: {
-                http_client_native_get_arg(const int, len);
-                ret = esp_http_client_write(http_client_wrapper->client, buffer, len);
-            }
-            break;
-        default:
-            break;
+    case HTTP_CLIENT_SET_URL:
+        ret = esp_http_client_set_url(http_client_wrapper->client, buffer);
+        break;
+    case HTTP_CLIENT_SET_POST_FILED: {
+        http_client_native_get_arg(const int, len);
+        ret = esp_http_client_set_post_field(http_client_wrapper->client, buffer, len);
+    }
+    break;
+    case HTTP_CLIENT_SET_HEADER: {
+        http_client_native_get_arg(const char *, value);
+        value = map_string(exec_env, value);
+        ret = esp_http_client_set_header(http_client_wrapper->client, buffer, value);
+    }
+    break;
+    case HTTP_CLIENT_SET_USERNAME:
+        ret = esp_http_client_set_username(http_client_wrapper->client, buffer);
+        break;
+    case HTTP_CLIENT_SET_PASSWORD:
+        ret = esp_http_client_set_password(http_client_wrapper->client, buffer);
+        break;
+    case HTTP_CLIENT_DELETE_HEADER:
+        ret = esp_http_client_delete_header(http_client_wrapper->client, buffer);
+        break;
+    case HTTP_CLIENT_WRITE_DATA: {
+        http_client_native_get_arg(const int, len);
+        ret = esp_http_client_write(http_client_wrapper->client, buffer, len);
+    }
+    break;
+    default:
+        break;
     }
 
     return ret;
@@ -388,63 +380,63 @@ DEFINE_HTTP_CLIENT_NATIVE_WRAPPER(http_client_get_str)
     buffer = map_string(exec_env, buffer);
 
     switch (mode) {
-        case HTTP_CLIENT_GET_POST_FILED:
-            ret = esp_http_client_get_post_field(http_client_wrapper->client, &data);
-            if (data) {
-                if (buffer && len == ret) {
-                    memcpy(buffer, data, len);
-                } else {
-                    http_client_native_set_return(ret);
-                }
-                ret = ESP_OK;
+    case HTTP_CLIENT_GET_POST_FILED:
+        ret = esp_http_client_get_post_field(http_client_wrapper->client, &data);
+        if (data) {
+            if (buffer && len == ret) {
+                memcpy(buffer, data, len);
             } else {
-                ret = ESP_FAIL;
+                http_client_native_set_return(ret);
             }
-            break;
-        case HTTP_CLIENT_GET_HEADER: {
-                http_client_native_get_arg(char *, value);
-                value = map_string(exec_env, value);
-                ret = esp_http_client_get_header(http_client_wrapper->client, buffer, &data);
-                if (data) {
-                    if (value && len == strlen(data)) {
-                        memcpy(value, data, len);
-                    } else {
-                        http_client_native_set_return(strlen(data));
-                    }
-                }
+            ret = ESP_OK;
+        } else {
+            ret = ESP_FAIL;
+        }
+        break;
+    case HTTP_CLIENT_GET_HEADER: {
+        http_client_native_get_arg(char *, value);
+        value = map_string(exec_env, value);
+        ret = esp_http_client_get_header(http_client_wrapper->client, buffer, &data);
+        if (data) {
+            if (value && len == strlen(data)) {
+                memcpy(value, data, len);
+            } else {
+                http_client_native_set_return(strlen(data));
             }
-            break;
-        case HTTP_CLIENT_GET_USERNAME:
-            ret = esp_http_client_get_username(http_client_wrapper->client, &data);
-            if (data) {
-                if (buffer && len == strlen(data)) {
-                    memcpy(buffer, data, len);
-                } else {
-                    http_client_native_set_return(strlen(data));
-                }
+        }
+    }
+    break;
+    case HTTP_CLIENT_GET_USERNAME:
+        ret = esp_http_client_get_username(http_client_wrapper->client, &data);
+        if (data) {
+            if (buffer && len == strlen(data)) {
+                memcpy(buffer, data, len);
+            } else {
+                http_client_native_set_return(strlen(data));
             }
-            break;
-        case HTTP_CLIENT_GET_PASSWORD:
-            ret = esp_http_client_get_password(http_client_wrapper->client, &data);
-            if (data) {
-                if (buffer && len == strlen(data)) {
-                    memcpy(buffer, data, len);
-                } else {
-                    http_client_native_set_return(strlen(data));
-                }
+        }
+        break;
+    case HTTP_CLIENT_GET_PASSWORD:
+        ret = esp_http_client_get_password(http_client_wrapper->client, &data);
+        if (data) {
+            if (buffer && len == strlen(data)) {
+                memcpy(buffer, data, len);
+            } else {
+                http_client_native_set_return(strlen(data));
             }
-            break;
-        case HTTP_CLIENT_READ_DATA:
-            ret = esp_http_client_read(http_client_wrapper->client, buffer, len);
-            break;
-        case HTTP_CLIENT_READ_RESP:
-            ret = esp_http_client_read_response(http_client_wrapper->client, buffer, len);
-            break;
-        case HTTP_CLIENT_GET_URL:
-            ret = esp_http_client_get_url(http_client_wrapper->client, buffer, len);
-            break;
-        default:
-            break;
+        }
+        break;
+    case HTTP_CLIENT_READ_DATA:
+        ret = esp_http_client_read(http_client_wrapper->client, buffer, len);
+        break;
+    case HTTP_CLIENT_READ_RESP:
+        ret = esp_http_client_read_response(http_client_wrapper->client, buffer, len);
+        break;
+    case HTTP_CLIENT_GET_URL:
+        ret = esp_http_client_get_url(http_client_wrapper->client, buffer, len);
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -459,20 +451,20 @@ DEFINE_HTTP_CLIENT_NATIVE_WRAPPER(http_client_set_int)
     http_client_native_get_arg(const int, value);
 
     switch (mode) {
-        case HTTP_CLIENT_SET_AUTHTYPE:
-            ret = esp_http_client_set_authtype(http_client_wrapper->client, value);
-            break;
-        case HTTP_CLIENT_SET_METHOD:
-            ret = esp_http_client_set_method(http_client_wrapper->client, value);
-            break;
-        case HTTP_CLIENT_SET_TIMEOUT:
-            ret = esp_http_client_set_timeout_ms(http_client_wrapper->client, value);
-            break;
-        case HTTP_CLIENT_OPEN:
-            ret = esp_http_client_open(http_client_wrapper->client, value);
-            break;
-        default:
-            break;
+    case HTTP_CLIENT_SET_AUTHTYPE:
+        ret = esp_http_client_set_authtype(http_client_wrapper->client, value);
+        break;
+    case HTTP_CLIENT_SET_METHOD:
+        ret = esp_http_client_set_method(http_client_wrapper->client, value);
+        break;
+    case HTTP_CLIENT_SET_TIMEOUT:
+        ret = esp_http_client_set_timeout_ms(http_client_wrapper->client, value);
+        break;
+    case HTTP_CLIENT_OPEN:
+        ret = esp_http_client_open(http_client_wrapper->client, value);
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -486,35 +478,35 @@ DEFINE_HTTP_CLIENT_NATIVE_WRAPPER(http_client_get_int)
     http_client_native_get_arg(const http_client_wrapper_ctx_t *, http_client_wrapper);
 
     switch (mode) {
-        case HTTP_CLIENT_GET_ERRNO:
-            ret = esp_http_client_get_errno(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_FETCH_HEADER:
-            ret = esp_http_client_fetch_headers(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_IS_CHUNKED:
-            ret = esp_http_client_is_chunked_response(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_GET_STATUS_CODE:
-            ret = esp_http_client_get_status_code(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_GET_CONTENT_LENGTH:
-            ret = esp_http_client_get_content_length(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_GET_TRANSPORT_TYPE:
-            ret = esp_http_client_get_transport_type(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_IS_COMPLETE:
-            ret = esp_http_client_is_complete_data_received(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_FLUSH_RESPONSE:
-            esp_http_client_flush_response(http_client_wrapper->client, &ret);
-            break;
-        case HTTP_CLIENT_GET_CHUNK_LENGTH:
-            esp_http_client_get_chunk_length(http_client_wrapper->client, &ret);
-            break;
-        default:
-            break;
+    case HTTP_CLIENT_GET_ERRNO:
+        ret = esp_http_client_get_errno(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_FETCH_HEADER:
+        ret = esp_http_client_fetch_headers(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_IS_CHUNKED:
+        ret = esp_http_client_is_chunked_response(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_GET_STATUS_CODE:
+        ret = esp_http_client_get_status_code(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_GET_CONTENT_LENGTH:
+        ret = esp_http_client_get_content_length(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_GET_TRANSPORT_TYPE:
+        ret = esp_http_client_get_transport_type(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_IS_COMPLETE:
+        ret = esp_http_client_is_complete_data_received(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_FLUSH_RESPONSE:
+        esp_http_client_flush_response(http_client_wrapper->client, &ret);
+        break;
+    case HTTP_CLIENT_GET_CHUNK_LENGTH:
+        esp_http_client_get_chunk_length(http_client_wrapper->client, &ret);
+        break;
+    default:
+        break;
     }
 
     http_client_native_set_return(ret);
@@ -530,25 +522,25 @@ DEFINE_HTTP_CLIENT_NATIVE_WRAPPER(http_client_common)
     http_client_native_get_arg(http_client_wrapper_ctx_t *, http_client_wrapper);
 
     switch (mode) {
-        case HTTP_CLIENT_PERFORM:
-            ret = esp_http_client_perform(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_CLOSE:
-            ret = esp_http_client_close(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_CLEANUP:
-            ret = esp_http_client_cleanup(http_client_wrapper->client);
-            wasm_runtime_free(http_client_wrapper);
-            break;
-        case HTTP_CLIENT_SET_REDIRECTION:
-            ret = esp_http_client_set_redirection(http_client_wrapper->client);
-            break;
-        case HTTP_CLIENT_ADD_AUTH:
-            esp_http_client_add_auth(http_client_wrapper->client);
-            ret = ESP_OK;
-            break;
-        default:
-            break;
+    case HTTP_CLIENT_PERFORM:
+        ret = esp_http_client_perform(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_CLOSE:
+        ret = esp_http_client_close(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_CLEANUP:
+        ret = esp_http_client_cleanup(http_client_wrapper->client);
+        wasm_runtime_free(http_client_wrapper);
+        break;
+    case HTTP_CLIENT_SET_REDIRECTION:
+        ret = esp_http_client_set_redirection(http_client_wrapper->client);
+        break;
+    case HTTP_CLIENT_ADD_AUTH:
+        esp_http_client_add_auth(http_client_wrapper->client);
+        ret = ESP_OK;
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -610,8 +602,9 @@ static int wasm_http_client_call_native_func_wrapper(wasm_exec_env_t exec_env, i
 
         int ret = func_desc->func(exec_env, argv_copy, argv);
 
-        if (argv_copy != argv_copy_buf)
+        if (argv_copy != argv_copy_buf) {
             wasm_runtime_free(argv_copy);
+        }
 
         ESP_LOGD(TAG, "func_id=%"PRIx32" is done", func_id);
 
