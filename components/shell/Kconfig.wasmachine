@@ -1,7 +1,7 @@
 menu "Shell"
     config WASMACHINE_SHELL
         bool "Enable WASMachine Shell"
-        default y
+        default n
 
     if WASMACHINE_SHELL
         config WASMACHINE_SHELL_WASM_APP_STACK_SIZE

@@ -35,4 +35,4 @@ endif()
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${include_dir}
                        PRIV_INCLUDE_DIRS ${priv_include_dir}
-                       REQUIRES "wasm-micro-runtime" "console" "wasmachine")
+                       REQUIRES "esp_wifi" "wasm-micro-runtime" "console" "wasmachine")

@@ -23,14 +23,7 @@ LVGL = { 'name': 'lvgl',
          'branch': 'v8.1.0',
          'patch': True }
 
-RAINMAKER = { 'name': 'esp-rainmaker',
-              'url': 'https://github.com/espressif/esp-rainmaker.git', 
-              'path': 'components/esp-rainmaker',
-              'branch': 'master',
-              'commit_id': 'fa00c1b0',
-              'patch': False }
-
-COMPONENTS = [ LVGL, RAINMAKER]
+COMPONENTS = [ LVGL ]
 
 ROOT_PATH=os.getcwd()
 
