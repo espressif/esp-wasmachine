@@ -12,6 +12,8 @@
 
 
 .build_sdk: &build_sdk |
+  cd examples/wasmachine
+
   export EXTRA_CFLAGS="-Werror"
   export EXTRA_CXXFLAGS="-Werror"
 
