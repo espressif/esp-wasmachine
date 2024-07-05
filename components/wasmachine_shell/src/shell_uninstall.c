@@ -1,16 +1,8 @@
-// Copyright 2023 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,7 +19,7 @@
 
 #define URL_MAX_LEN 256
 #define UNISTALL_TIMEOUT 1000
-#define TOCHAR(_d) # _d 
+#define TOCHAR(_d) # _d
 
 #define url_remain_space (sizeof(url) - strlen(url))
 
@@ -51,7 +43,7 @@ static int uninstall_main(int argc, char **argv)
 
     if (!uninstall_main_arg.name->count) {
         ESP_LOGE(TAG, "App name should be given");
-        return -1; 
+        return -1;
     }
     m_name = uninstall_main_arg.name->sval[0];
 
@@ -64,7 +56,7 @@ static int uninstall_main(int argc, char **argv)
     snprintf(url, sizeof(url) - 1, "/applet?name=%s", m_name);
     if (uninstall_main_arg.type->count > 0 && url_remain_space > 0) {
         snprintf(url + strlen(url), url_remain_space, "&type=%s",
-                uninstall_main_arg.type->sval[0]);
+                 uninstall_main_arg.type->sval[0]);
     }
 
     init_request(request, url, COAP_DELETE, FMT_ATTR_CONTAINER, NULL, 0);
@@ -117,4 +109,3 @@ void shell_regitser_cmd_uninstall(void)
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
-

@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <sys/lock.h>
 #include <inttypes.h>
@@ -48,7 +40,7 @@
 #define LVGL_NATIVE_WRAPPER(id, func_name, argc)                \
     [id] = { func_name ## _wrapper, argc }
 
-#define LVGL_TRACE_ABORT()  abort()  
+#define LVGL_TRACE_ABORT()  abort()
 
 typedef void (*lvgl_func_t)(wasm_exec_env_t exec_env, uint32_t *args, uint32_t *args_ret);
 
@@ -227,7 +219,7 @@ static void *map_ptr(wasm_exec_env_t exec_env, const void *app_addr)
         app_addr = ptr;
     }
 
-    return (void *)app_addr; 
+    return (void *)app_addr;
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_disp_get_next)
@@ -296,7 +288,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_disp_set_monitor_cb)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_remove_style)
 {
-    lvgl_native_get_arg(lv_obj_t   *, obj);
+    lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
@@ -581,7 +573,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_table_set_cell_value)
     lvgl_native_get_arg(uint16_t, col);
     lvgl_native_get_arg(const char *, txt);
 
-    txt = map_string(exec_env, txt);   
+    txt = map_string(exec_env, txt);
 
     lv_table_set_cell_value(obj, row, col, txt);
 }
@@ -1049,7 +1041,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_palette_main)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_tabview_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, parent);
     lvgl_native_get_arg(lv_dir_t, tab_pos);
@@ -1073,7 +1065,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_text_font)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_tabview_get_tab_btns)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
@@ -1088,12 +1080,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_left)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_pad_left(obj, value, selector);  
+    lv_obj_set_style_pad_left(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_tabview_add_tab)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, tv);
     lvgl_native_get_arg(const char *, name);
@@ -1110,7 +1102,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_height)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_coord_t, value);
 
-    lv_obj_set_height(obj, value);  
+    lv_obj_set_height(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_label_set_long_mode)
@@ -1118,18 +1110,18 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_label_set_long_mode)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_label_long_mode_t, value);
 
-    lv_label_set_long_mode(obj, value); 
+    lv_label_set_long_mode(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_btn_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_btn_create(obj);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_state)
@@ -1137,18 +1129,18 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_state)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_state_t, value);
 
-    lv_obj_add_state(obj, value); 
+    lv_obj_add_state(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_keyboard_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_keyboard_create(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_flag)
@@ -1156,19 +1148,19 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_flag)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_obj_flag_t, value);
 
-    lv_obj_add_flag(obj, value);  
+    lv_obj_add_flag(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_textarea_create(obj);
 
     lvgl_native_set_return(res);
-} 
+}
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_set_one_line)
 {
@@ -1190,7 +1182,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_set_placeholder_text)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_event_cb)
 {
-    struct _lv_event_dsc_t * res;
+    struct _lv_event_dsc_t *res;
     lvgl_native_return_type(struct _lv_event_dsc_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_event_cb_t, event_cb);
@@ -1199,7 +1191,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_event_cb)
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
     res = lv_obj_add_event_cb(obj, event_cb, filter, user_data);
-    res->module_inst = module_inst; 
+    res->module_inst = module_inst;
 
     lvgl_native_set_return(res);
 }
@@ -1214,7 +1206,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_set_password_mode)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_dropdown_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
@@ -1235,31 +1227,31 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_dropdown_set_options_static)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_slider_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_slider_create(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_refresh_ext_draw_size)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
 
-    lv_obj_refresh_ext_draw_size(obj);  
+    lv_obj_refresh_ext_draw_size(obj);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_switch_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_switch_create(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_grid_dsc_array)
@@ -1271,7 +1263,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_grid_dsc_array)
     col_dsc = map_ptr(exec_env, col_dsc);
     row_dsc = map_ptr(exec_env, row_dsc);
 
-    lv_obj_set_grid_dsc_array(obj, col_dsc, row_dsc);  
+    lv_obj_set_grid_dsc_array(obj, col_dsc, row_dsc);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_grid_cell)
@@ -1284,7 +1276,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_grid_cell)
     lvgl_native_get_arg(uint8_t, row_pos);
     lvgl_native_get_arg(uint8_t, row_span);
 
-    lv_obj_set_grid_cell(obj, column_align, col_pos, col_span, row_align, row_pos, row_span);  
+    lv_obj_set_grid_cell(obj, column_align, col_pos, col_span, row_align, row_pos, row_span);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_text_align)
@@ -1293,7 +1285,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_text_align)
     lvgl_native_get_arg(lv_text_align_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_text_align(obj, value, selector);  
+    lv_obj_set_style_text_align(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_flex_grow)
@@ -1301,7 +1293,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_flex_grow)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(uint8_t, value);
 
-    lv_obj_set_flex_grow(obj, value);   
+    lv_obj_set_flex_grow(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_max_height)
@@ -1310,28 +1302,28 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_max_height)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_max_height(obj, value, selector);   
+    lv_obj_set_style_max_height(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_chart_create(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_group_get_default)
 {
-    lv_group_t * res;
+    lv_group_t *res;
     lvgl_native_return_type(lv_group_t *);
 
     res = lv_group_get_default();
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_group_add_obj)
@@ -1339,7 +1331,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_group_add_obj)
     lvgl_native_get_arg(lv_group_t *, group);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
-    lv_group_add_obj(group, obj); 
+    lv_group_add_obj(group, obj);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_axis_tick)
@@ -1353,7 +1345,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_axis_tick)
     lvgl_native_get_arg(bool, label_en);
     lvgl_native_get_arg(lv_coord_t, draw_size);
 
-    lv_chart_set_axis_tick(obj, axis, major_len, minor_len, major_cnt, minor_cnt, label_en, draw_size); 
+    lv_chart_set_axis_tick(obj, axis, major_len, minor_len, major_cnt, minor_cnt, label_en, draw_size);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_div_line_count)
@@ -1362,7 +1354,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_div_line_count)
     lvgl_native_get_arg(uint8_t, hdiv);
     lvgl_native_get_arg(uint8_t, vdiv);
 
-    lv_chart_set_div_line_count(obj, hdiv, vdiv); 
+    lv_chart_set_div_line_count(obj, hdiv, vdiv);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_point_count)
@@ -1370,7 +1362,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_point_count)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(uint16_t, value);
 
-    lv_chart_set_point_count(obj, value); 
+    lv_chart_set_point_count(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_zoom_x)
@@ -1378,7 +1370,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_zoom_x)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(uint16_t, value);
 
-    lv_chart_set_zoom_x(obj, value); 
+    lv_chart_set_zoom_x(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_border_side)
@@ -1387,7 +1379,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_border_side)
     lvgl_native_get_arg(lv_border_side_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_border_side(obj, value, selector); 
+    lv_obj_set_style_border_side(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_radius)
@@ -1396,12 +1388,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_radius)
     lvgl_native_get_arg(lv_border_side_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_radius(obj, value, selector); 
+    lv_obj_set_style_radius(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_add_series)
 {
-    lv_chart_series_t * res;
+    lv_chart_series_t *res;
     lvgl_native_return_type(lv_chart_series_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_color_t, color);
@@ -1430,13 +1422,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_next_value)
     lvgl_native_get_arg(lv_chart_series_t *, ser);
     lvgl_native_get_arg(lv_coord_t, value);
 
-    lv_chart_set_next_value(obj, ser, value); 
+    lv_chart_set_next_value(obj, ser, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_type)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_chart_type_t , type);
+    lvgl_native_get_arg(lv_chart_type_t, type);
 
     lv_chart_set_type(obj, type);
 }
@@ -1447,7 +1439,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_row)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_pad_row(obj, value, selector); 
+    lv_obj_set_style_pad_row(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_column)
@@ -1456,7 +1448,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_column)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_pad_column(obj, value, selector); 
+    lv_obj_set_style_pad_column(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_palette_lighten)
@@ -1473,24 +1465,24 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_palette_lighten)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_parent)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_obj_get_parent(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_scale)
 {
-    lv_meter_scale_t * res;
+    lv_meter_scale_t *res;
     lvgl_native_return_type(lv_meter_scale_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_meter_add_scale(obj);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_scale_range)
@@ -1519,7 +1511,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_scale_ticks)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_arc)
 {
-    lv_meter_indicator_t * res;
+    lv_meter_indicator_t *res;
     lvgl_native_return_type(lv_meter_indicator_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_meter_scale_t *, scale);
@@ -1529,7 +1521,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_arc)
 
     res = lv_meter_add_arc(obj, scale, width, color, r_mod);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_indicator_start_value)
@@ -1538,7 +1530,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_indicator_start_value)
     lvgl_native_get_arg(lv_meter_indicator_t *, indic);
     lvgl_native_get_arg(int32_t, value);
 
-    lv_meter_set_indicator_start_value(obj, indic, value); 
+    lv_meter_set_indicator_start_value(obj, indic, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_indicator_end_value)
@@ -1547,7 +1539,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_indicator_end_value)
     lvgl_native_get_arg(lv_meter_indicator_t *, indic);
     lvgl_native_get_arg(int32_t, value);
 
-    lv_meter_set_indicator_end_value(obj, indic, value);   
+    lv_meter_set_indicator_end_value(obj, indic, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_right)
@@ -1556,7 +1548,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_right)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_pad_right(obj, value, selector); 
+    lv_obj_set_style_pad_right(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_width)
@@ -1565,7 +1557,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_width)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_width(obj, value, selector);   
+    lv_obj_set_style_width(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_height)
@@ -1574,7 +1566,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_height)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_height(obj, value, selector);   
+    lv_obj_set_style_height(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_palette_darken)
@@ -1586,7 +1578,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_palette_darken)
 
     res = lv_palette_darken(p, lvl);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_outline_color)
@@ -1604,7 +1596,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_outline_width)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_outline_width(obj, value, selector);   
+    lv_obj_set_style_outline_width(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_scale_major_ticks)
@@ -1622,7 +1614,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_scale_major_ticks)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_scale_lines)
 {
-    lv_meter_indicator_t * res;
+    lv_meter_indicator_t *res;
     lvgl_native_return_type(lv_meter_indicator_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_meter_scale_t *, scale);
@@ -1642,7 +1634,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_bottom)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_pad_bottom(obj, value, selector); 
+    lv_obj_set_style_pad_bottom(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_disp_get_dpi)
@@ -1653,18 +1645,18 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_disp_get_dpi)
 
     res = lv_disp_get_dpi(disp);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_checkbox_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_checkbox_create(obj);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_checkbox_set_text)
@@ -1674,7 +1666,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_checkbox_set_text)
 
     value = map_string(exec_env, value);
 
-    lv_checkbox_set_text(obj, value); 
+    lv_checkbox_set_text(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_flex_align)
@@ -1684,7 +1676,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_flex_align)
     lvgl_native_get_arg(lv_flex_align_t, cross_place);
     lvgl_native_get_arg(lv_flex_align_t, track_cross_place);
 
-    lv_obj_set_flex_align(obj, main_place, cross_place, track_cross_place); 
+    lv_obj_set_flex_align(obj, main_place, cross_place, track_cross_place);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_opa)
@@ -1693,13 +1685,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_opa)
     lvgl_native_get_arg(lv_opa_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_opa(obj, value, selector); 
+    lv_obj_set_style_opa(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_clear_flag)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_obj_flag_t , f);
+    lvgl_native_get_arg(lv_obj_flag_t, f);
 
     lv_obj_clear_flag(obj, f);
 }
@@ -1710,7 +1702,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_top)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_pad_top(obj, value, selector); 
+    lv_obj_set_style_pad_top(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_shadow_width)
@@ -1719,7 +1711,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_shadow_width)
     lvgl_native_get_arg(lv_coord_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_shadow_width(obj, value, selector); 
+    lv_obj_set_style_shadow_width(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_bg_img_src)
@@ -1730,7 +1722,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_bg_img_src)
 
     value = map_img_dsc(exec_env, value);
 
-    lv_obj_set_style_bg_img_src(obj, value, selector); 
+    lv_obj_set_style_bg_img_src(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_code)
@@ -1741,7 +1733,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_code)
 
     res = lv_event_get_code(e);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_target)
@@ -1754,7 +1746,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_target)
 
     res = lv_event_get_target(e);
 
-    lvgl_native_set_return(res);   
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_user_data)
@@ -1767,28 +1759,28 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_user_data)
 
     res = lv_event_get_user_data(e);
 
-    lvgl_native_set_return(res);    
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_get_act)
 {
-    lv_indev_t * res;
+    lv_indev_t *res;
     lvgl_native_return_type(lv_indev_t *);
 
     res = lv_indev_get_act();
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_get_type)
 {
     lv_indev_type_t res;
     lvgl_native_return_type(lv_indev_type_t);
-    lvgl_native_get_arg(const lv_indev_t * , indev);
+    lvgl_native_get_arg(const lv_indev_t *, indev);
 
     res = lv_indev_get_type(indev);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_keyboard_set_textarea)
@@ -1804,7 +1796,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_scroll_to_view_recursive)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_anim_enable_t, anim_en);
 
-    lv_obj_scroll_to_view_recursive(obj, anim_en); 
+    lv_obj_scroll_to_view_recursive(obj, anim_en);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_reset)
@@ -1812,7 +1804,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_reset)
     lvgl_native_get_arg(lv_indev_t *, indev);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
-    lv_indev_reset(indev, obj);     
+    lv_indev_reset(indev, obj);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_clear_state)
@@ -1820,29 +1812,29 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_clear_state)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_state_t, state);
 
-    lv_obj_clear_state(obj, state);    
+    lv_obj_clear_state(obj, state);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_disp_get_layer_top)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_disp_t *, disp);
 
     res = lv_disp_get_layer_top(disp);
 
-    lvgl_native_set_return(res);    
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_calendar_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_calendar_create(obj);
 
-    lvgl_native_set_return(res);     
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_calendar_set_showed_date)
@@ -1856,13 +1848,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_calendar_set_showed_date)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_calendar_header_dropdown_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_calendar_header_dropdown_create(obj);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_param)
@@ -1873,13 +1865,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_param)
 
     res = lv_event_get_param(e);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_has_state)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_state_t , state);
+    lvgl_native_get_arg(lv_state_t, state);
 
     lv_obj_has_state(obj, state);
 }
@@ -1892,7 +1884,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_bar_get_value)
 
     res = lv_bar_get_value(obj);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_txt_get_size)
@@ -1909,7 +1901,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_txt_get_size)
     text = map_string(exec_env, text);
     font = map_font(exec_env, font);
 
-    lv_txt_get_size(size_res, text, font, letter_space, line_space, max_width, flag); 
+    lv_txt_get_size(size_res, text, font, letter_space, line_space, max_width, flag);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_rect_dsc_init)
@@ -1972,7 +1964,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_current_target)
 
     res = lv_event_get_current_target(e);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_calendar_get_pressed_date)
@@ -1986,7 +1978,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_calendar_get_pressed_date)
 
     res = lv_calendar_get_pressed_date(obj, data);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_set_text)
@@ -1996,21 +1988,21 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_set_text)
 
     value = map_string(exec_env, value);
 
-    lv_textarea_set_text(obj, value); 
+    lv_textarea_set_text(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_del)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
 
-    lv_obj_del(obj); 
+    lv_obj_del(obj);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_invalidate)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
 
-    lv_obj_invalidate(obj); 
+    lv_obj_invalidate(obj);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_get_type)
@@ -2021,7 +2013,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_get_type)
 
     res = lv_chart_get_type(obj);
 
-    lvgl_native_set_return(res);   
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_mask_line_points_init)
@@ -2050,7 +2042,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_mask_add)
 
     res = lv_draw_mask_add(param, custom_id);
 
-    lvgl_native_set_return(res);  
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_mask_fade_init)
@@ -2082,18 +2074,18 @@ DEFINE_LVGL_NATIVE_WRAPPER(_lv_area_intersect)
 
     res = _lv_area_intersect(res_p, a1_p, a2_p);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_mask_remove_id)
 {
-    void * res;
+    void *res;
     lvgl_native_return_type(void *);
     lvgl_native_get_arg(int16_t, id);
 
     res = lv_draw_mask_remove_id(id);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_get_pressed_point)
@@ -2104,42 +2096,42 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_get_pressed_point)
 
     res = lv_chart_get_pressed_point(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_get_series_next)
 {
-    lv_chart_series_t * res;
+    lv_chart_series_t *res;
     lvgl_native_return_type(lv_chart_series_t *);
     lvgl_native_get_arg(lv_obj_t *, chart);
     lvgl_native_get_arg(lv_chart_series_t *, ser);
 
     res = lv_chart_get_series_next(chart, ser);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_meter_create(obj);
 
-    lvgl_native_set_return(res);     
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_child)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(int32_t, id);
 
     res = lv_obj_get_child(obj, id);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_indicator_value)
@@ -2172,7 +2164,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_map)
 
     res = lv_map(x, min_in, max_in, min_out, max_out);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_child_cnt)
@@ -2183,12 +2175,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_child_cnt)
 
     res = lv_obj_get_child_cnt(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_needle_line)
 {
-    lv_meter_indicator_t * res;
+    lv_meter_indicator_t *res;
     lvgl_native_return_type(lv_meter_indicator_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_meter_scale_t *, scale);
@@ -2198,7 +2190,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_needle_line)
 
     res = lv_meter_add_needle_line(obj, scale, width, color, r_mod);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_mem_test)
@@ -2208,7 +2200,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_mem_test)
 
     res = lv_mem_test();
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_mem_monitor)
@@ -2222,14 +2214,14 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_mem_monitor)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_colorwheel_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(bool, knob_recolor);
 
     res = lv_colorwheel_create(obj, knob_recolor);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_tabview_set_act)
@@ -2259,13 +2251,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_del_async)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_bar_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_bar_create(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_bar_set_range)
@@ -2306,19 +2298,19 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_anim_time)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_win_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_coord_t, header_height);
 
     res = lv_win_create(obj, header_height);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_win_add_title)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, txt);
@@ -2327,12 +2319,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_win_add_title)
 
     res = lv_win_add_title(obj, txt);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_win_add_btn)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const void *, icon);
@@ -2342,18 +2334,18 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_win_add_btn)
 
     res = lv_win_add_btn(obj, icon, btn_w);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_win_get_content)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_win_get_content(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_keyboard_set_mode)
@@ -2391,13 +2383,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_dropdown_set_selected)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_roller_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_roller_create(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_roller_set_options)
@@ -2422,7 +2414,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_roller_set_selected)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_msgbox_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, title);
@@ -2456,23 +2448,23 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_msgbox_create)
 
     res = lv_msgbox_create(obj, title, txt, btn_txts, add_close_btn);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_tileview_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_tileview_create(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_tileview_add_tile)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(uint8_t, row_id);
@@ -2481,7 +2473,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_tileview_add_tile)
 
     res = lv_tileview_add_tile(obj, row_id, col_id, dir);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_tile_id)
@@ -2496,18 +2488,18 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_tile_id)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_list_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_list_create(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_list_add_btn)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, icon);
@@ -2518,7 +2510,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_list_add_btn)
 
     res = lv_list_add_btn(obj, icon, txt);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_scroll_to_view)
@@ -2557,13 +2549,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_add_text)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_spinbox_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
     res = lv_spinbox_create(obj);
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_spinbox_set_digit_format)
@@ -2744,7 +2736,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_scroll_dir)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_imgbtn_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
@@ -3007,7 +2999,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_path_ease_in)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_get_user_data)
 {
-    void * res;
+    void *res;
     lvgl_native_return_type(void *);
     lvgl_native_get_arg(lv_timer_t *, timer);
 
@@ -3032,7 +3024,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_data)
         res = 0;
     }
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_draw_part_dsc_get_data)
@@ -3155,154 +3147,154 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_series_get_data)
         res = 0;
     }
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_font_get_font)
 {
-    const lv_font_t * res;
+    const lv_font_t *res;
     lvgl_native_return_type(const lv_font_t *);
     lvgl_native_get_arg(int, type);
 
-    switch(type) {
+    switch (type) {
 #if LV_FONT_MONTSERRAT_8
-        case LV_FONT_MONTSERRAT_8_FONT:
-            res = &lv_font_montserrat_8;
-            break;
+    case LV_FONT_MONTSERRAT_8_FONT:
+        res = &lv_font_montserrat_8;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_10
-        case LV_FONT_MONTSERRAT_10_FONT:
-            res = &lv_font_montserrat_10;
-            break;
+    case LV_FONT_MONTSERRAT_10_FONT:
+        res = &lv_font_montserrat_10;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_12
-        case LV_FONT_MONTSERRAT_12_FONT:
-            res = &lv_font_montserrat_12;
-            break;
+    case LV_FONT_MONTSERRAT_12_FONT:
+        res = &lv_font_montserrat_12;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_14
-        case LV_FONT_MONTSERRAT_14_FONT:
-            res = &lv_font_montserrat_14;
-            break;
+    case LV_FONT_MONTSERRAT_14_FONT:
+        res = &lv_font_montserrat_14;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_16
-        case LV_FONT_MONTSERRAT_16_FONT:
-            res = &lv_font_montserrat_16;
-            break;
+    case LV_FONT_MONTSERRAT_16_FONT:
+        res = &lv_font_montserrat_16;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_18
-        case LV_FONT_MONTSERRAT_18_FONT:
-            res = &lv_font_montserrat_18;
-            break;
+    case LV_FONT_MONTSERRAT_18_FONT:
+        res = &lv_font_montserrat_18;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_20
-        case LV_FONT_MONTSERRAT_20_FONT:
-            res = &lv_font_montserrat_20;
-            break;
+    case LV_FONT_MONTSERRAT_20_FONT:
+        res = &lv_font_montserrat_20;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_22
-        case LV_FONT_MONTSERRAT_22_FONT:
-            res = &lv_font_montserrat_22;
-            break;
+    case LV_FONT_MONTSERRAT_22_FONT:
+        res = &lv_font_montserrat_22;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_24
-        case LV_FONT_MONTSERRAT_24_FONT:
-            res = &lv_font_montserrat_24;
-            break;
+    case LV_FONT_MONTSERRAT_24_FONT:
+        res = &lv_font_montserrat_24;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_26
-        case LV_FONT_MONTSERRAT_26_FONT:
-            res = &lv_font_montserrat_26;
-            break;
+    case LV_FONT_MONTSERRAT_26_FONT:
+        res = &lv_font_montserrat_26;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_28
-        case LV_FONT_MONTSERRAT_28_FONT:
-            res = &lv_font_montserrat_28;
-            break;
+    case LV_FONT_MONTSERRAT_28_FONT:
+        res = &lv_font_montserrat_28;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_30
-        case LV_FONT_MONTSERRAT_30_FONT:
-            res = &lv_font_montserrat_30;
-            break;
+    case LV_FONT_MONTSERRAT_30_FONT:
+        res = &lv_font_montserrat_30;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_32
-        case LV_FONT_MONTSERRAT_32_FONT:
-            res = &lv_font_montserrat_32;
-            break;
+    case LV_FONT_MONTSERRAT_32_FONT:
+        res = &lv_font_montserrat_32;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_34
-        case LV_FONT_MONTSERRAT_34_FONT:
-            res = &lv_font_montserrat_34;
-            break;
+    case LV_FONT_MONTSERRAT_34_FONT:
+        res = &lv_font_montserrat_34;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_36
-        case LV_FONT_MONTSERRAT_36_FONT:
-            res = &lv_font_montserrat_36;
-            break;
+    case LV_FONT_MONTSERRAT_36_FONT:
+        res = &lv_font_montserrat_36;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_38
-        case LV_FONT_MONTSERRAT_38_FONT:
-            res = &lv_font_montserrat_38;
-            break;
+    case LV_FONT_MONTSERRAT_38_FONT:
+        res = &lv_font_montserrat_38;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_40
-        case LV_FONT_MONTSERRAT_40_FONT:
-            res = &lv_font_montserrat_40;
-            break;
+    case LV_FONT_MONTSERRAT_40_FONT:
+        res = &lv_font_montserrat_40;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_42
-        case LV_FONT_MONTSERRAT_42_FONT:
-            res = &lv_font_montserrat_42;
-            break;
+    case LV_FONT_MONTSERRAT_42_FONT:
+        res = &lv_font_montserrat_42;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_44
-        case LV_FONT_MONTSERRAT_44_FONT:
-            res = &lv_font_montserrat_44;
-            break;
+    case LV_FONT_MONTSERRAT_44_FONT:
+        res = &lv_font_montserrat_44;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_46
-        case LV_FONT_MONTSERRAT_46_FONT:
-            res = &lv_font_montserrat_46;
-            break;
+    case LV_FONT_MONTSERRAT_46_FONT:
+        res = &lv_font_montserrat_46;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_48
-        case LV_FONT_MONTSERRAT_48_FONT:
-            res = &lv_font_montserrat_48;
-            break;
+    case LV_FONT_MONTSERRAT_48_FONT:
+        res = &lv_font_montserrat_48;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_28_COMPRESSED
-        case LV_FONT_MONTSERRAT_28_COMPRESSED_FONT:
-            res = &lv_font_montserrat_28_compressed;
-            break;
+    case LV_FONT_MONTSERRAT_28_COMPRESSED_FONT:
+        res = &lv_font_montserrat_28_compressed;
+        break;
 #endif
 #if LV_FONT_MONTSERRAT_12_SUBPX
-        case LV_FONT_MONTSERRAT_12_SUBPX_FONT:
-            res = &lv_font_montserrat_12_subpx;
-            break;
+    case LV_FONT_MONTSERRAT_12_SUBPX_FONT:
+        res = &lv_font_montserrat_12_subpx;
+        break;
 #endif
 #if LV_FONT_UNSCII_8
-        case LV_FONT_UNSCII_8_FONT:
-            res = &lv_font_unscii_8;
-            break;
+    case LV_FONT_UNSCII_8_FONT:
+        res = &lv_font_unscii_8;
+        break;
 #endif
 #if LV_FONT_UNSCII_16
-        case LV_FONT_UNSCII_16_FONT:
-            res = &lv_font_unscii_16;
-            break;
+    case LV_FONT_UNSCII_16_FONT:
+        res = &lv_font_unscii_16;
+        break;
 #endif
 #if LV_FONT_DEJAVU_16_PERSIAN_HEBREW
-        case LV_FONT_DEJAVU_16_PERSIAN_HEBREW_FONT:
-            res = &lv_font_dejavu_16_persian_hebrew;
-            break;
+    case LV_FONT_DEJAVU_16_PERSIAN_HEBREW_FONT:
+        res = &lv_font_dejavu_16_persian_hebrew;
+        break;
 #endif
 #if LV_FONT_SIMSUN_16_CJK
-        case LV_FONT_SIMSUN_16_CJK_FONT:
-            res = &lv_font_simsun_16_cjk;
-            break;
+    case LV_FONT_SIMSUN_16_CJK_FONT:
+        res = &lv_font_simsun_16_cjk;
+        break;
 #endif
-        default:
-            res = NULL;
-            break;
+    default:
+        res = NULL;
+        break;
     }
 
     lvgl_native_set_return(res);
@@ -3325,7 +3317,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_font_get_data)
         res = 0;
     }
 
-    lvgl_native_set_return(res); 
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_label_set_text_static)
@@ -3380,7 +3372,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_outline_width)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_get_next)
 {
-    lv_indev_t * res;
+    lv_indev_t *res;
     lvgl_native_return_type(lv_indev_t *);
     lvgl_native_get_arg(lv_indev_t *, indev);
 
@@ -3391,7 +3383,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_get_next)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_group_create)
 {
-    lv_group_t * res;
+    lv_group_t *res;
     lvgl_native_return_type(lv_group_t *);
 
     res = lv_group_create();
@@ -3413,7 +3405,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_shadow_opa)
     lvgl_native_get_arg(lv_opa_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    lv_obj_set_style_shadow_opa(obj, value, selector); 
+    lv_obj_set_style_shadow_opa(obj, value, selector);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_enable)
@@ -3421,7 +3413,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_enable)
     lvgl_native_get_arg(lv_indev_t *, indev);
     lvgl_native_get_arg(bool, en);
 
-    lv_indev_enable(indev, en); 
+    lv_indev_enable(indev, en);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_has_flag)
@@ -3488,7 +3480,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_del)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_user_data)
 {
-    void * res;
+    void *res;
     lvgl_native_return_type(void *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
@@ -3559,7 +3551,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_shadow_ofs_y)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_led_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
 
@@ -3606,7 +3598,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_set_button_points)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_qrcode_create)
 {
-    lv_obj_t * res;
+    lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_coord_t, size);
@@ -3734,7 +3726,7 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_TABVIEW_MAIN, lv_tabview_create, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_TEXT_FONT, lv_obj_set_style_text_font, 3),
     LVGL_NATIVE_WRAPPER(LV_TABVIEW_GET_TAB_BTNS, lv_tabview_get_tab_btns, 2),
-    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_PAD_LEFT, lv_obj_set_style_pad_left,3 ),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_PAD_LEFT, lv_obj_set_style_pad_left, 3 ),
     LVGL_NATIVE_WRAPPER(LV_TABVIEW_ADD_TAB, lv_tabview_add_tab, 2),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_HEIGHT, lv_obj_set_height, 2),
     LVGL_NATIVE_WRAPPER(LV_LABEL_SET_LONG_MODE, lv_label_set_long_mode, 2),
@@ -3957,9 +3949,9 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
 };
 
 static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
-                                              int32_t func_id,
-                                              uint32_t argc,
-                                              uint32_t *argv)
+        int32_t func_id,
+        uint32_t argc,
+        uint32_t *argv)
 {
     int func_num = sizeof(lvgl_func_desc_table) / sizeof(lvgl_func_desc_table[0]);
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
@@ -4006,13 +3998,14 @@ static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
 
         func_desc->func(exec_env, argv_copy, argv);
 
-        if (argv_copy != argv_copy_buf)
+        if (argv_copy != argv_copy_buf) {
             wasm_runtime_free(argv_copy);
+        }
 
         ESP_LOGD(TAG, "func_id=%"PRIi32" done", func_id);
     } else {
         ESP_LOGE(TAG, "func_id=%"PRIi32" is not found", func_id);
-    }    
+    }
 }
 
 void lv_run_wasm(void *_module_inst, void *cb, int argc, uint32_t *argv)
@@ -4032,7 +4025,7 @@ void lv_run_wasm(void *_module_inst, void *cb, int argc, uint32_t *argv)
             ESP_LOGE(TAG, "%s", exception);
         }
     }
-    
+
     wasm_runtime_destroy_exec_env(exec_env);
 }
 

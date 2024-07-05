@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #undef LOG_LOCAL_LEVEL
 #define LOG_LOCAL_LEVEL ESP_LOG_WARN
@@ -82,7 +74,7 @@ static int str2args(const char *str, int *argc, char ***argv)
 
     pbuf = wasm_runtime_malloc(n * sizeof(char *) + len);
     if (!pbuf) {
-        return -ENOMEM;    
+        return -ENOMEM;
     }
 
     argv_buf = (char **)pbuf;
@@ -111,8 +103,9 @@ static bool validate_env_str(char *env)
         p++;
     }
 
-    if (*p != '=' || key_len == 0)
+    if (*p != '=' || key_len == 0) {
         return false;
+    }
 
     return true;
 }
@@ -128,8 +121,9 @@ static bool iwasm_prepare_wasi_dir(const char *wasi_dir, char *wasi_dir_buf, uin
 
     /* wasi_dir: wasi_root/wasi_dir */
     total_size = wasi_root_len + 1 + wasi_dir_len + 1;
-    if (total_size > buf_size)
+    if (total_size > buf_size) {
         return false;
+    }
     memcpy(p, wasi_root, wasi_root_len);
     p += wasi_root_len;
     *p++ = '/';
@@ -183,9 +177,9 @@ static void *iwasm_main_thread(void *p)
             }
 
             char wasi_dir_buf[64] = { 0 };
-            if (iwasm_prepare_wasi_dir(tmp_dir, wasi_dir_buf, sizeof(wasi_dir_buf)))
+            if (iwasm_prepare_wasi_dir(tmp_dir, wasi_dir_buf, sizeof(wasi_dir_buf))) {
                 dir_list[dir_list_size++] = wasi_dir_buf;
-            else {
+            } else {
                 ESP_LOGE(TAG, "Wasm parse dir string failed: expect \"key=value\", " "got \"%s\"\n", tmp_dir);
                 goto fail0;
             }
@@ -204,9 +198,9 @@ static void *iwasm_main_thread(void *p)
                 goto fail0;
             }
 
-            if (validate_env_str(tmp_env))
+            if (validate_env_str(tmp_env)) {
                 env_list[env_list_size++] = tmp_env;
-            else {
+            } else {
                 ESP_LOGE(TAG, "Wasm parse env string failed: expect \"key=value\", " "got \"%s\"\n", tmp_env);
                 goto fail0;
             }
@@ -218,7 +212,7 @@ static void *iwasm_main_thread(void *p)
         while (token) {
             if (addr_pool_size >= sizeof(addr_pool) / sizeof(char *)) {
                 ESP_LOGE(TAG, "Only allow max address number %d\n",
-                       (int)(sizeof(addr_pool) / sizeof(char *)));
+                         (int)(sizeof(addr_pool) / sizeof(char *)));
                 goto fail0;
             }
 
@@ -237,7 +231,7 @@ static void *iwasm_main_thread(void *p)
         ESP_LOGI(TAG, "Run WASM file");
     }
 #ifdef CONFIG_WAMR_ENABLE_AOT
-    else if(pkg_type == Wasm_Module_AoT) {
+    else if (pkg_type == Wasm_Module_AoT) {
         if (wasm_runtime_is_xip_file(buffer, size)) {
             ESP_LOGI(TAG, "Run XIP file");
         } else {
@@ -270,10 +264,10 @@ static void *iwasm_main_thread(void *p)
 #endif
 
     if (!(wasm_module_inst = wasm_runtime_instantiate(wasm_module,
-                                                      arg->stack_size,
-                                                      arg->heap_size,
-                                                      error_buf,
-                                                      sizeof(error_buf)))) {
+                             arg->stack_size,
+                             arg->heap_size,
+                             error_buf,
+                             sizeof(error_buf)))) {
         ESP_LOGE(TAG, "%s", error_buf);
         goto fail1;
     }
@@ -378,7 +372,7 @@ static int iwasm_main(int argc, char **argv)
     int ret;
     shell_file_t file;
     const char *args_str;
-    
+
     SHELL_CMD_CHECK(iwasm_main_arg);
 
     ret = shell_open_file(&file, iwasm_main_arg.file->sval[0]);
@@ -388,8 +382,8 @@ static int iwasm_main(int argc, char **argv)
     }
 
     if (iwasm_main_arg.args->count &&
-        iwasm_main_arg.args->sval[0] &&
-        iwasm_main_arg.args->sval[0][0]) {
+            iwasm_main_arg.args->sval[0] &&
+            iwasm_main_arg.args->sval[0][0]) {
         args_str = iwasm_main_arg.args->sval[0];
         ESP_LOGI(TAG, "args is: \"%s\"", args_str);
     } else {
@@ -418,11 +412,11 @@ void shell_regitser_cmd_iwasm(void)
 
 #if CONFIG_WAMR_ENABLE_LIBC_WASI != 0
     iwasm_main_arg.env =
-        arg_str0("e", "env", "<env>", "Pass wasi environment variables with \"key=value\" to the program, seperated with ',', for example: --env=\"key1=value1\",\"key2=value2\"");
+        arg_str0("e", "env", "<env>", "Pass wasi environment variables with \"key=value\" to the program, separated with ',', for example: --env=\"key1=value1\",\"key2=value2\"");
     iwasm_main_arg.dir =
-        arg_str0("d", "dir", "<dir>", "Grant wasi access to the given host directories to the program, seperated with ',', for example: --dir=<dir1>,<dir2>");
+        arg_str0("d", "dir", "<dir>", "Grant wasi access to the given host directories to the program, separated with ',', for example: --dir=<dir1>,<dir2>");
     iwasm_main_arg.addrs =
-        arg_str0("a", "addr-pool", "<addrs>", "Grant wasi access to the given network addresses in CIRD notation to the program, seperated with ',', for example: --addr-pool=1.2.3.4/15,2.3.4.5/16");
+        arg_str0("a", "addr-pool", "<addrs>", "Grant wasi access to the given network addresses in CIRD notation to the program, separated with ',', for example: --addr-pool=1.2.3.4/15,2.3.4.5/16");
 
     cmd_num += 3;
 #endif

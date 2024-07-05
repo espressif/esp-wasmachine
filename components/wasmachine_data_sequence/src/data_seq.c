@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -53,7 +45,7 @@ void data_seq_free(data_seq_t *ds)
 void data_seq_reset(data_seq_t *ds)
 {
     if (ds) {
-        ds->index = 0; 
+        ds->index = 0;
     }
 }
 
@@ -109,7 +101,7 @@ int data_seq_update_frame_data(data_seq_t *ds, data_seq_type_t type, data_seq_si
     if (ds->version == DATA_SEQ_V_1) {
         for (uint32_t i = 0; i < ds->index; i++) {
             if (ds->frame[i].type == type &&
-                ds->frame[i].size == size) {
+                    ds->frame[i].size == size) {
                 void *s = (void *)ds->frame[i].ptr;
 
                 memcpy(s, data, size);

@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <inttypes.h>
 
@@ -178,7 +170,7 @@ static char *map_string(wasm_exec_env_t exec_env, const char *str)
         str = ptr;
     }
 
-    return (char *)str; 
+    return (char *)str;
 }
 
 static bool rmaker_run_wasm(wasm_exec_env_t env, uint32_t cb, int argc, uint32_t *argv)
@@ -187,8 +179,8 @@ static bool rmaker_run_wasm(wasm_exec_env_t env, uint32_t cb, int argc, uint32_t
     if (!exec_env) {
         ESP_LOGE(TAG, "failed to create execution environment");
         return false;
-    } 
-    
+    }
+
     bool ret = wasm_runtime_call_indirect(exec_env, cb, argc, argv);
     if (!ret) {
         ESP_LOGE(TAG, "failed to run WASM callback as %s", wasm_runtime_get_exception(get_module_inst(exec_env)));
@@ -200,7 +192,7 @@ static bool rmaker_run_wasm(wasm_exec_env_t env, uint32_t cb, int argc, uint32_t
 }
 
 static esp_err_t wasm_rmaker_write_cb(const esp_rmaker_device_t *device, const esp_rmaker_param_t *param,
-        const esp_rmaker_param_val_t val, void *priv_data, esp_rmaker_write_ctx_t *ctx)
+                                      const esp_rmaker_param_val_t val, void *priv_data, esp_rmaker_write_ctx_t *ctx)
 {
     rmaker_wrapper_ctx_t *rmaker_wrapper_ctx = (rmaker_wrapper_ctx_t *)priv_data;
 
@@ -217,7 +209,7 @@ static esp_err_t wasm_rmaker_write_cb(const esp_rmaker_device_t *device, const e
 }
 
 esp_err_t wasm_rmaker_read_cb(const esp_rmaker_device_t *device, const esp_rmaker_param_t *param,
-        void *priv_data, esp_rmaker_read_ctx_t *ctx)
+                              void *priv_data, esp_rmaker_read_ctx_t *ctx)
 {
     rmaker_wrapper_ctx_t *rmaker_wrapper_ctx = (rmaker_wrapper_ctx_t *)priv_data;
 
@@ -236,39 +228,39 @@ esp_err_t wasm_rmaker_read_cb(const esp_rmaker_device_t *device, const esp_rmake
 }
 
 /* Event handler for catching RainMaker events */
-static void wasm_rmaker_event_handler(void* arg, esp_event_base_t event_base,
-                          int32_t event_id, void* event_data)
+static void wasm_rmaker_event_handler(void *arg, esp_event_base_t event_base,
+                                      int32_t event_id, void *event_data)
 {
     if (event_base == RMAKER_EVENT) {
         switch (event_id) {
-            case RMAKER_EVENT_INIT_DONE:
-                ESP_LOGI(TAG, "RainMaker Initialised.");
-                break;
-            case RMAKER_EVENT_CLAIM_STARTED:
-                ESP_LOGI(TAG, "RainMaker Claim Started.");
-                break;
-            case RMAKER_EVENT_CLAIM_SUCCESSFUL:
-                ESP_LOGI(TAG, "RainMaker Claim Successful.");
-                break;
-            case RMAKER_EVENT_CLAIM_FAILED:
-                ESP_LOGI(TAG, "RainMaker Claim Failed.");
-                break;
-            default:
-                ESP_LOGW(TAG, "Unhandled RainMaker Event: %" PRId32, event_id);
+        case RMAKER_EVENT_INIT_DONE:
+            ESP_LOGI(TAG, "RainMaker Initialised.");
+            break;
+        case RMAKER_EVENT_CLAIM_STARTED:
+            ESP_LOGI(TAG, "RainMaker Claim Started.");
+            break;
+        case RMAKER_EVENT_CLAIM_SUCCESSFUL:
+            ESP_LOGI(TAG, "RainMaker Claim Successful.");
+            break;
+        case RMAKER_EVENT_CLAIM_FAILED:
+            ESP_LOGI(TAG, "RainMaker Claim Failed.");
+            break;
+        default:
+            ESP_LOGW(TAG, "Unhandled RainMaker Event: %" PRId32, event_id);
         }
     } else if (event_base == RMAKER_COMMON_EVENT) {
         switch (event_id) {
-            case RMAKER_EVENT_REBOOT:
-                ESP_LOGI(TAG, "Rebooting in %d seconds.", *((uint8_t *)event_data));
-                break;
-            case RMAKER_EVENT_WIFI_RESET:
-                ESP_LOGI(TAG, "Wi-Fi credentials reset.");
-                break;
-            case RMAKER_EVENT_FACTORY_RESET:
-                ESP_LOGI(TAG, "Node reset to factory defaults.");
-                break;
-            default:
-                ESP_LOGW(TAG, "Unhandled RainMaker Common Event: %" PRId32, event_id);
+        case RMAKER_EVENT_REBOOT:
+            ESP_LOGI(TAG, "Rebooting in %d seconds.", *((uint8_t *)event_data));
+            break;
+        case RMAKER_EVENT_WIFI_RESET:
+            ESP_LOGI(TAG, "Wi-Fi credentials reset.");
+            break;
+        case RMAKER_EVENT_FACTORY_RESET:
+            ESP_LOGI(TAG, "Node reset to factory defaults.");
+            break;
+        default:
+            ESP_LOGW(TAG, "Unhandled RainMaker Common Event: %" PRId32, event_id);
         }
     } else {
         ESP_LOGW(TAG, "Invalid event received!");
@@ -312,21 +304,21 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_node_set_string)
 
     key = map_string(exec_env, key);
     switch (mode) {
-        case RMAKER_NODE_ADD_ATTRIBUTE:
-            value = map_string(exec_env, value);
-            ret = esp_rmaker_node_add_attribute(node, key, value);
-            break;
-        case RMAKER_NODE_ADD_FW_VERSION:
-            ret = esp_rmaker_node_add_fw_version(node, key);
-            break;
-        case RMAKER_NODE_ADD_MODEL:
-            ret = esp_rmaker_node_add_model(node, key);
-            break;
-        case RMAKER_NODE_ADD_SUBTYPE:
-            ret = esp_rmaker_node_add_subtype(node, key);
-            break;
-        default:
-            break;
+    case RMAKER_NODE_ADD_ATTRIBUTE:
+        value = map_string(exec_env, value);
+        ret = esp_rmaker_node_add_attribute(node, key, value);
+        break;
+    case RMAKER_NODE_ADD_FW_VERSION:
+        ret = esp_rmaker_node_add_fw_version(node, key);
+        break;
+    case RMAKER_NODE_ADD_MODEL:
+        ret = esp_rmaker_node_add_model(node, key);
+        break;
+    case RMAKER_NODE_ADD_SUBTYPE:
+        ret = esp_rmaker_node_add_subtype(node, key);
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -340,21 +332,21 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_node_get_string)
     rmaker_native_get_arg(uint32_t, mode);
 
     switch (mode) {
-        case RMAKER_NODE_GET_NODE_ID:
-            res = esp_rmaker_get_node_id();
-            if (res) {
-                rmaker_native_get_arg(char *, output);
-                rmaker_native_get_arg(uint8_t, len);
+    case RMAKER_NODE_GET_NODE_ID:
+        res = esp_rmaker_get_node_id();
+        if (res) {
+            rmaker_native_get_arg(char *, output);
+            rmaker_native_get_arg(uint8_t, len);
 
-                output = map_string(exec_env, (const char *)output);
+            output = map_string(exec_env, (const char *)output);
 
-                memcpy(output, res, len > strlen(output) ? strlen(output) : len);
+            memcpy(output, res, len > strlen(output) ? strlen(output) : len);
 
-                ret = ESP_OK;
-            }
-            break;
-        default:
-            break;
+            ret = ESP_OK;
+        }
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -378,13 +370,13 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_node_get_device)
     rmaker_native_get_arg(const char *, input);
 
     input = map_string(exec_env, input);
-    
+
     switch (mode) {
-        case RMAKER_NODE_GET_DEVICE_BY_NAME:
-            device = esp_rmaker_node_get_device_by_name(node, input);
-            break;
-        default:
-            break;
+    case RMAKER_NODE_GET_DEVICE_BY_NAME:
+        device = esp_rmaker_node_get_device_by_name(node, input);
+        break;
+    default:
+        break;
     }
 
     return (int)device;
@@ -435,7 +427,7 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_device_create)
 
     dev_name = map_string(exec_env, dev_name);
     type = map_string(exec_env, type);
-    
+
     rmaker_wrapper->priv_data = priv_data;
 
     return (int)esp_rmaker_device_create(dev_name, type, rmaker_wrapper);
@@ -474,18 +466,18 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_device_set_string)
 
     input = map_string(exec_env, input);
     switch (mode) {
-        case RMAKER_DEVICE_ADD_ATTRIBUTE:
-            val = map_string(exec_env, val);
-            ret = esp_rmaker_device_add_attribute(device, input, val);
-            break;
-        case RMAKER_DEVICE_ADD_SUBTYPE:
-            ret = esp_rmaker_device_add_subtype(device, input);
-            break;
-        case RMAKER_DEVICE_ADD_MODEL:
-            ret = esp_rmaker_device_add_model(device, input);
-            break;
-        default:
-            break;
+    case RMAKER_DEVICE_ADD_ATTRIBUTE:
+        val = map_string(exec_env, val);
+        ret = esp_rmaker_device_add_attribute(device, input, val);
+        break;
+    case RMAKER_DEVICE_ADD_SUBTYPE:
+        ret = esp_rmaker_device_add_subtype(device, input);
+        break;
+    case RMAKER_DEVICE_ADD_MODEL:
+        ret = esp_rmaker_device_add_model(device, input);
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -501,14 +493,14 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_device_get_string)
     rmaker_native_get_arg(uint32_t, len);
 
     switch (mode) {
-        case RMAKER_DEVICE_GET_NAME:
-            res = esp_rmaker_device_get_name(device);
-            break;
-        case RMAKER_DEVICE_GET_TYPE:
-            res = esp_rmaker_device_get_type(device);
-            break;
-        default:
-            break;
+    case RMAKER_DEVICE_GET_NAME:
+        res = esp_rmaker_device_get_name(device);
+        break;
+    case RMAKER_DEVICE_GET_TYPE:
+        res = esp_rmaker_device_get_type(device);
+        break;
+    default:
+        break;
     }
 
     if (res) {
@@ -528,14 +520,14 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_device_set_param)
     rmaker_native_get_arg(const esp_rmaker_param_t *, param);
 
     switch (mode) {
-        case RMAKER_DEVICE_ASSIGN_PRIMARY_PARAM:
-            ret = esp_rmaker_device_assign_primary_param(device, param);
-            break;
-        case RMAKER_DEVICE_ADD_PARAM:
-            ret = esp_rmaker_device_add_param(device, param);
-            break;
-        default:
-            break;
+    case RMAKER_DEVICE_ASSIGN_PRIMARY_PARAM:
+        ret = esp_rmaker_device_assign_primary_param(device, param);
+        break;
+    case RMAKER_DEVICE_ADD_PARAM:
+        ret = esp_rmaker_device_add_param(device, param);
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -552,14 +544,14 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_device_get_param)
     input = map_string(exec_env, input);
 
     switch (mode) {
-        case RMAKER_DEVICE_GET_PARAM_BY_NAME:
-            param = esp_rmaker_device_get_param_by_name(device, input);
-            break;
-        case RMAKER_DEVICE_GET_PARAM_BY_TYPE:
-            param = esp_rmaker_device_get_param_by_type(device, input);
-            break;
-        default:
-            break;
+    case RMAKER_DEVICE_GET_PARAM_BY_NAME:
+        param = esp_rmaker_device_get_param_by_name(device, input);
+        break;
+    case RMAKER_DEVICE_GET_PARAM_BY_TYPE:
+        param = esp_rmaker_device_get_param_by_type(device, input);
+        break;
+    default:
+        break;
     }
 
     return (int)param;
@@ -643,25 +635,25 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_param_create)
 
     param_name = map_string(exec_env, param_name);
     type = map_string(exec_env, type);
-    
+
     val.type = val_type;
     switch (val_type) {
-        case RMAKER_VAL_TYPE_BOOLEAN:
-            val.val.b = (bool)param_val;
-            break;
-        case RMAKER_VAL_TYPE_INTEGER:
-            val.val.i = (int)param_val;
-            break;
-        case RMAKER_VAL_TYPE_FLOAT:
-            val.val.f = (float)param_val;
-            break;
-        case RMAKER_VAL_TYPE_STRING:
-        case RMAKER_VAL_TYPE_OBJECT:
-        case RMAKER_VAL_TYPE_ARRAY:
-            val.val.s = map_string(exec_env, (const char *)param_val);
-            break;
-        default:
-            break;
+    case RMAKER_VAL_TYPE_BOOLEAN:
+        val.val.b = (bool)param_val;
+        break;
+    case RMAKER_VAL_TYPE_INTEGER:
+        val.val.i = (int)param_val;
+        break;
+    case RMAKER_VAL_TYPE_FLOAT:
+        val.val.f = (float)param_val;
+        break;
+    case RMAKER_VAL_TYPE_STRING:
+    case RMAKER_VAL_TYPE_OBJECT:
+    case RMAKER_VAL_TYPE_ARRAY:
+        val.val.s = map_string(exec_env, (const char *)param_val);
+        break;
+    default:
+        break;
     }
 
     return (int)esp_rmaker_param_create(param_name, type, val, properties);
@@ -683,15 +675,15 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_param_set_string)
     rmaker_native_get_arg(uint32_t, input);
 
     switch (mode) {
-        case RMAKER_PARAM_ADD_ARRAY_MAX_COUNT:
-            ret = esp_rmaker_param_add_array_max_count(param, input);
-            break;
-        case RMAKER_PARAM_ADD_UI_TYPE:
-            input = (uint32_t)map_string(exec_env, (const char *)input);
-            ret = esp_rmaker_param_add_ui_type(param, (const char *)input);
-            break;
-        default:
-            break;
+    case RMAKER_PARAM_ADD_ARRAY_MAX_COUNT:
+        ret = esp_rmaker_param_add_array_max_count(param, input);
+        break;
+    case RMAKER_PARAM_ADD_UI_TYPE:
+        input = (uint32_t)map_string(exec_env, (const char *)input);
+        ret = esp_rmaker_param_add_ui_type(param, (const char *)input);
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -705,14 +697,14 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_param_get_string)
     rmaker_native_get_arg(const esp_rmaker_param_t *, param);
 
     switch (mode) {
-        case RMAKER_PARAM_GET_NAME:
-            res = esp_rmaker_param_get_name(param);
-            break;
-        case RMAKER_PARAM_GET_TYPE:
-            res = esp_rmaker_param_get_type(param);
-            break;
-        default:
-            break;
+    case RMAKER_PARAM_GET_NAME:
+        res = esp_rmaker_param_get_name(param);
+        break;
+    case RMAKER_PARAM_GET_TYPE:
+        res = esp_rmaker_param_get_type(param);
+        break;
+    default:
+        break;
     }
 
     if (res) {
@@ -734,39 +726,39 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_param_set_val)
     rmaker_native_get_arg(const esp_rmaker_param_t *, param);
     rmaker_native_get_arg(esp_rmaker_val_type_t, val_type);
     rmaker_native_get_arg(uint32_t, param_val);
-    
+
     val.type = val_type;
     switch (val_type) {
-        case RMAKER_VAL_TYPE_BOOLEAN:
-            val.val.b = (bool)param_val;
-            break;
-        case RMAKER_VAL_TYPE_INTEGER:
-            val.val.i = (int)param_val;
-            break;
-        case RMAKER_VAL_TYPE_FLOAT:
-            val.val.f = (float)param_val;
-            break;
-        case RMAKER_VAL_TYPE_STRING:
-        case RMAKER_VAL_TYPE_OBJECT:
-        case RMAKER_VAL_TYPE_ARRAY:
-            val.val.s = map_string(exec_env, (const char *)param_val);
-            break;
-        default:
-            break;
+    case RMAKER_VAL_TYPE_BOOLEAN:
+        val.val.b = (bool)param_val;
+        break;
+    case RMAKER_VAL_TYPE_INTEGER:
+        val.val.i = (int)param_val;
+        break;
+    case RMAKER_VAL_TYPE_FLOAT:
+        val.val.f = (float)param_val;
+        break;
+    case RMAKER_VAL_TYPE_STRING:
+    case RMAKER_VAL_TYPE_OBJECT:
+    case RMAKER_VAL_TYPE_ARRAY:
+        val.val.s = map_string(exec_env, (const char *)param_val);
+        break;
+    default:
+        break;
     }
 
     switch (mode) {
-        case RMAKER_PARAM_UPDATE:
-            ret = esp_rmaker_param_update(param, val);
-            break;
-        case RMAKER_PARAM_UPDATE_AND_REPORT:
-            ret = esp_rmaker_param_update_and_report(param, val);
-            break;
-        case RMAKER_PARAM_UPDATE_AND_NOTIFY:
-            ret = esp_rmaker_param_update_and_notify(param, val);
-            break;
-        default:
-            break;
+    case RMAKER_PARAM_UPDATE:
+        ret = esp_rmaker_param_update(param, val);
+        break;
+    case RMAKER_PARAM_UPDATE_AND_REPORT:
+        ret = esp_rmaker_param_update_and_report(param, val);
+        break;
+    case RMAKER_PARAM_UPDATE_AND_NOTIFY:
+        ret = esp_rmaker_param_update_and_notify(param, val);
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -800,22 +792,22 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_param_get_val)
         val_type = (esp_rmaker_val_type_t *)addr_app_to_native((uint32_t)val_type);
         memcpy(val_type, &rmaker_val->type, sizeof(esp_rmaker_val_type_t));
         switch (rmaker_val->type) {
-            case RMAKER_VAL_TYPE_BOOLEAN:
-                memcpy(val, &rmaker_val->val.b, sizeof(rmaker_val->val.b));
-                break;
-            case RMAKER_VAL_TYPE_INTEGER:
-                memcpy(val, &rmaker_val->val.i, sizeof(rmaker_val->val.i));
-                break;
-            case RMAKER_VAL_TYPE_FLOAT:
-                memcpy(val, &rmaker_val->val.f, sizeof(rmaker_val->val.f));
-                break;
-            case RMAKER_VAL_TYPE_STRING:
-            case RMAKER_VAL_TYPE_OBJECT:
-            case RMAKER_VAL_TYPE_ARRAY:
-                memcpy(val, rmaker_val->val.s, len > strlen(rmaker_val->val.s) ? strlen(rmaker_val->val.s) : len);
-                break;
-            default:
-                break;
+        case RMAKER_VAL_TYPE_BOOLEAN:
+            memcpy(val, &rmaker_val->val.b, sizeof(rmaker_val->val.b));
+            break;
+        case RMAKER_VAL_TYPE_INTEGER:
+            memcpy(val, &rmaker_val->val.i, sizeof(rmaker_val->val.i));
+            break;
+        case RMAKER_VAL_TYPE_FLOAT:
+            memcpy(val, &rmaker_val->val.f, sizeof(rmaker_val->val.f));
+            break;
+        case RMAKER_VAL_TYPE_STRING:
+        case RMAKER_VAL_TYPE_OBJECT:
+        case RMAKER_VAL_TYPE_ARRAY:
+            memcpy(val, rmaker_val->val.s, len > strlen(rmaker_val->val.s) ? strlen(rmaker_val->val.s) : len);
+            break;
+        default:
+            break;
         }
     }
 
@@ -836,62 +828,62 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_param_add_bounds)
 
     min.type = min_type;
     switch (min_type) {
-        case RMAKER_VAL_TYPE_BOOLEAN:
-            min.val.b = (bool)min_val;
-            break;
-        case RMAKER_VAL_TYPE_INTEGER:
-            min.val.i = (int)min_val;
-            break;
-        case RMAKER_VAL_TYPE_FLOAT:
-            min.val.f = (float)min_val;
-            break;
-        case RMAKER_VAL_TYPE_STRING:
-        case RMAKER_VAL_TYPE_OBJECT:
-        case RMAKER_VAL_TYPE_ARRAY:
-            min.val.s = (char *)map_string(exec_env, (const char *)min_val);
-            break;
-        default:
-            break;
+    case RMAKER_VAL_TYPE_BOOLEAN:
+        min.val.b = (bool)min_val;
+        break;
+    case RMAKER_VAL_TYPE_INTEGER:
+        min.val.i = (int)min_val;
+        break;
+    case RMAKER_VAL_TYPE_FLOAT:
+        min.val.f = (float)min_val;
+        break;
+    case RMAKER_VAL_TYPE_STRING:
+    case RMAKER_VAL_TYPE_OBJECT:
+    case RMAKER_VAL_TYPE_ARRAY:
+        min.val.s = (char *)map_string(exec_env, (const char *)min_val);
+        break;
+    default:
+        break;
     }
 
     max.type = max_type;
     switch (max_type) {
-        case RMAKER_VAL_TYPE_BOOLEAN:
-            max.val.b = (bool)max_val;
-            break;
-        case RMAKER_VAL_TYPE_INTEGER:
-            max.val.i = (int)max_val;
-            break;
-        case RMAKER_VAL_TYPE_FLOAT:
-            max.val.f = (float)max_val;
-            break;
-        case RMAKER_VAL_TYPE_STRING:
-        case RMAKER_VAL_TYPE_OBJECT:
-        case RMAKER_VAL_TYPE_ARRAY:
-            max.val.s = (char *)map_string(exec_env, (const char *)max_val);
-            break;
-        default:
-            break;
+    case RMAKER_VAL_TYPE_BOOLEAN:
+        max.val.b = (bool)max_val;
+        break;
+    case RMAKER_VAL_TYPE_INTEGER:
+        max.val.i = (int)max_val;
+        break;
+    case RMAKER_VAL_TYPE_FLOAT:
+        max.val.f = (float)max_val;
+        break;
+    case RMAKER_VAL_TYPE_STRING:
+    case RMAKER_VAL_TYPE_OBJECT:
+    case RMAKER_VAL_TYPE_ARRAY:
+        max.val.s = (char *)map_string(exec_env, (const char *)max_val);
+        break;
+    default:
+        break;
     }
 
     step.type = step_type;
     switch (step_type) {
-        case RMAKER_VAL_TYPE_BOOLEAN:
-            step.val.b = (bool)step_val;
-            break;
-        case RMAKER_VAL_TYPE_INTEGER:
-            step.val.i = (int)step_val;
-            break;
-        case RMAKER_VAL_TYPE_FLOAT:
-            step.val.f = (float)step_val;
-            break;
-        case RMAKER_VAL_TYPE_STRING:
-        case RMAKER_VAL_TYPE_OBJECT:
-        case RMAKER_VAL_TYPE_ARRAY:
-            step.val.s = (char *)map_string(exec_env, (const char *)step_val);
-            break;
-        default:
-            break;
+    case RMAKER_VAL_TYPE_BOOLEAN:
+        step.val.b = (bool)step_val;
+        break;
+    case RMAKER_VAL_TYPE_INTEGER:
+        step.val.i = (int)step_val;
+        break;
+    case RMAKER_VAL_TYPE_FLOAT:
+        step.val.f = (float)step_val;
+        break;
+    case RMAKER_VAL_TYPE_STRING:
+    case RMAKER_VAL_TYPE_OBJECT:
+    case RMAKER_VAL_TYPE_ARRAY:
+        step.val.s = (char *)map_string(exec_env, (const char *)step_val);
+        break;
+    default:
+        break;
     }
 
     return esp_rmaker_param_add_bounds(param, min, max, step);
@@ -900,7 +892,7 @@ DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_param_add_bounds)
 DEFINE_RMAKER_NATIVE_WRAPPER(rmaker_raise_alert)
 {
     rmaker_native_get_arg(const char *, alert_str);
-    
+
     alert_str = map_string(exec_env, alert_str);
 
     return esp_rmaker_raise_alert(alert_str);
@@ -939,40 +931,40 @@ static int wasm_rmaker_run_wrapper(wasm_exec_env_t exec_env, int mode)
 {
     esp_err_t ret = ESP_OK;
     switch (mode) {
-        case RMAKER_COMMON_LOCAL_CTRL_START:
+    case RMAKER_COMMON_LOCAL_CTRL_START:
 #ifdef CONFIG_ESP_RMAKER_LOCAL_CTRL_ENABLE
-            ret = esp_rmaker_local_ctrl_service_started();
+        ret = esp_rmaker_local_ctrl_service_started();
 #endif
-            break;
-        case RMAKER_COMMON_NODE_DETAILS:
-            ret = esp_rmaker_report_node_details();
-            break;
-        case RMAKER_COMMON_OTA_ENABLE:
-            ret = esp_rmaker_ota_enable_default();
-            break;
-        case RMAKER_COMMON_TIMEZONE_ENABLE:
-            ret = esp_rmaker_timezone_service_enable();
-            break;
-        case RMAKER_COMMON_SCHEDULE_ENABLE:
-            ret = esp_rmaker_schedule_enable();
-            break;
-        case RMAKER_COMMON_SCENES_ENABLE:
-            ret = esp_rmaker_scenes_enable();
-            break;
-        case RMAKER_COMMON_START:
-            ESP_ERROR_CHECK(esp_event_handler_register(RMAKER_EVENT, ESP_EVENT_ANY_ID, wasm_rmaker_event_handler, NULL));
-            ESP_ERROR_CHECK(esp_event_handler_register(RMAKER_COMMON_EVENT, ESP_EVENT_ANY_ID, wasm_rmaker_event_handler, NULL));
+        break;
+    case RMAKER_COMMON_NODE_DETAILS:
+        ret = esp_rmaker_report_node_details();
+        break;
+    case RMAKER_COMMON_OTA_ENABLE:
+        ret = esp_rmaker_ota_enable_default();
+        break;
+    case RMAKER_COMMON_TIMEZONE_ENABLE:
+        ret = esp_rmaker_timezone_service_enable();
+        break;
+    case RMAKER_COMMON_SCHEDULE_ENABLE:
+        ret = esp_rmaker_schedule_enable();
+        break;
+    case RMAKER_COMMON_SCENES_ENABLE:
+        ret = esp_rmaker_scenes_enable();
+        break;
+    case RMAKER_COMMON_START:
+        ESP_ERROR_CHECK(esp_event_handler_register(RMAKER_EVENT, ESP_EVENT_ANY_ID, wasm_rmaker_event_handler, NULL));
+        ESP_ERROR_CHECK(esp_event_handler_register(RMAKER_COMMON_EVENT, ESP_EVENT_ANY_ID, wasm_rmaker_event_handler, NULL));
 
-            ret = esp_rmaker_start();
-            break;
-        case RMAKER_COMMON_STOP:
-            ESP_ERROR_CHECK(esp_event_handler_unregister(RMAKER_EVENT, ESP_EVENT_ANY_ID, wasm_rmaker_event_handler));
-            ESP_ERROR_CHECK(esp_event_handler_unregister(RMAKER_COMMON_EVENT, ESP_EVENT_ANY_ID, wasm_rmaker_event_handler));
+        ret = esp_rmaker_start();
+        break;
+    case RMAKER_COMMON_STOP:
+        ESP_ERROR_CHECK(esp_event_handler_unregister(RMAKER_EVENT, ESP_EVENT_ANY_ID, wasm_rmaker_event_handler));
+        ESP_ERROR_CHECK(esp_event_handler_unregister(RMAKER_COMMON_EVENT, ESP_EVENT_ANY_ID, wasm_rmaker_event_handler));
 
-            ret = esp_rmaker_stop();
-            break;
-        default:
-            break;
+        ret = esp_rmaker_stop();
+        break;
+    default:
+        break;
     }
 
     return ret;
@@ -1040,8 +1032,9 @@ static int wasm_rmaker_call_native_func_wrapper(wasm_exec_env_t exec_env, int32_
 
         int ret = func_desc->func(exec_env, argv_copy, argv);
 
-        if (argv_copy != argv_copy_buf)
+        if (argv_copy != argv_copy_buf) {
             wasm_runtime_free(argv_copy);
+        }
 
         ESP_LOGD(TAG, "func_id=%"PRIx32" is done", func_id);
 

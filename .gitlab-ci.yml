@@ -1,6 +1,7 @@
 stages:
   - pre_check
   - build
+  - test_deploy
 
 variables:
 # System environment
@@ -49,4 +50,8 @@ workflow:
     - *setup_tools_and_idf_python_venv
 
 include:
+  - '.gitlab/ci/rules.yml'
+  - '.gitlab/ci/pre_check.yml'
   - '.gitlab/ci/build.yml'
+  # - '.gitlab/ci/test_deploy.yml'
+

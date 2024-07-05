@@ -1,16 +1,8 @@
-// Copyright 2023 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,7 +49,7 @@ static int install_main(int argc, char **argv)
 
     if (!install_main_arg.name->count) {
         ESP_LOGE(TAG, "App name should be given");
-        return -1; 
+        return -1;
     }
     m_name = install_main_arg.name->sval[0];
 
@@ -76,19 +68,19 @@ static int install_main(int argc, char **argv)
     snprintf(url, sizeof(url) - 1, "/applet?name=%s", m_name);
     if (install_main_arg.type->count > 0 && url_remain_space > 0) {
         snprintf(url + strlen(url), url_remain_space, "&type=%s",
-                install_main_arg.type->sval[0]);
+                 install_main_arg.type->sval[0]);
     }
     if (install_main_arg.heap_size->count > 0 && url_remain_space > 0) {
         snprintf(url + strlen(url), url_remain_space, "&heap=%d",
-                install_main_arg.heap_size->ival[0]);
+                 install_main_arg.heap_size->ival[0]);
     }
     if (install_main_arg.max_timers->count > 0 && url_remain_space > 0) {
         snprintf(url + strlen(url), url_remain_space, "&timers=%d",
-                install_main_arg.max_timers->ival[0]);
+                 install_main_arg.max_timers->ival[0]);
     }
     if (install_main_arg.watchdog_interval->count > 0 && url_remain_space > 0) {
         snprintf(url + strlen(url), url_remain_space, "&wd=%d",
-                install_main_arg.watchdog_interval->ival[0]);
+                 install_main_arg.watchdog_interval->ival[0]);
     }
 
     init_request(request, url, COAP_PUT, FMT_APP_RAW_BINARY, file.payload, file.size);

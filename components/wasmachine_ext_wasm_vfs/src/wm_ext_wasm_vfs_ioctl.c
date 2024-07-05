@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "sdkconfig.h"
 
@@ -252,7 +244,7 @@ int wm_ext_wasm_native_ledc_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, cha
         ret = ioctl(fd, cmd, frequency);
     } else if (cmd == LEDCIOCSSETDUTY) {
         ledc_duty_cfg_t duty_cfg;
-        
+
         ds = wm_ext_wasm_native_get_data_seq(exec_env, va_args);
         if (!ds) {
             errno = EINVAL;
@@ -261,11 +253,11 @@ int wm_ext_wasm_native_ledc_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, cha
 
         DATA_SEQ_POP(ds, DATA_SEQ_LEDC_DUTY_CFG_CHANNEL, duty_cfg.channel);
         DATA_SEQ_POP(ds, DATA_SEQ_LEDC_DUTY_CFG_DUTY, duty_cfg.duty);
-        
+
         ret = ioctl(fd, cmd, &duty_cfg);
     } else if (cmd == LEDCIOCSSETDUTY) {
         ledc_phase_cfg_t phase_cfg;
-        
+
         ds = wm_ext_wasm_native_get_data_seq(exec_env, va_args);
         if (!ds) {
             errno = EINVAL;
@@ -274,7 +266,7 @@ int wm_ext_wasm_native_ledc_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, cha
 
         DATA_SEQ_POP(ds, DATA_SEQ_LEDC_PHASE_CFG_CHANNEL, phase_cfg.channel);
         DATA_SEQ_POP(ds, DATA_SEQ_LEDC_PHASE_CFG_PHASE, phase_cfg.phase);
-        
+
         ret = ioctl(fd, cmd, &phase_cfg);
     } else if (cmd == LEDCIOCSPAUSE || cmd == LEDCIOCSRESUME) {
         ret = ioctl(fd, cmd);

@@ -1,16 +1,8 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdint.h>
 #include <time.h>
@@ -62,7 +54,7 @@ typedef struct {
     void                    *user_ctx;
 } wifi_prov_endpoint_handler_t;
 
-typedef struct __wifi_prov_wrapper_ctx_t{
+typedef struct __wifi_prov_wrapper_ctx_t {
     uint32_t                        func_id;
     wasm_exec_env_t                 exec_env;
     wifi_prov_event_handler_t       app_event_handler;
@@ -72,52 +64,52 @@ typedef struct __wifi_prov_wrapper_ctx_t{
 static wifi_prov_wrapper_ctx_t *s_wifi_prov_wrapper_ctx = NULL;
 
 /* Event handler for catching system events */
-static void wifi_prov_system_event_handler(void* arg, esp_event_base_t event_base,
-                                            int32_t event_id, void* event_data)
+static void wifi_prov_system_event_handler(void *arg, esp_event_base_t event_base,
+        int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_PROV_EVENT) {
         static int retries;
         switch (event_id) {
-            case WIFI_PROV_START:
-                ESP_LOGI(TAG, "Provisioning started");
-                break;
-            case WIFI_PROV_CRED_RECV: {
-                wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
-                ESP_LOGI(TAG, "Received Wi-Fi credentials"
-                         "\n\tSSID     : %s\n\tPassword : %s",
-                         (const char *) wifi_sta_cfg->ssid,
-                         (const char *) wifi_sta_cfg->password);
-                break;
-            }
-            case WIFI_PROV_CRED_FAIL: {
-                wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
-                ESP_LOGE(TAG, "Provisioning failed!\n\tReason : %s"
-                         "\n\tPlease reset to factory and retry provisioning",
-                         (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
-                         "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
-                retries ++;
-                if (retries >= 5) {
-                    ESP_LOGI(TAG, "Failed to connect with provisioned AP, reseting provisioned credentials");
-                    wifi_prov_mgr_reset_sm_state_on_failure();
-                    retries = 0;
-                }
-                break;
-            }
-            case WIFI_PROV_CRED_SUCCESS:
-                ESP_LOGI(TAG, "Provisioning successful");
+        case WIFI_PROV_START:
+            ESP_LOGI(TAG, "Provisioning started");
+            break;
+        case WIFI_PROV_CRED_RECV: {
+            wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
+            ESP_LOGI(TAG, "Received Wi-Fi credentials"
+                     "\n\tSSID     : %s\n\tPassword : %s",
+                     (const char *) wifi_sta_cfg->ssid,
+                     (const char *) wifi_sta_cfg->password);
+            break;
+        }
+        case WIFI_PROV_CRED_FAIL: {
+            wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
+            ESP_LOGE(TAG, "Provisioning failed!\n\tReason : %s"
+                     "\n\tPlease reset to factory and retry provisioning",
+                     (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
+                     "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
+            retries ++;
+            if (retries >= 5) {
+                ESP_LOGI(TAG, "Failed to connect with provisioned AP, resetting provisioned credentials");
+                wifi_prov_mgr_reset_sm_state_on_failure();
                 retries = 0;
-                break;
-            case WIFI_PROV_END:
-                /* De-initialize manager once provisioning is finished */
-                wifi_prov_mgr_deinit();
-                break;
-            default:
-                break;
+            }
+            break;
+        }
+        case WIFI_PROV_CRED_SUCCESS:
+            ESP_LOGI(TAG, "Provisioning successful");
+            retries = 0;
+            break;
+        case WIFI_PROV_END:
+            /* De-initialize manager once provisioning is finished */
+            wifi_prov_mgr_deinit();
+            break;
+        default:
+            break;
         }
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
         ESP_LOGI(TAG, "Connected with IP Address:" IPSTR, IP2STR(&event->ip_info.ip));
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
@@ -143,7 +135,7 @@ static void wifi_prov_app_event_handler(void *user_data, wifi_prov_cb_event_t ev
 }
 
 static esp_err_t wifi_prov_custom_endpoint(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
-                                            uint8_t **outbuf, ssize_t *outlen, void *priv_data)
+        uint8_t **outbuf, ssize_t *outlen, void *priv_data)
 {
     wifi_prov_wrapper_ctx_t *wifi_prov_wrapper_ctx = (wifi_prov_wrapper_ctx_t *)priv_data;
     uint32_t event_cb_index = (uint32_t)wifi_prov_wrapper_ctx->endpoint_handler.handler;
@@ -170,7 +162,7 @@ static int wasm_wifi_prov_mgr_init_wrapper(wasm_exec_env_t exec_env, uint32_t fu
         return ESP_ERR_INVALID_ARG;
     }
 
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);   
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
     if (!wasm_runtime_validate_native_addr(module_inst, argv, argc * sizeof(uint32_t))) {
         ESP_LOGE(TAG, "argv=%p argc=%"PRIu32" is out of range", argv, argc);
         return ESP_FAIL;
@@ -205,26 +197,26 @@ static int wasm_wifi_prov_mgr_init_wrapper(wasm_exec_env_t exec_env, uint32_t fu
     };
 
     switch (func_id) {
-        case WIFI_PROV_CONSOLE:
-            config.scheme = wifi_prov_scheme_console;
-            break;
-        case WIFI_PROV_SOFTAP:
-            config.scheme = wifi_prov_scheme_softap;
-            break;
+    case WIFI_PROV_CONSOLE:
+        config.scheme = wifi_prov_scheme_console;
+        break;
+    case WIFI_PROV_SOFTAP:
+        config.scheme = wifi_prov_scheme_softap;
+        break;
 #if defined(CONFIG_BT_BLUEDROID_ENABLED) || defined(CONFIG_BT_NIMBLE_ENABLED)
-        case WIFI_PROV_BTDM:
-            config.scheme_event_handler.event_cb = wifi_prov_scheme_ble_event_cb_free_btdm;
-            break;
-        case WIFI_PROV_BT:
-            config.scheme_event_handler.event_cb = wifi_prov_scheme_ble_event_cb_free_bt;
-            break;
-        case WIFI_PROV_BLE:
-            config.scheme_event_handler.event_cb = wifi_prov_scheme_ble_event_cb_free_ble;
-            break;
+    case WIFI_PROV_BTDM:
+        config.scheme_event_handler.event_cb = wifi_prov_scheme_ble_event_cb_free_btdm;
+        break;
+    case WIFI_PROV_BT:
+        config.scheme_event_handler.event_cb = wifi_prov_scheme_ble_event_cb_free_bt;
+        break;
+    case WIFI_PROV_BLE:
+        config.scheme_event_handler.event_cb = wifi_prov_scheme_ble_event_cb_free_ble;
+        break;
 #endif
-        default:
-            return ESP_ERR_INVALID_ARG;
-            break;
+    default:
+        return ESP_ERR_INVALID_ARG;
+        break;
     }
 
     ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
