@@ -1,0 +1,13 @@
+[sections:ext_wasm_native_export]
+entries:
+    .wm_ext_wasm_native_export_fn+
+
+[scheme:ext_wasm_native_export_default]
+entries:
+    ext_wasm_native_export -> flash_rodata
+
+[mapping:ext_wasm_native_export]
+archive: *
+entries:
+    * (ext_wasm_native_export_default);
+        ext_wasm_native_export -> flash_rodata KEEP() ALIGN(4) SURROUND(_wm_ext_wasm_native_export_fn_array)

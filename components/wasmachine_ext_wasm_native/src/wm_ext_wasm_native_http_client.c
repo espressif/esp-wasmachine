@@ -631,3 +631,8 @@ int wm_ext_wasm_native_http_client_export(void)
 
     return 0;
 }
+
+WM_EXT_WASM_NATIVE_EXPORT_FN(wm_ext_wasm_native_http_client_export)
+{
+    return wm_ext_wasm_native_http_client_export();
+}
