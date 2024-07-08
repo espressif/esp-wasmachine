@@ -4058,3 +4058,8 @@ esp_err_t wm_ext_wasm_native_lvgl_register_ops(wm_ext_wasm_native_lvgl_ops_t *op
 
     return ESP_OK;
 }
+
+WM_EXT_WASM_NATIVE_EXPORT_FN(wm_ext_wasm_native_lvgl_export)
+{
+    return wm_ext_wasm_native_lvgl_export();
+}

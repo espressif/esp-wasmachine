@@ -1,12 +1,12 @@
-version: "0.1.0"
+version: "0.1.0~1"
 description: Extended WASM VFS component for Espressif WASMachine
-url: https://github.com/espressif/esp-wasmachine/tree/master/wasmachine_ext_wasm_vfs
+url: https://github.com/espressif/esp-wasmachine/tree/master/components/wasmachine_ext_wasm_vfs
 repository: https://github.com/espressif/esp-wasmachine.git
 issues: https://github.com/espressif/esp-wasmachine/issues
 dependencies:
   idf:
     version: ">=5.0"
   extended_vfs:
-    version: "^0.3.1"
+    version: "==0.*"
   cmake_utilities:
-    version: "^0.5"
+    version: "==0.*"

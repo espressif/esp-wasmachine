@@ -8,8 +8,8 @@ dependencies:
       - if: target in [esp32s3]
 
   joltwallet/littlefs:
-    version: ^1.6.0
+    version: "==1.*"
 
   wasmachine_core:
-    version: "^0.1.0"
+    version: "==0.*"
     override_path: "../../../components/wasmachine_core"
