@@ -1,0 +1,4 @@
+config WASMACHINE_WASM_EXT_NATIVE_RMAKER
+    bool "Export WASM extended RainMaker native APIs"
+    default n
+    depends on WASMACHINE_WASM_EXT_NATIVE

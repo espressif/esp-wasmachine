@@ -1,4 +1,4 @@
-version: "0.2.0"
+version: "0.3.0"
 description: Extended WASM native component for Espressif WASMachine
 url: https://github.com/espressif/esp-wasmachine/tree/master/components/wasmachine_ext_wasm_native
 repository: https://github.com/espressif/esp-wasmachine.git
@@ -6,7 +6,5 @@ issues: https://github.com/espressif/esp-wasmachine/issues
 dependencies:
   idf:
     version: ">=5.0"
-  esp_rainmaker:
-    version: "^1.2.0"
   cmake_utilities:
     version: "==0.*"
