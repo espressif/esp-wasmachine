@@ -1,4 +1,4 @@
-version: "0.1.0~1"
+version: "0.1.0~2"
 description: Espressif WASMachine core component
 url: https://github.com/espressif/esp-wasmachine/tree/master/components/wasmachine_core
 repository: https://github.com/espressif/esp-wasmachine.git

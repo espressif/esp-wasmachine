@@ -13,3 +13,7 @@ dependencies:
   wasmachine_core:
     version: "==0.*"
     override_path: "../../../components/wasmachine_core"
+
+  wasmachine_ext_wasm_native_rainmaker:
+    version: "==0.*"
+    override_path: "../../../components/wasmachine_ext_wasm_native_rainmaker"
