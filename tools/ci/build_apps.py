@@ -32,6 +32,7 @@ def get_mr_components(modified_files: str) -> str:
                 'wasmachine_core',
                 'wasmachine_data_sequence',
                 'wasmachine_ext_wasm_native',
+                'wasmachine_ext_wasm_native_rainmaker',
                 'wasmachine_ext_wasm_vfs',
                 'wasmachine_shell'
             }

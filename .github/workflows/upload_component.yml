@@ -37,6 +37,7 @@ jobs:
             components/wasmachine_core;
             components/wasmachine_data_sequence;
             components/wasmachine_ext_wasm_native;
+            components/wasmachine_ext_wasm_native_rainmaker;
             components/wasmachine_ext_wasm_vfs;
             components/wasmachine_shell;
           namespace: "espressif"

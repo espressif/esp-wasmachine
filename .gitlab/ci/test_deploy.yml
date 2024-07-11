@@ -6,7 +6,13 @@ test_deploy_component_staging:
   variables:
     COMPONENT_NAMESPACE: espressif
     SKIP_PRE_RELEASE: 0
-    COMPONENTS_DIRECTORIES: 'components/wasmachine_core;components/wasmachine_data_sequence;components/wasmachine_ext_wasm_native;components/wasmachine_ext_wasm_vfs;components/wasmachine_shell'
+    COMPONENTS_DIRECTORIES: >
+      components/wasmachine_core;
+      components/wasmachine_data_sequence;
+      components/wasmachine_ext_wasm_native;
+      components/wasmachine_ext_wasm_native_rainmaker;
+      components/wasmachine_ext_wasm_vfs;
+      components/wasmachine_shell;
     GITHUB_WORKSPACE: .
     IDF_COMPONENT_REGISTRY_URL: ${STAGING_COMPONENT_SERVICE_URL}
     IDF_COMPONENT_API_TOKEN: ${STAGING_IDF_COMPONENT_API_TOKEN}
