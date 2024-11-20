@@ -10,7 +10,6 @@
 #include "wm_config.h"
 #ifdef CONFIG_WASMACHINE_APP_MGR
 #include "bi-inc/shared_utils.h"
-#include "wa-inc/request.h"
 #endif
 
 #ifdef __cplusplus

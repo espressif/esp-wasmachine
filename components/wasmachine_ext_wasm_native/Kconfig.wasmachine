@@ -16,7 +16,7 @@ menu "WASM Extended Native"
     config WASMACHINE_WASM_EXT_NATIVE_HTTP_CLIENT
         bool "Export WASM extended HTTP client native APIs"
         default n
-        depends on WASMACHINE_WASM_EXT_NATIVE
+        depends on WASMACHINE_WASM_EXT_NATIVE && WASMACHINE_APP_MGR
 
     config WASMACHINE_WASM_EXT_NATIVE_LVGL
         bool "Export WASM extended LVGL native APIs"
@@ -26,12 +26,12 @@ menu "WASM Extended Native"
     config WASMACHINE_WASM_EXT_NATIVE_MQTT
         bool "Export WASM extended MQTT native APIs"
         default n
-        depends on WASMACHINE_WASM_EXT_NATIVE
+        depends on WASMACHINE_WASM_EXT_NATIVE && WASMACHINE_APP_MGR
 
     config WASMACHINE_WASM_EXT_NATIVE_WIFI_PROVISIONING
         bool "Export WASM extended WiFi provisioning native APIs"
         default n
-        depends on WASMACHINE_WASM_EXT_NATIVE
+        depends on WASMACHINE_WASM_EXT_NATIVE && WASMACHINE_APP_MGR
 
     orsource "../wasmachine_ext_wasm_native_rainmaker/Kconfig.wasmachine"
     orsource "../espressif__wasmachine_ext_wasm_native_rainmaker/Kconfig.wasmachine"
