@@ -76,6 +76,7 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
         idf_component_optional_requires(PRIVATE "mqtt")
     endif()
     if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_WIFI_PROVISIONING)
-        idf_component_optional_requires(PRIVATE "wifi_provisioning")
+        # Network Provisioning component is supported for IDF v5.1+
+        idf_component_optional_requires(PRIVATE "network_provisioning")
     endif()
 endif()

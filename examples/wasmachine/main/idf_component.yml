@@ -1,7 +1,7 @@
 ## IDF Component Manager Manifest File
 dependencies:
   idf:
-    version: ">=5.0"
+    version: ">=5.1"
   esp-box:
     version: "=3.0.5"
     rules:

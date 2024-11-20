@@ -1,3 +1,9 @@
+# ChangeLog
+
+## 0.3.1
+
+- Use network_provisioning to replace wifi_provisioning component to avoid compilation errors
+
 ## 0.3.0
 
 - Move rainmaker support to a separate component
