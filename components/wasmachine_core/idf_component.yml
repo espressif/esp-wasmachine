@@ -18,7 +18,7 @@ dependencies:
     version: "==0.*"
     override_path: "../wasmachine_shell"
   wasm-micro-runtime:
-    version: "==1.*"
+    version: "==2.*"
   cmake_utilities:
     version: "==0.*"
 examples:

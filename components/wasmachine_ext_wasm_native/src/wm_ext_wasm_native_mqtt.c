@@ -152,7 +152,7 @@ static void mqtt_wrapper_event_callback(module_data *m_data, bh_message_t msg)
         return;
     }
 
-    func_on_conn_data = wasm_runtime_lookup_function(inst, "on_mqtt_dispatch_event", "(i32i32i32)");
+    func_on_conn_data = wasm_runtime_lookup_function(inst, "on_mqtt_dispatch_event");
     if (!func_on_conn_data) {
         ESP_LOGE(TAG, "Cannot find function on_mqtt_dispatch_event");
         return;

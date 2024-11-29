@@ -11,6 +11,7 @@
 #include "wasm_export.h"
 #include "app_manager_export.h"
 #include "app_manager.h"
+#include "coap_ext.h"
 
 #include "esp_log.h"
 #include "shell_utils.h"

@@ -11,8 +11,6 @@
 #include "runtime_lib.h"
 #include "wasm_export.h"
 
-#define APP_MGR_TASK_STACK_SIZE    8192
-
 #ifdef CONFIG_WASMACHINE_TCP_SERVER
 #include <string.h>
 #include <pthread.h>
@@ -22,13 +20,18 @@
 
 #define TCP_TX_BUFFER_SIZE      2048
 #define TCP_SERVER_LISTEN       5
+#endif
 
+#define APP_MGR_TASK_STACK_SIZE    8192
+
+static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
+
+#ifdef CONFIG_WASMACHINE_TCP_SERVER
 static const char *TAG = "wm_wamr_app_mgr";
 
 static int listenfd = -1;
 static int sockfd = -1;
 static pthread_mutex_t sock_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static bool host_init(void)
 {

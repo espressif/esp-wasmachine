@@ -270,7 +270,7 @@ static void set_wasm_errno(wasm_exec_env_t exec_env, int c_errno)
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
     const char *func_name = "libc_builtin_set_errno";
 
-    func = wasm_runtime_lookup_function(module_inst, func_name, "(i32)");
+    func = wasm_runtime_lookup_function(module_inst, func_name);
     if (!func) {
         ESP_LOGW(TAG, "failed to find function %s", func_name);
         return ;
