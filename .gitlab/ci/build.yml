@@ -51,7 +51,6 @@ build_platform_devkit:
       - IMAGE: espressif/idf:release-v5.3
       - IMAGE: espressif/idf:release-v5.2
       - IMAGE: espressif/idf:release-v5.1
-      - IMAGE: espressif/idf:release-v5.0
 
 build_platform_esp32s3_box:
   extends:
@@ -63,7 +62,6 @@ build_platform_esp32s3_box:
       - IMAGE: espressif/idf:release-v5.3
       - IMAGE: espressif/idf:release-v5.2
       - IMAGE: espressif/idf:release-v5.1
-      - IMAGE: espressif/idf:release-v5.0
   variables:
     IDF_TARGET: esp32s3
     SDKCONFIG_DEFAULTS: sdkconfig.defaults;sdkconfig.esp-box

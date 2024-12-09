@@ -44,11 +44,11 @@ esp-wasmachine/
 
 从实现原理来看，ESP-WASMachine 是基于 ESP-IDF 的应用程序，所以需要安装 ESP-IDF 的开发环境，相关流程请参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32s3/get-started/index.html#id1)。
 
-支持的 ESP-IDF 版本有 v5.0.x, v5.1.x, v5.2.x 和 master，相关版本如下：
+支持的 ESP-IDF 版本有 v5.1.x, v5.2.x, 5.3.x 和 master，相关版本如下：
 
-- [v5.0.6](https://github.com/espressif/esp-idf/tree/v5.0.6)
-- [v5.1.3](https://github.com/espressif/esp-idf/tree/v5.1.3)
-- [v5.2.1](https://github.com/espressif/esp-idf/tree/v5.2.1)
+- [v5.1.5](https://github.com/espressif/esp-idf/tree/v5.1.5)
+- [v5.2.3](https://github.com/espressif/esp-idf/tree/v5.2.3)
+- [v5.3.2](https://github.com/espressif/esp-idf/tree/v5.3.2)
 - [master](https://github.com/espressif/esp-idf/tree/master)
 
 支持的开发板有：

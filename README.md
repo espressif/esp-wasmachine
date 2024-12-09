@@ -44,11 +44,11 @@ esp-wasmachine/
 
 ESP-WASMachine can be considered as an application project based on ESP-IDF in the implementation principle, so the development environment of ESP-IDF needs to be installed. For the relevant process, please refer to ESP-IDF [documents](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/get-started/index.html#get-started).
 
-The supported version of ESP-IDF contains v5.0.x, v5.1.x, v5.2.x and master, related versions are as follows:
+The supported version of ESP-IDF contains v5.1.x, v5.2.x, 5.3.x and master, related versions are as follows:
 
-- [v5.0.6](https://github.com/espressif/esp-idf/tree/v5.0.6)
-- [v5.1.3](https://github.com/espressif/esp-idf/tree/v5.1.3)
-- [v5.2.1](https://github.com/espressif/esp-idf/tree/v5.2.1)
+- [v5.1.5](https://github.com/espressif/esp-idf/tree/v5.1.5)
+- [v5.2.3](https://github.com/espressif/esp-idf/tree/v5.2.3)
+- [v5.3.2](https://github.com/espressif/esp-idf/tree/v5.3.2)
 - [master](https://github.com/espressif/esp-idf/tree/master)
 
 The supported development boards are as follows:
@@ -75,7 +75,7 @@ To ensure safety of your data (for example, you want to modify third-party softw
 To remotely manage WebAssembly applications, you also need to compile and generate `host_tool`. However, `host_tool` can only be compiled and used in Linux. The relevant compilation process is as follows:
 
 ```
-git clone -b WAMR-1.3.2 https://github.com/espressif/wasm-micro-runtime.git
+git clone -b WAMR-2.2.0 https://github.com/espressif/wasm-micro-runtime.git
 cd wasm-micro-runtime/test-tools/host-tool
 mkdir build
 cd build
