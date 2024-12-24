@@ -3,6 +3,8 @@ description: Extended WASM native RainMaker component for Espressif WASMachine
 url: https://github.com/espressif/esp-wasmachine/tree/master/components/wasmachine_ext_wasm_native_rainmaker
 repository: https://github.com/espressif/esp-wasmachine.git
 issues: https://github.com/espressif/esp-wasmachine/issues
+disable:
+  - if: SOC_SDIO_SLAVE_SUPPORTED != 1
 dependencies:
   idf:
     version: ">=5.1"

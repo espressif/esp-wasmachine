@@ -48,6 +48,7 @@ build_platform_devkit:
   parallel:
     matrix:
       - IMAGE: espressif/idf:latest
+      - IMAGE: espressif/idf:release-v5.4
       - IMAGE: espressif/idf:release-v5.3
       - IMAGE: espressif/idf:release-v5.2
       - IMAGE: espressif/idf:release-v5.1
@@ -59,9 +60,22 @@ build_platform_esp32s3_box:
   parallel:
     matrix:
       - IMAGE: espressif/idf:latest
+      - IMAGE: espressif/idf:release-v5.4
       - IMAGE: espressif/idf:release-v5.3
       - IMAGE: espressif/idf:release-v5.2
       - IMAGE: espressif/idf:release-v5.1
   variables:
     IDF_TARGET: esp32s3
     SDKCONFIG_DEFAULTS: sdkconfig.defaults;sdkconfig.esp-box
+
+build_platform_esp32_p4_function_ev_board:
+  extends:
+    - .build_examples_template
+    - .rules:build:examples
+  parallel:
+    matrix:
+      - IMAGE: espressif/idf:latest
+      - IMAGE: espressif/idf:release-v5.4
+  variables:
+    IDF_TARGET: esp32p4
+    SDKCONFIG_DEFAULTS: sdkconfig.defaults;sdkconfig.esp32_p4_function_ev_board

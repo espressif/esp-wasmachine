@@ -17,7 +17,7 @@ static int free_main(int argc, char **argv)
     printf("%-5s %12u %12u %12u\n", "dram", info.total_allocated_bytes + info.total_free_bytes,
            info.total_allocated_bytes, info.total_free_bytes);
 
-#ifdef CONFIG_ESP32S3_SPIRAM_SUPPORT
+#ifdef CONFIG_SPIRAM
     heap_caps_get_info(&info, MALLOC_CAP_SPIRAM);
     printf("%5s %12u %12u %12u\n", "psram", info.total_allocated_bytes + info.total_free_bytes,
            info.total_allocated_bytes, info.total_free_bytes);

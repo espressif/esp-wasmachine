@@ -12,6 +12,7 @@ else()
 endif()
 
 set(EXTRA_COMPONENT_DIRS "$ENV{IDF_PATH}/examples/common_components/protocol_examples_common")
+set(ENV{LVGL_VERSION} "8.0.2")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(wasmachine)

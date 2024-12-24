@@ -77,8 +77,14 @@ static bool ptr_is_in_ram_or_rom(const void *ptr)
         ret = true;
     } else if (esp_ptr_in_drom(ptr)) {
         ret = true;
+# if CONFIG_IDF_TARGET_ESP32P4
+    } else {
+        ret = ((intptr_t)ptr >= SOC_EXTRAM_LOW) &&
+              ((intptr_t)ptr < SOC_EXTRAM_HIGH);
+#else
     } else if (esp_ptr_external_ram(ptr)) {
         ret = true;
+#endif
     }
 
     return ret;

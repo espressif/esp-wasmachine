@@ -49,9 +49,13 @@ The supported version of ESP-IDF contains v5.1.x, v5.2.x, 5.3.x and master, rela
 - [v5.1.5](https://github.com/espressif/esp-idf/tree/v5.1.5)
 - [v5.2.3](https://github.com/espressif/esp-idf/tree/v5.2.3)
 - [v5.3.2](https://github.com/espressif/esp-idf/tree/v5.3.2)
+- [v5.3.2](https://github.com/espressif/esp-idf/tree/v5.3.2)
+- [v5.4.0](https://github.com/espressif/esp-idf/tree/v5.4)
 - [master](https://github.com/espressif/esp-idf/tree/master)
 
 The supported development boards are as follows:
+
+- [ESP32-DevKitC](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html)
 
 - [ESP32-S3-BOX](https://github.com/espressif/esp-box/blob/v0.3.0/docs/hardware_overview/esp32_s3_box/hardware_overview_for_box_cn.md)
 
@@ -60,6 +64,8 @@ The supported development boards are as follows:
 - [ESP32-S3-DevKitC](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/hw-reference/esp32s3/user-guide-devkitc-1.html)
 
 - [ESP32-C6-DevKitC](https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitc-1/user_guide.html)
+
+- [ESP32-P4-Function-EV-Board](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/index.html)
 
 In addition, it is also necessary to download the third-party software to ESP-WASMachine. The source code of the third-party software in the corresponding version will be automatically downloaded and patched when it is compiled for the first time. The relevant log information is as follows:
 
@@ -246,28 +252,42 @@ Then switch to the ESP-WASMachine directory and run the commands provided by ESP
 
 ### 4.1 Configure the system
 
-1. Compile the firmware for the ESP32-S3-BOX development board:
+1. Compile the firmware for the ESP32-DevKitC development board:
+
+```sh
+idf.py set-target esp32
+idf.py build
+```
+
+2. Compile the firmware for the ESP32-S3-BOX development board:
 
 ```sh
 idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.esp-box" set-target esp32s3
 idf.py build
 ```
 
-2. Compile the firmware for the ESP32-S3-DevKitC development board:
+3. Compile the firmware for the ESP32-S3-DevKitC development board:
 
 ```sh
 idf.py set-target esp32s3
 idf.py build
 ```
 
-3. Compile the firmware for the ESP32-C6-DevKitC development board:
+4. Compile the firmware for the ESP32-C6-DevKitC development board:
 
 ```sh
 idf.py set-target esp32c6
 idf.py build
 ```
 
-* Note: ESP32-C6-DevKitC 4MB flash development board uses partitions.4mb.singleapp.csv as the partition table file.
+5. Compile the firmware for the ESP32-P4-Function-EV-Board development board:
+
+```sh
+idf.py set-target esp32p4
+idf.py build
+```
+
+* Note: ESP32-DevKitC 4MB flash development board and ESP32-C6-DevKitC 4MB flash development board use partitions.4mb.singleapp.csv as the partition table file.
 
 ### 4.2 Burn File-System
 
