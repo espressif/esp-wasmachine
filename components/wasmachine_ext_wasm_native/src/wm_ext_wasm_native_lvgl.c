@@ -59,6 +59,11 @@ static int lvgl_init_wrapper(wasm_exec_env_t exec_env)
     return s_lvgl_ops.backlight_on();
 }
 
+static int lvgl_deinit_wrapper(wasm_exec_env_t exec_env)
+{
+    return s_lvgl_ops.backlight_off();
+}
+
 static void lvgl_lock_wrapper(void)
 {
     s_lvgl_ops.lock(0);
@@ -582,6 +587,14 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_table_set_cell_value)
     txt = map_string(exec_env, txt);
 
     lv_table_set_cell_value(obj, row, col, txt);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_table_set_row_cnt)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(uint16_t, row_cnt);
+
+    lv_table_set_row_cnt(obj, row_cnt);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_create)
@@ -1921,15 +1934,15 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_rect_dsc_init)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_rect)
 {
-    lvgl_native_get_arg(lv_area_t *, coords);
-    lvgl_native_get_arg(lv_area_t *, clip);
+    lvgl_native_get_arg(lv_draw_ctx_t *, draw_ctx);
     lvgl_native_get_arg(lv_draw_rect_dsc_t *, dsc);
+    lvgl_native_get_arg(lv_area_t *, coords);
 
-    coords = map_ptr(exec_env, coords);
-    clip = map_ptr(exec_env, clip);
+    draw_ctx = map_ptr(exec_env, draw_ctx);
     dsc = map_ptr(exec_env, dsc);
+    coords = map_ptr(exec_env, coords);
 
-    lv_draw_rect(coords, clip, dsc);
+    lv_draw_rect(draw_ctx, dsc, coords);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_label_dsc_init)
@@ -1943,15 +1956,15 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_label_dsc_init)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_label)
 {
-    lvgl_native_get_arg(lv_area_t *, coords);
-    lvgl_native_get_arg(lv_area_t *, mask);
+    lvgl_native_get_arg(lv_draw_ctx_t *, draw_ctx);
     lvgl_native_get_arg(lv_draw_label_dsc_t *, dsc);
+    lvgl_native_get_arg(lv_area_t *, coords);
     lvgl_native_get_arg(const char *, txt);
     lvgl_native_get_arg(lv_draw_label_hint_t *, hint);
 
-    coords = map_ptr(exec_env, coords);
-    mask = map_ptr(exec_env, mask);
+    draw_ctx = map_ptr(exec_env, draw_ctx);
     dsc = map_ptr(exec_env, dsc);
+    coords = map_ptr(exec_env, coords);
     txt = map_ptr(exec_env, txt);
     hint = map_ptr(exec_env, hint);
 
@@ -1959,7 +1972,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_label)
         dsc->font = &lv_font_montserrat_14;
     }
 
-    lv_draw_label(coords, mask, dsc, txt, hint);
+    lv_draw_label(draw_ctx, dsc, coords, txt, hint);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_event_get_current_target)
@@ -2508,7 +2521,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_list_add_btn)
     lv_obj_t *res;
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(const char *, icon);
+    lvgl_native_get_arg(const void *, icon);
     lvgl_native_get_arg(const char *, txt);
 
     icon = map_ptr(exec_env, icon);
@@ -2967,16 +2980,16 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_trigo_sin)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_polygon)
 {
+    lvgl_native_get_arg(lv_draw_ctx_t *, draw_ctx);
+    lvgl_native_get_arg(lv_draw_rect_dsc_t *, draw_dsc);
     lvgl_native_get_arg(lv_point_t *, points);
     lvgl_native_get_arg(uint16_t, point_cnt);
-    lvgl_native_get_arg(lv_area_t *, mask);
-    lvgl_native_get_arg(lv_draw_rect_dsc_t *, draw_dsc);
 
-    points = map_ptr(exec_env, points);
-    mask = map_ptr(exec_env, mask);
+    draw_ctx = map_ptr(exec_env, draw_ctx);
     draw_dsc = map_ptr(exec_env, draw_dsc);
+    points = map_ptr(exec_env, points);
 
-    lv_draw_polygon(points, point_cnt, mask, draw_dsc);
+    lv_draw_polygon(draw_ctx, draw_dsc, points, point_cnt);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_get_gesture_dir)
@@ -3062,8 +3075,10 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_draw_part_dsc_get_data)
     } else if (type == LV_OBJ_DRAW_PART_DSC_P2 && n == sizeof(*dsc->p2) && dsc->p2) {
         memcpy(pdata, dsc->p2, sizeof(*dsc->p2));
         res = 0;
-    } else if (type == LV_OBJ_DRAW_PART_DSC_CLIP_AREA && n == sizeof(*dsc->clip_area) && dsc->clip_area) {
-        memcpy(pdata, dsc->clip_area, sizeof(*dsc->clip_area));
+    } else if (type == LV_OBJ_DRAW_PART_DSC_CLIP_AREA && n == sizeof(*dsc->draw_ctx->clip_area) && dsc->draw_ctx->clip_area) {
+        memcpy(pdata, dsc->draw_ctx->clip_area, sizeof(*dsc->draw_ctx->clip_area));
+    } else if (type == LV_OBJ_DRAW_PART_DSC_DRAW_CTX && n == sizeof(lv_draw_sw_ctx_t) && dsc->draw_ctx) {
+        memcpy(pdata, dsc->draw_ctx, sizeof(lv_draw_sw_ctx_t));
         res = 0;
     } else if (type == LV_OBJ_DRAW_PART_DSC_DRAW_AREA && n == sizeof(*dsc->draw_area) && dsc->draw_area) {
         memcpy(pdata, dsc->draw_area, sizeof(*dsc->draw_area));
@@ -3114,8 +3129,10 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_draw_part_dsc_set_data)
     } else if (type == LV_OBJ_DRAW_PART_DSC_P2 && n == sizeof(*dsc->p2) && dsc->p2) {
         memcpy((void *)dsc->p2, pdata, sizeof(*dsc->p2));
         res = 0;
-    } else if (type == LV_OBJ_DRAW_PART_DSC_CLIP_AREA && n == sizeof(*dsc->clip_area) && dsc->clip_area) {
-        memcpy((void *)dsc->clip_area, pdata, sizeof(*dsc->clip_area));
+    } else if (type == LV_OBJ_DRAW_PART_DSC_CLIP_AREA && n == sizeof(*dsc->draw_ctx->clip_area) && dsc->draw_ctx->clip_area) {
+        memcpy((void *)dsc->draw_ctx->clip_area, pdata, sizeof(*dsc->draw_ctx->clip_area));
+    } else if (type == LV_OBJ_DRAW_PART_DSC_DRAW_CTX && n == sizeof(*dsc->draw_ctx) && dsc->draw_ctx) {
+        memcpy((void *)dsc->draw_ctx, pdata, sizeof(*dsc->draw_ctx));
         res = 0;
     } else if (type == LV_OBJ_DRAW_PART_DSC_DRAW_AREA && n == sizeof(*dsc->draw_area) && dsc->draw_area) {
         memcpy(dsc->draw_area, pdata, sizeof(*dsc->draw_area));
@@ -3481,7 +3498,10 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_del)
 {
     lvgl_native_get_arg(lv_timer_t *, timer);
 
+    _lock_acquire_recursive(&lvgl_lock);
+    timer->module_inst = NULL;
     lv_timer_del(timer);
+    _lock_release_recursive(&lvgl_lock);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_user_data)
@@ -3646,6 +3666,83 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_group_focus_freeze)
     lv_group_focus_freeze(group, en);
 }
 
+DEFINE_LVGL_NATIVE_WRAPPER(_lv_disp_get_refr_timer)
+{
+    lv_timer_t *res;
+    lvgl_native_return_type(lv_timer_t *);
+    lvgl_native_get_arg(lv_disp_t *, disp);
+
+    res = _lv_disp_get_refr_timer(disp);
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_set_period)
+{
+    lvgl_native_get_arg(lv_timer_t *, timer);
+    lvgl_native_get_arg(uint32_t, period);
+
+    timer = map_ptr(exec_env, timer);
+
+    lv_timer_set_period(timer, period);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_get_timer)
+{
+    lv_timer_t *res;
+    lvgl_native_return_type(lv_timer_t *);
+
+    res = lv_anim_get_timer();
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_disp_get_data)
+{
+    int res = -1;
+    lvgl_native_return_type(int);
+    lvgl_native_get_arg(lv_disp_t *, disp);
+    lvgl_native_get_arg(void *, pdata);
+    lvgl_native_get_arg(int, n);
+
+    pdata = map_ptr(exec_env, pdata);
+    if (n == sizeof(*disp->refr_timer) && disp->refr_timer) {
+        memcpy(pdata, disp->refr_timer, sizeof(*disp->refr_timer));
+        res = 0;
+    }
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_timer_get_data)
+{
+    int res = -1;
+    lvgl_native_return_type(int);
+    lvgl_native_get_arg(lv_timer_t *, anim_timer);
+    lvgl_native_get_arg(void *, pdata);
+    lvgl_native_get_arg(int, n);
+
+    pdata = map_ptr(exec_env, pdata);
+    if (n == sizeof(anim_timer->period)) {
+        memcpy(pdata, &anim_timer->period, sizeof(anim_timer->period));
+        res = 0;
+    }
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_style_opa_recursive)
+{
+    lv_opa_t res;
+    lvgl_native_return_type(lv_opa_t);
+    lvgl_native_get_arg(const lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_part_t, part);
+
+    res = lv_obj_get_style_opa_recursive(obj, part);
+
+    lvgl_native_set_return(res);
+}
+
 static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_FONT_GET_FONT, lv_font_get_font, 1),
     LVGL_NATIVE_WRAPPER(LV_DISP_GET_NEXT, lv_disp_get_next, 1),
@@ -3731,7 +3828,7 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_PALETTE_MAIN, lv_palette_main, 1),
     LVGL_NATIVE_WRAPPER(LV_TABVIEW_MAIN, lv_tabview_create, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_TEXT_FONT, lv_obj_set_style_text_font, 3),
-    LVGL_NATIVE_WRAPPER(LV_TABVIEW_GET_TAB_BTNS, lv_tabview_get_tab_btns, 2),
+    LVGL_NATIVE_WRAPPER(LV_TABVIEW_GET_TAB_BTNS, lv_tabview_get_tab_btns, 1),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_PAD_LEFT, lv_obj_set_style_pad_left, 3 ),
     LVGL_NATIVE_WRAPPER(LV_TABVIEW_ADD_TAB, lv_tabview_add_tab, 2),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_HEIGHT, lv_obj_set_height, 2),
@@ -3952,6 +4049,13 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_QRCODE_UPDATE, lv_qrcode_update, 3),
     LVGL_NATIVE_WRAPPER(LV_GROUP_FOCUS_OBJ, lv_group_focus_obj, 1),
     LVGL_NATIVE_WRAPPER(LV_GROUP_FOCUS_FREEZE, lv_group_focus_freeze, 2),
+    LVGL_NATIVE_WRAPPER(LV_DISP_GET_REFR_TIMER, _lv_disp_get_refr_timer, 1),
+    LVGL_NATIVE_WRAPPER(LV_TIMER_SET_PERIOD, lv_timer_set_period, 2),
+    LVGL_NATIVE_WRAPPER(LV_ANIM_GET_TIMER, lv_anim_get_timer, 1),
+    LVGL_NATIVE_WRAPPER(LV_DISP_GET_DATA, lv_disp_get_data, 3),
+    LVGL_NATIVE_WRAPPER(LV_ANIM_TIMER_GET_DATA, lv_anim_timer_get_data, 3),
+    LVGL_NATIVE_WRAPPER(LV_TABLE_SET_ROW_CNT, lv_table_set_row_cnt, 2),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_GET_STYLE_OPA_RECURSIVE, lv_obj_get_style_opa_recursive, 2),
 };
 
 static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
@@ -4037,6 +4141,7 @@ void lv_run_wasm(void *_module_inst, void *cb, int argc, uint32_t *argv)
 
 static NativeSymbol wm_lvgl_wrapper_native_symbol[] = {
     REG_NATIVE_FUNC(lvgl_init, "()i"),
+    REG_NATIVE_FUNC(lvgl_deinit, "()i"),
     REG_NATIVE_FUNC(lvgl_lock, "()"),
     REG_NATIVE_FUNC(lvgl_unlock, "()"),
     REG_NATIVE_FUNC(esp_lvgl_call_native_func, "(ii*)"),

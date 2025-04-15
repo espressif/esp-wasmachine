@@ -10,7 +10,7 @@ import subprocess
 LVGL = { 'name': 'lvgl',
          'url': 'https://github.com/lvgl/lvgl.git',
          'path': 'components/lvgl',
-         'branch': 'v8.1.0',
+         'branch': 'v8.4.0',
          'patch': True }
 
 COMPONENTS = [ LVGL ]

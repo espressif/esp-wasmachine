@@ -46,6 +46,9 @@ static void fs_init(void)
 static void bsp_display_config(void)
 {
 #if CONFIG_IDF_TARGET_ESP32S3
+    /* Initialize I2C (for touch and audio) */
+    bsp_i2c_init();
+
     bsp_display_cfg_t cfg = {
         .lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
         .buffer_size = BSP_LCD_H_RES * CONFIG_BSP_LCD_DRAW_BUF_HEIGHT,
@@ -65,7 +68,11 @@ static void bsp_display_config(void)
         .buffer_size = BSP_LCD_DRAW_BUFF_SIZE,
         .double_buffer = BSP_LCD_DRAW_BUFF_DOUBLE,
         .flags = {
+#if CONFIG_BSP_LCD_COLOR_FORMAT_RGB888
+            .buff_dma = false,
+#else
             .buff_dma = true,
+#endif
             .buff_spiram = false,
             .sw_rotate = false,
         }
