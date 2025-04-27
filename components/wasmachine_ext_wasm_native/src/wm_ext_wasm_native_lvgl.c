@@ -42,6 +42,19 @@
 
 #define LVGL_TRACE_ABORT()  abort()
 
+#define LV_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
+#define LV_VERSION  LV_VERSION_VAL(LV_VERSION_MAJOR, \
+                                   LV_VERSION_MINOR, \
+                                   LV_VERSION_PATCH)
+
+#define _VERSION_STR_HELPER(x) #x
+#define _VERSION_STR(major, minor, patch) "v" _VERSION_STR_HELPER(major) "." \
+                                              _VERSION_STR_HELPER(minor) "." \
+                                              _VERSION_STR_HELPER(patch)
+#define LV_VERSION_STR _VERSION_STR(LV_VERSION_MAJOR, \
+                                    LV_VERSION_MINOR, \
+                                    LV_VERSION_PATCH)
+
 typedef void (*lvgl_func_t)(wasm_exec_env_t exec_env, uint32_t *args, uint32_t *args_ret);
 
 typedef struct lvgl_func_desc {
@@ -54,12 +67,22 @@ static const char *TAG = "wm_lvgl_wrapper";
 static _lock_t lvgl_lock;
 static wm_ext_wasm_native_lvgl_ops_t s_lvgl_ops;
 
-static int lvgl_init_wrapper(wasm_exec_env_t exec_env)
+static int esp_lvgl_init_wrapper(wasm_exec_env_t exec_env, uint32_t version)
 {
+    if (LV_VERSION != version) {
+        uint16_t major = (uint16_t)((version >> 16) & 0xFFFF);
+        uint8_t minor = (version >> 8) & 0xFF;
+        if (major != LV_VERSION_MAJOR || minor != LV_VERSION_MINOR) {
+            ESP_LOGE(TAG, "Failed to match version, wasmachine LVGL version: %s, WDF LVGL version: v%"PRIu32".%"PRIu32".%"PRIu32"\n",
+                     LV_VERSION_STR, (version >> 16) & 0xFFFF, (version >> 8) & 0xFF, version & 0xFF);
+            return -1;
+        }
+    }
+
     return s_lvgl_ops.backlight_on();
 }
 
-static int lvgl_deinit_wrapper(wasm_exec_env_t exec_env)
+static int esp_lvgl_deinit_wrapper(wasm_exec_env_t exec_env)
 {
     return s_lvgl_ops.backlight_off();
 }
@@ -3077,6 +3100,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_draw_part_dsc_get_data)
         res = 0;
     } else if (type == LV_OBJ_DRAW_PART_DSC_CLIP_AREA && n == sizeof(*dsc->draw_ctx->clip_area) && dsc->draw_ctx->clip_area) {
         memcpy(pdata, dsc->draw_ctx->clip_area, sizeof(*dsc->draw_ctx->clip_area));
+        res = 0;
     } else if (type == LV_OBJ_DRAW_PART_DSC_DRAW_CTX && n == sizeof(lv_draw_sw_ctx_t) && dsc->draw_ctx) {
         memcpy(pdata, dsc->draw_ctx, sizeof(lv_draw_sw_ctx_t));
         res = 0;
@@ -3131,6 +3155,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_draw_part_dsc_set_data)
         res = 0;
     } else if (type == LV_OBJ_DRAW_PART_DSC_CLIP_AREA && n == sizeof(*dsc->draw_ctx->clip_area) && dsc->draw_ctx->clip_area) {
         memcpy((void *)dsc->draw_ctx->clip_area, pdata, sizeof(*dsc->draw_ctx->clip_area));
+        res = 0;
     } else if (type == LV_OBJ_DRAW_PART_DSC_DRAW_CTX && n == sizeof(*dsc->draw_ctx) && dsc->draw_ctx) {
         memcpy((void *)dsc->draw_ctx, pdata, sizeof(*dsc->draw_ctx));
         res = 0;
@@ -4140,8 +4165,8 @@ void lv_run_wasm(void *_module_inst, void *cb, int argc, uint32_t *argv)
 }
 
 static NativeSymbol wm_lvgl_wrapper_native_symbol[] = {
-    REG_NATIVE_FUNC(lvgl_init, "()i"),
-    REG_NATIVE_FUNC(lvgl_deinit, "()i"),
+    REG_NATIVE_FUNC(esp_lvgl_init, "(i)i"),
+    REG_NATIVE_FUNC(esp_lvgl_deinit, "()i"),
     REG_NATIVE_FUNC(lvgl_lock, "()"),
     REG_NATIVE_FUNC(lvgl_unlock, "()"),
     REG_NATIVE_FUNC(esp_lvgl_call_native_func, "(ii*)"),
