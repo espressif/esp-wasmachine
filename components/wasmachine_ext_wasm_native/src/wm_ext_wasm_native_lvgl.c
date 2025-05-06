@@ -62,6 +62,11 @@ typedef struct lvgl_func_desc {
     uint32_t        argc;
 } lvgl_func_desc_t;
 
+typedef struct {
+    lv_obj_t *scr;
+    int count_val;
+} timer_context_t;
+
 static const char *TAG = "wm_lvgl_wrapper";
 
 static _lock_t lvgl_lock;
@@ -241,7 +246,12 @@ static void *map_ptr(wasm_exec_env_t exec_env, const void *app_addr)
     void *ptr;
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    if (ptr_is_in_ram_or_rom(app_addr)) {
+    bool is_psram = false;
+#if SOC_MMU_PER_EXT_MEM_TARGET
+    is_psram = ((uint32_t)app_addr >= SOC_EXTRAM_LOW) && ((uint32_t)app_addr < SOC_EXTRAM_HIGH);
+#endif
+
+    if (ptr_is_in_ram_or_rom(app_addr) || is_psram) {
         return (void *)app_addr;
     }
 
@@ -920,6 +930,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_img_create)
     lvgl_native_return_type(lv_obj_t *);
     lvgl_native_get_arg(lv_obj_t *, parent);
 
+    parent = map_ptr(exec_env, parent);
     res = lv_img_create(parent);
 
     lvgl_native_set_return(res);
@@ -3768,6 +3779,46 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_style_opa_recursive)
     lvgl_native_set_return(res);
 }
 
+DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_ctx_get_data)
+{
+    int res = -1;
+    lvgl_native_return_type(int);
+    lvgl_native_get_arg(timer_context_t *, timer_ctx);
+    lvgl_native_get_arg(int, type);
+    lvgl_native_get_arg(void *, pdata);
+    lvgl_native_get_arg(int, n);
+
+    timer_ctx = map_ptr(exec_env, timer_ctx);
+    pdata = map_ptr(exec_env, pdata);
+
+    if (type == LV_TIMER_CTX_COUNT_VAL && n == sizeof(timer_ctx->count_val)) {
+        memcpy(pdata, &timer_ctx->count_val, sizeof(timer_ctx->count_val));
+        res = 0;
+    }
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_ctx_set_data)
+{
+    int res = 0;
+    lvgl_native_return_type(int);
+    lvgl_native_get_arg(timer_context_t *, timer_ctx);
+    lvgl_native_get_arg(int, type);
+    lvgl_native_get_arg(void *, pdata);
+    lvgl_native_get_arg(int, n);
+
+    timer_ctx = map_ptr(exec_env, timer_ctx);
+    pdata = map_ptr(exec_env, pdata);
+
+    if (type == LV_TIMER_CTX_COUNT_VAL && n == sizeof(timer_ctx->count_val)) {
+        memcpy(&timer_ctx->count_val, pdata, sizeof(timer_ctx->count_val));
+        res = 0;
+    }
+
+    lvgl_native_set_return(res);
+}
+
 static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_FONT_GET_FONT, lv_font_get_font, 1),
     LVGL_NATIVE_WRAPPER(LV_DISP_GET_NEXT, lv_disp_get_next, 1),
@@ -4081,6 +4132,8 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_ANIM_TIMER_GET_DATA, lv_anim_timer_get_data, 3),
     LVGL_NATIVE_WRAPPER(LV_TABLE_SET_ROW_CNT, lv_table_set_row_cnt, 2),
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_STYLE_OPA_RECURSIVE, lv_obj_get_style_opa_recursive, 2),
+    LVGL_NATIVE_WRAPPER(LV_TIMER_CTX_GET_DATA, lv_timer_ctx_get_data, 4),
+    LVGL_NATIVE_WRAPPER(LV_TIMER_CTX_SET_DATA, lv_timer_ctx_set_data, 4),
 };
 
 static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,

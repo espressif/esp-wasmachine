@@ -318,6 +318,8 @@
 #define LV_ANIM_TIMER_GET_DATA          309
 #define LV_TABLE_SET_ROW_CNT            310
 #define LV_OBJ_GET_STYLE_OPA_RECURSIVE  311
+#define LV_TIMER_CTX_GET_DATA           312
+#define LV_TIMER_CTX_SET_DATA           313
 
 #define LV_OBJ_COORDS                     0 /*!< type of set/get lv_obj_t->coords */
 
@@ -366,6 +368,8 @@
 #define LV_FONT_UNSCII_16_FONT 24
 #define LV_FONT_DEJAVU_16_PERSIAN_HEBREW_FONT 25
 #define LV_FONT_SIMSUN_16_CJK_FONT 26
+
+#define LV_TIMER_CTX_COUNT_VAL 0
 
 /* Custom LVGL version: 1.0.0 */
 #define LV_VERSION_MAJOR 1
