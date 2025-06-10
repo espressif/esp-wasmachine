@@ -1,5 +1,11 @@
 # ChangeLog
 
+## 0.4.0
+
+- Update LVGL version to 8.4.0
+- Added LVGL version check
+- LVGL WASM wrapper API supports LVGL external data and destructor
+
 ## 0.3.1
 
 - Use network_provisioning to replace wifi_provisioning component to avoid compilation errors

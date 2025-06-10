@@ -8,6 +8,7 @@ from idf_build_apps.constants import SUPPORTED_TARGETS
 
 IGNORE_WARNINGS = [
     r'warning: \'nvs_handle\' is deprecated: Replace with nvs_handle_t',
+    r'warning: \'ADC_ATTEN_DB_11\' is deprecated',
 ]
 
 def get_mr_files(modified_files: str) -> str:

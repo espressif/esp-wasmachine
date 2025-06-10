@@ -44,13 +44,13 @@ esp-wasmachine/
 
 ESP-WASMachine can be considered as an application project based on ESP-IDF in the implementation principle, so the development environment of ESP-IDF needs to be installed. For the relevant process, please refer to ESP-IDF [documents](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/get-started/index.html#get-started).
 
-The supported version of ESP-IDF contains v5.1.x, v5.2.x, 5.3.x and master, related versions are as follows:
+The supported version of ESP-IDF contains v5.1.x, v5.2.x, 5.3.x, 5.4.x, 5.5.x and master, related versions are as follows:
 
-- [v5.1.5](https://github.com/espressif/esp-idf/tree/v5.1.5)
-- [v5.2.3](https://github.com/espressif/esp-idf/tree/v5.2.3)
-- [v5.3.2](https://github.com/espressif/esp-idf/tree/v5.3.2)
-- [v5.3.2](https://github.com/espressif/esp-idf/tree/v5.3.2)
-- [v5.4.0](https://github.com/espressif/esp-idf/tree/v5.4)
+- [v5.1.6](https://github.com/espressif/esp-idf/tree/v5.1.6)
+- [v5.2.5](https://github.com/espressif/esp-idf/tree/v5.2.5)
+- [v5.3.3](https://github.com/espressif/esp-idf/tree/v5.3.3)
+- [v5.4.2](https://github.com/espressif/esp-idf/tree/v5.4.2)
+- [v5.5-rc1](https://github.com/espressif/esp-idf/tree/v5.5-rc1)
 - [master](https://github.com/espressif/esp-idf/tree/master)
 
 The supported development boards are as follows:
@@ -66,17 +66,6 @@ The supported development boards are as follows:
 - [ESP32-C6-DevKitC](https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitc-1/user_guide.html)
 
 - [ESP32-P4-Function-EV-Board](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/index.html)
-
-In addition, it is also necessary to download the third-party software to ESP-WASMachine. The source code of the third-party software in the corresponding version will be automatically downloaded and patched when it is compiled for the first time. The relevant log information is as follows:
-
-```sh
-clone 'https://github.com/lvgl/lvgl.git' branch 'v8.1.0' into 'components/LVGL'
-patch 'components/lvgl'
-clone 'https://github.com/espressif/esp-rainmaker.git' branch 'master' into 'components/esp-rainmaker'
-checkout 'components/esp-rainmaker' to commit id '00bcf4c0'
-```
-
-To ensure safety of your data (for example, you want to modify third-party software source code according to requirements), the compilation system only clones and patches these third-party software. If compiling problems occur because of software updating or other reasons, you can delete these third-party software manually and retry.
 
 To remotely manage WebAssembly applications, you also need to compile and generate `host_tool`. However, `host_tool` can only be compiled and used in Linux. The relevant compilation process is as follows:
 
@@ -280,10 +269,17 @@ idf.py set-target esp32c6
 idf.py build
 ```
 
-5. Compile the firmware for the ESP32-P4-Function-EV-Board development board:
+5. Compile the firmware for the ESP32-P4 development board:
 
 ```sh
 idf.py set-target esp32p4
+idf.py build
+```
+
+6. Compile the firmware for the ESP32-P4-Function-EV-Board development board:
+
+```sh
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.esp32_p4_function_ev_board" set-target esp32p4
 idf.py build
 ```
 
