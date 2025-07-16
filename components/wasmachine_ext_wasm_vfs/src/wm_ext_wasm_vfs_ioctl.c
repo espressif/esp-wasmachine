@@ -153,7 +153,7 @@ int wm_ext_wasm_native_spi_ioctl(wasm_exec_env_t exec_env, int fd, int cmd, char
         DATA_SEQ_POP(ds, DATA_SEQ_SPI_CFG_MOSI_PIN, cfg.mosi_pin);
         DATA_SEQ_POP(ds, DATA_SEQ_SPI_CFG_MISO_PIN, cfg.miso_pin);
         DATA_SEQ_POP(ds, DATA_SEQ_SPI_CFG_FLAGS,    cfg.flags);
-        if (cfg.flags & I2C_MASTER) {
+        if (cfg.flags & SPI_MASTER) {
             DATA_SEQ_POP(ds, DATA_SEQ_SPI_CFG_MASTER_CLK, cfg.master.clock);
         }
 
