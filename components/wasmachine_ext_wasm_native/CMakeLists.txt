@@ -69,8 +69,11 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
         idf_component_optional_requires(PRIVATE "esp_http_client")
     endif()
     if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL)
-        idf_component_optional_requires(PRIVATE "espressif__lvgl")
-        idf_component_optional_requires(PRIVATE "lvgl")
+        idf_component_optional_requires(PRIVATE "lvgl__lvgl")
+
+        idf_component_get_property(lvgl lvgl__lvgl COMPONENT_LIB)
+        target_compile_definitions(${lvgl} PUBLIC "-DLV_EXTERNAL_DATA_AND_DESTRUCTOR"
+                                                  "-DLV_EXT_DATA_MAX_NUM=3")
     endif()
     if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_MQTT)
         idf_component_optional_requires(PRIVATE "mqtt")

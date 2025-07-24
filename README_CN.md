@@ -44,14 +44,18 @@ esp-wasmachine/
 
 从实现原理来看，ESP-WASMachine 是基于 ESP-IDF 的应用程序，所以需要安装 ESP-IDF 的开发环境，相关流程请参考 ESP-IDF [文档](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32s3/get-started/index.html#id1)。
 
-支持的 ESP-IDF 版本有 v5.1.x, v5.2.x, 5.3.x 和 master，相关版本如下：
+支持的 ESP-IDF 版本有 v5.1.x, v5.2.x, 5.3.x, 5.4.x, 5.5.x 和 master，相关版本如下：
 
-- [v5.1.5](https://github.com/espressif/esp-idf/tree/v5.1.5)
-- [v5.2.3](https://github.com/espressif/esp-idf/tree/v5.2.3)
-- [v5.3.2](https://github.com/espressif/esp-idf/tree/v5.3.2)
+- [v5.1.6](https://github.com/espressif/esp-idf/tree/v5.1.6)
+- [v5.2.5](https://github.com/espressif/esp-idf/tree/v5.2.5)
+- [v5.3.3](https://github.com/espressif/esp-idf/tree/v5.3.3)
+- [v5.4.2](https://github.com/espressif/esp-idf/tree/v5.4.2)
+- [v5.5-rc1](https://github.com/espressif/esp-idf/tree/v5.5-rc1)
 - [master](https://github.com/espressif/esp-idf/tree/master)
 
 支持的开发板有：
+
+- [ESP32-DevKitC](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32/esp32-devkitc/user_guide.html#id1)
 
 - [ESP32-S3-BOX](https://github.com/espressif/esp-box/blob/v0.3.0/docs/hardware_overview/esp32_s3_box/hardware_overview_for_box_cn.md)
 
@@ -61,16 +65,7 @@ esp-wasmachine/
 
 - [ESP32-C6-DevKitC](https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitc-1/user_guide.html)
 
-除此之外，还需要下载第三方库到 ESP-WASMachine，在第一次编译时会自动下载对应版本的第三方库的源码并打上 patch，过程中显示下列 log：
-
-```sh
-clone 'https://github.com/lvgl/lvgl.git' branch 'v8.1.0' into 'components/lvgl'
-patch 'components/lvgl'
-clone 'https://github.com/espressif/esp-rainmaker.git' branch 'master' into 'components/esp-rainmaker'
-checkout 'components/esp-rainmaker' to commit id '00bcf4c0'
-```
-
-为保护您的数据安全，比如您基于自己的需求修改这些第三方库，所以编译系统除了对这些第三方库进行 clone 和 patch 之外，不会作其他的修改。如果出现因为软件版本更新或者其他原因导致的相关编译问题，您可以手动删除这些第三方库并重试。
+- [ESP32-P4-Function-EV-Board](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32p4/esp32-p4-function-ev-board/index.html)
 
 为了远程管理 WebAssembly 应用程序，还需要编译生成 `host_tool`，但是 `host_tool` 当前只支持在 Linux 操作系统上编译和使用。相关编译过程如下：
 
@@ -246,28 +241,49 @@ WebAssembly 远程应用程序管理工具 [host_tool](https://github.com/byteco
 
 ### 4.1 配置系统
 
-1. 编译 ESP32-S3-BOX 开发板固件:
+1. 编译 ESP32-DevKitC 开发板固件:
+
+```sh
+idf.py set-target esp32
+idf.py build
+```
+
+2. 编译 ESP32-S3-BOX 开发板固件:
 
 ```sh
 idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.esp-box" set-target esp32s3
 idf.py build
 ```
 
-2. 编译 ESP32-S3-DevKitC 开发板固件:
+3. 编译 ESP32-S3-DevKitC 开发板固件:
 
 ```sh
 idf.py set-target esp32s3
 idf.py build
 ```
 
-3. 编译 ESP32-C6-DevKitC 开发板固件:
+4. 编译 ESP32-C6-DevKitC 开发板固件:
 
 ```sh
 idf.py set-target esp32c6
 idf.py build
 ```
 
-* 注意：ESP32-C6-DevKitC 4MB flash 开发板使用 partitions.4mb.single_app.csv 作为 partition table 文件。
+5. 编译 ESP32-P4 开发板固件:
+
+```sh
+idf.py set-target esp32p4
+idf.py build
+```
+
+6. 编译 ESP32-P4-Function-EV-Board 开发板固件:
+
+```sh
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.esp32_p4_function_ev_board" set-target esp32p4
+idf.py build
+```
+
+* 注意：ESP32-DevKitC 4MB flash 开发板 和 ESP32-C6-DevKitC 4MB flash 开发板均使用 partitions.4mb.single_app.csv 作为 partition table 文件。
 
 ### 4.2 烧录文件系统
 

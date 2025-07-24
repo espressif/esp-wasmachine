@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -311,6 +311,15 @@
 #define LV_QRCODE_UPDATE                302
 #define LV_GROUP_FOCUS_OBJ              303
 #define LV_GROUP_FOCUS_FREEZE           304
+#define LV_DISP_GET_REFR_TIMER          305
+#define LV_TIMER_SET_PERIOD             306
+#define LV_ANIM_GET_TIMER               307
+#define LV_DISP_GET_DATA                308
+#define LV_ANIM_TIMER_GET_DATA          309
+#define LV_TABLE_SET_ROW_CNT            310
+#define LV_OBJ_GET_STYLE_OPA_RECURSIVE  311
+#define LV_TIMER_CTX_GET_DATA           312
+#define LV_TIMER_CTX_SET_DATA           313
 
 #define LV_OBJ_COORDS                     0 /*!< type of set/get lv_obj_t->coords */
 
@@ -321,11 +330,12 @@
 #define LV_OBJ_DRAW_PART_DSC_VALUE        4 /*!< type of set/get lv_obj_draw_part_dsc_t->value */
 #define LV_OBJ_DRAW_PART_DSC_P1           5 /*!< type of set/get lv_obj_draw_part_dsc_t->p1 */
 #define LV_OBJ_DRAW_PART_DSC_P2           6 /*!< type of set/get lv_obj_draw_part_dsc_t->p2 */
-#define LV_OBJ_DRAW_PART_DSC_CLIP_AREA    7 /*!< type of set/get lv_obj_draw_part_dsc_t->clip_area */
+#define LV_OBJ_DRAW_PART_DSC_CLIP_AREA    7 /*!< type of set/get lv_draw_ctx_t->clip_area */
 #define LV_OBJ_DRAW_PART_DSC_DRAW_AREA    8 /*!< type of set/get lv_obj_draw_part_dsc_t->draw_area */
 #define LV_OBJ_DRAW_PART_DSC_RECT_DSC     9 /*!< type of set/get lv_obj_draw_part_dsc_t->rect_dsc */
 #define LV_OBJ_DRAW_PART_DSC_LINE_DSC     10 /*!< type of set/get lv_obj_draw_part_dsc_t->line_dsc */
 #define LV_OBJ_DRAW_PART_DSC_SUB_PART_PTR 11 /*!< type of set/get lv_obj_draw_part_dsc_t->sub_part_ptr */
+#define LV_OBJ_DRAW_PART_DSC_DRAW_CTX     12 /*!< type of set/get lv_obj_draw_part_dsc_t->draw_ctx */
 
 #define LV_CHART_SERIES_COLOR             0 /*!< type of set/get lv_chart_series_t->color */
 
@@ -358,3 +368,13 @@
 #define LV_FONT_UNSCII_16_FONT 24
 #define LV_FONT_DEJAVU_16_PERSIAN_HEBREW_FONT 25
 #define LV_FONT_SIMSUN_16_CJK_FONT 26
+#define LV_FONT_BENCHMARK_MONTSERRAT_12_COMPR_AZ_FONT 27
+#define LV_FONT_BENCHMARK_MONTSERRAT_16_COMPR_AZ_FONT 28
+#define LV_FONT_BENCHMARK_MONTSERRAT_28_COMPR_AZ_FONT 29
+
+#define LV_TIMER_CTX_COUNT_VAL 0
+
+/* ESP-Wasmachine LVGL version: 0.1.0 */
+#define WM_LV_VERSION_MAJOR 0
+#define WM_LV_VERSION_MINOR 1
+#define WM_LV_VERSION_PATCH 0

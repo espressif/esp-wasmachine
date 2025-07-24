@@ -2,18 +2,36 @@
 dependencies:
   idf:
     version: ">=5.1"
+
   esp-box:
-    version: "=3.0.5"
+    version: "3.1.*"
     rules:
-      - if: target in [esp32s3]
+      - if: "target in [esp32s3]"
+
+  esp32_p4_function_ev_board:
+    version: "5.0.*"
+    rules:
+      - if: "target in [esp32p4]"
+
+  lvgl/lvgl:
+    version: "8.4.0"
+    rules:
+      - if: "target in [esp32s3, esp32p4]"
 
   joltwallet/littlefs:
-    version: "==1.*"
+    version: "1.*"
 
   wasmachine_core:
-    version: "==0.*"
-    override_path: "../../../components/wasmachine_core"
+    version: "0.*"
+    override_path: ../../../components/wasmachine_core
 
   wasmachine_ext_wasm_native_rainmaker:
-    version: "==0.*"
-    override_path: "../../../components/wasmachine_ext_wasm_native_rainmaker"
+    version: "0.*"
+    rules:
+      - if: "target not in [esp32p4]"
+    override_path: ../../../components/wasmachine_ext_wasm_native_rainmaker
+
+  esp_wifi_remote:
+    version: "0.*"
+    rules:
+      - if: "target in [esp32p4]"
