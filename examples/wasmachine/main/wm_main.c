@@ -59,7 +59,7 @@ static void bsp_display_config(void)
 #endif
         .flags = {
             .buff_dma = true,
-            .buff_spiram = false,
+            .buff_spiram = true,
         }
     };
 #else
@@ -92,7 +92,7 @@ static void bsp_display_config(void)
 #else
             .buff_dma = true,
 #endif
-            .buff_spiram = false,
+            .buff_spiram = true,
             .sw_rotate = true,
         }
     };

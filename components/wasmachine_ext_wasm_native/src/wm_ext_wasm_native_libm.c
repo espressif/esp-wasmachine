@@ -29,9 +29,15 @@ static float cosf_wrapper(wasm_exec_env_t exec_env, float value)
     return cosf(value);
 }
 
+static double pow_wrapper(wasm_exec_env_t exec_env, double x, double y)
+{
+    return pow(x, y);
+}
+
 static NativeSymbol wm_math_wrapper_native_symbol[] = {
     REG_NATIVE_FUNC(sinf,   "(f)f"),
-    REG_NATIVE_FUNC(cosf,   "(f)f")
+    REG_NATIVE_FUNC(cosf,   "(f)f"),
+    REG_NATIVE_FUNC(pow,    "(FF)F")
 };
 
 int wm_ext_wasm_native_libm_export(void)

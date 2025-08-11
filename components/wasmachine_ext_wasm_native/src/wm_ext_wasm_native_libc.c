@@ -7,8 +7,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/errno.h>
+#include <time.h>
 
 #include "esp_log.h"
+#include "esp_memory_utils.h"
 
 #include "bh_platform.h"
 #include "wasm_export.h"
@@ -263,6 +265,54 @@ static uint32_t errno_c2wasm(int error)
     return errors[error];
 }
 
+#if CONFIG_IDF_TARGET_ESP32P4
+static bool ptr_is_in_external_ram(const void *ptr)
+{
+    return ((intptr_t)ptr >= SOC_EXTRAM_LOW) &&
+           ((intptr_t)ptr < SOC_EXTRAM_HIGH);
+}
+#endif
+
+static bool ptr_is_in_ram_or_rom(const void *ptr)
+{
+    bool ret = false;
+
+    if (esp_ptr_in_dram(ptr)) {
+        ret = true;
+    } else if (esp_ptr_in_drom(ptr)) {
+        ret = true;
+#if CONFIG_IDF_TARGET_ESP32P4
+    } else {
+        ret = ptr_is_in_external_ram(ptr);
+#else
+    } else if (esp_ptr_external_ram(ptr)) {
+        ret = true;
+#endif
+    }
+
+    return ret;
+}
+
+static void *map_ptr(wasm_exec_env_t exec_env, const void *app_addr)
+{
+    void *ptr;
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
+
+    if (ptr_is_in_ram_or_rom(app_addr)) {
+        return (void *)app_addr;
+    }
+
+    ptr = (char *)addr_app_to_native((uint32_t)app_addr);
+    if (!ptr) {
+        ESP_LOGE(TAG, "failed to map app_addr=%p", app_addr);
+        return NULL;
+    } else {
+        app_addr = ptr;
+    }
+
+    return (void *)app_addr;
+}
+
 static void set_wasm_errno(wasm_exec_env_t exec_env, int c_errno)
 {
     uint32_t argv[1];
@@ -273,13 +323,13 @@ static void set_wasm_errno(wasm_exec_env_t exec_env, int c_errno)
     func = wasm_runtime_lookup_function(module_inst, func_name);
     if (!func) {
         ESP_LOGW(TAG, "failed to find function %s", func_name);
-        return ;
+        return;
     }
 
     argv[0] = (uint32_t)errno_c2wasm(c_errno);
     if (!wasm_runtime_call_wasm(exec_env, func, 1, argv)) {
         ESP_LOGE(TAG, "failed to call function %s", func_name);
-        return ;
+        return;
     }
 }
 
@@ -499,6 +549,51 @@ static int usleep_wrapper(wasm_exec_env_t exec_env, unsigned long us)
     return usleep(us);
 }
 
+static time_t time_wrapper(wasm_exec_env_t exec_env, time_t * timer)
+{
+    if (timer) {
+        timer = map_ptr(exec_env, timer);
+    }
+
+    return time(timer);
+}
+
+static void srand_wrapper(wasm_exec_env_t exec_env, unsigned int seed)
+{
+    srand(seed);
+}
+
+static int rand_wrapper(wasm_exec_env_t exec_env)
+{
+    return rand();
+}
+
+static struct tm *localtime_r_wrapper(wasm_exec_env_t exec_env, int32_t timer, int32_t tp)
+{
+    const time_t *naitve_timer = NULL;
+    struct tm *naitve_tp = NULL;
+    if (timer) {
+        naitve_timer = map_ptr(exec_env, (const void *)timer);
+    }
+
+    if (tp) {
+        naitve_tp = map_ptr(exec_env, (const void *)tp);
+    }
+
+    struct tm *naitve_tm = localtime_r(naitve_timer, naitve_tp);
+    struct tm *app_tm;
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
+    module_malloc(sizeof(struct tm), (void **)&app_tm);
+    if (!app_tm) {
+        ESP_LOGE(TAG, "failed to malloc app_tm");
+        return NULL;
+    }
+
+    memcpy(app_tm, naitve_tm, sizeof(struct tm));
+    struct tm *res = (struct tm *)addr_native_to_app((void *)app_tm);
+    return res;
+}
+
 static NativeSymbol wm_libc_wrapper_native_symbol[] = {
     REG_NATIVE_FUNC(open,   "($ii)i"),
     REG_NATIVE_FUNC(read,   "(i*~)i"),
@@ -514,7 +609,11 @@ static NativeSymbol wm_libc_wrapper_native_symbol[] = {
 #endif
     REG_NATIVE_FUNC(fstat,  "(i*)i"),
     REG_NATIVE_FUNC(sleep,  "(i)i"),
-    REG_NATIVE_FUNC(usleep, "(i)i")
+    REG_NATIVE_FUNC(usleep, "(i)i"),
+    REG_NATIVE_FUNC(time,   "(*)I"),
+    REG_NATIVE_FUNC(srand,  "(i)"),
+    REG_NATIVE_FUNC(rand,   "()i"),
+    REG_NATIVE_FUNC(localtime_r, NULL)
 };
 
 int wm_ext_wasm_native_libc_export(void)
