@@ -33,6 +33,11 @@ menu "WASM Extended Native"
         default n
         depends on WASMACHINE_WASM_EXT_NATIVE
 
+    config WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA
+        bool "Enable export WASM extended LVGL native APIs to support ESP-BROOKESIA"
+        default n
+        depends on WASMACHINE_WASM_EXT_NATIVE && WASMACHINE_WASM_EXT_NATIVE_LVGL
+
     orsource "../wasmachine_ext_wasm_native_rainmaker/Kconfig.wasmachine"
     orsource "../espressif__wasmachine_ext_wasm_native_rainmaker/Kconfig.wasmachine"
 endmenu

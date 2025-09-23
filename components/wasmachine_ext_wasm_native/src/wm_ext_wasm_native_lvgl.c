@@ -34,10 +34,12 @@
 #include "src/others/observer/lv_observer_private.h"
 #include "src/draw/sw/lv_draw_sw.h"
 
+#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA
 #if configNUM_THREAD_LOCAL_STORAGE_POINTERS < 3
 #error "configNUM_THREAD_LOCAL_STORAGE_POINTERS should be at least 3"
 #else
 #define LVGL_WASM_TASK_LOCAL_STORAGE_INDEX 2
+#endif
 #endif
 
 #define LVGL_ARG_BUF_NUM        16
@@ -71,6 +73,7 @@
 #define LV_VERSION_STR _VERSION_STR(WM_LV_VERSION_MAJOR, \
                                     WM_LV_VERSION_MINOR, \
                                     WM_LV_VERSION_PATCH)
+#define ESP_BROOKESIA_SELECTOR_TRANS_VALUE             0xFFFFFFFF
 
 typedef void (*lvgl_func_t)(wasm_exec_env_t exec_env, uint32_t *args, uint32_t *args_ret);
 typedef void (*lv_async_cb_t)(void *);
@@ -106,7 +109,6 @@ typedef struct {
 } lvgl_subject_cb_wrapper_t;
 
 typedef struct {
-    uint32_t exec_cb;
     uint32_t custom_exec_cb;
     uint32_t start_cb;
     uint32_t ready_cb;
@@ -114,6 +116,7 @@ typedef struct {
     uint32_t get_value_cb;
     uint32_t path_cb;
     wasm_module_inst_t module_inst;
+    uint8_t cb_type;
 } lvgl_anim_cb_wrapper_t;
 
 typedef struct _lv_async_info_t {
@@ -204,6 +207,10 @@ static lv_style_t *map_style(wasm_exec_env_t exec_env, lv_style_t *style)
     void *ptr;
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
+    if (ptr_is_in_ram_or_rom(style)) {
+        return style;
+    }
+
     ptr = addr_app_to_native((uint32_t)style);
     if (!ptr) {
         ESP_LOGE(TAG, "failed to map style=%p", style);
@@ -219,6 +226,10 @@ static lv_anim_t *map_anim(wasm_exec_env_t exec_env, lv_anim_t *anim)
 {
     void *ptr;
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
+
+    if (ptr_is_in_ram_or_rom(anim)) {
+        return anim;
+    }
 
     ptr = addr_app_to_native((uint32_t)anim);
     if (!ptr) {
@@ -506,45 +517,36 @@ static void lvgl_timer_cb_wrapper_destructor(void *ext_data)
     free(ext_data);
 }
 
-static void lvgl_anim_exec_cb_wrapper(void *var, int32_t value)
-{
-    uint32_t argv[2];
-    lv_anim_t *anim = lv_anim_get_running_anim();
-    if (anim) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)anim->ext_data;
-        void (* exec_cb)(void *var, int32_t value);
-        if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->exec_cb)) {
-            argv[0] = (uint32_t)var;
-            argv[1] = (uint32_t)value;
-
-            lvgl_run_wasm(wrapper->module_inst, wrapper->exec_cb, 2, argv);
-        } else {
-            exec_cb = (void (*)(void *, int32_t))wrapper->exec_cb;
-            exec_cb(var, value);
-        }
-    }
-}
-
 static void lvgl_anim_custom_exec_cb_wrapper(lv_anim_t *var, int32_t value)
 {
     uint32_t argv[2];
-    lv_anim_t *anim = lv_anim_get_running_anim();
-    if (anim) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)anim->ext_data;
+    if (var) {
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
         void (* custom_exec_cb)(lv_anim_t *var, int32_t value);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->custom_exec_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
-            uint32_t wasm_anim = addr_native_to_app((void *)var);
+            uint32_t wasm_anim = 0;
+            if (wrapper->cb_type) {
+                wasm_anim = addr_native_to_app((void *)var);
+                argv[0] = wasm_anim ? wasm_anim : (uint32_t)var;
+            } else {
+                wasm_anim = addr_native_to_app((void *)(var->var));
+                argv[0] = wasm_anim ? wasm_anim : (uint32_t)var->var;
+            }
 
-            ESP_LOGD(TAG, "lvgl_anim_custom_exec_cb_wrapper: %p -> %p", var, wasm_anim);
+            ESP_LOGD(TAG, "lvgl_anim_custom_exec_cb_wrapper: %p -> %"PRIx32"", var, wasm_anim);
 
-            argv[0] = wasm_anim ? wasm_anim : (uint32_t)var;
             argv[1] = value;
 
             lvgl_run_wasm(wrapper->module_inst, wrapper->custom_exec_cb, 2, argv);
         } else {
             custom_exec_cb = (void (*)(lv_anim_t *, int32_t))wrapper->custom_exec_cb;
-            custom_exec_cb(var, value);
+            if (wrapper->cb_type) {
+                custom_exec_cb(var, value);
+            } else {
+                custom_exec_cb((lv_anim_t *)(var->var), value);
+            }
+
         }
     }
 }
@@ -552,21 +554,20 @@ static void lvgl_anim_custom_exec_cb_wrapper(lv_anim_t *var, int32_t value)
 static void lvgl_anim_start_cb_wrapper(lv_anim_t *var)
 {
     uint32_t argv[1];
-    lv_anim_t *anim = lv_anim_get_running_anim();
-    if (anim) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)anim->ext_data;
+    if (var) {
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
         void (* start_cb)(lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->start_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
             uint32_t wasm_anim = addr_native_to_app((void *)var);
 
-            ESP_LOGD(TAG, "lvgl_anim_start_cb_wrapper: %p -> %p", var, wasm_anim);
-            
+            ESP_LOGD(TAG, "lvgl_anim_start_cb_wrapper: %p -> %"PRIx32"", var, wasm_anim);
+
             argv[0] = wasm_anim ? wasm_anim : (uint32_t)var;
 
             lvgl_run_wasm(wrapper->module_inst, wrapper->start_cb, 1, argv);
         } else {
-            start_cb = (void (*)(lv_anim_t *))wrapper->exec_cb;
+            start_cb = (void (*)(lv_anim_t *))wrapper->start_cb;
             start_cb(var);
         }
     }
@@ -575,15 +576,14 @@ static void lvgl_anim_start_cb_wrapper(lv_anim_t *var)
 static void lvgl_anim_ready_cb_wrapper(lv_anim_t *var)
 {
     uint32_t argv[1];
-    lv_anim_t *anim = lv_anim_get_running_anim();
-    if (anim) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)anim->ext_data;
+    if (var) {
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
         void (* ready_cb)(lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->ready_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
             uint32_t wasm_anim = addr_native_to_app((void *)var);
 
-            ESP_LOGD(TAG, "lvgl_anim_ready_cb_wrapper: %p -> %p", var, wasm_anim);
+            ESP_LOGD(TAG, "lvgl_anim_ready_cb_wrapper: %p -> %"PRIx32"", var, wasm_anim);
 
             argv[0] = wasm_anim ? wasm_anim : (uint32_t)var;
 
@@ -598,15 +598,14 @@ static void lvgl_anim_ready_cb_wrapper(lv_anim_t *var)
 static void lvgl_anim_deleted_cb_wrapper(lv_anim_t *var)
 {
     uint32_t argv[1];
-    lv_anim_t *anim = lv_anim_get_running_anim();
-    if (anim) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)anim->ext_data;
+    if (var) {
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
         void (* deleted_cb)(lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->deleted_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
             uint32_t wasm_anim = addr_native_to_app((void *)var);
 
-            ESP_LOGD(TAG, "lvgl_anim_deleted_cb_wrapper: %p -> %p", var, wasm_anim);
+            ESP_LOGD(TAG, "lvgl_anim_deleted_cb_wrapper: %p -> %"PRIx32"", var, wasm_anim);
 
             argv[0] = wasm_anim ? wasm_anim : (uint32_t)var;
 
@@ -622,15 +621,14 @@ static int32_t lvgl_anim_get_value_cb_wrapper(lv_anim_t *var)
 {
     bool ret;
     uint32_t argv[1];
-    lv_anim_t *anim = lv_anim_get_running_anim();
-    if (anim) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)anim->ext_data;
+    if (var) {
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
         int32_t (* get_value_cb)(lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->get_value_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
             uint32_t wasm_anim = addr_native_to_app((void *)var);
 
-            ESP_LOGD(TAG, "lvgl_anim_get_value_cb_wrapper: %p -> %p", var, wasm_anim);
+            ESP_LOGD(TAG, "lvgl_anim_get_value_cb_wrapper: %p -> %"PRIx32"", var, wasm_anim);
 
             argv[0] = wasm_anim ? wasm_anim : (uint32_t)var;
 
@@ -650,15 +648,14 @@ static int32_t lvgl_anim_path_cb_wrapper(const lv_anim_t *var)
 {
     bool ret;
     uint32_t argv[1];
-    lv_anim_t *anim = lv_anim_get_running_anim();
-    if (anim) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)anim->ext_data;
+    if (var) {
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
         int32_t (* path_cb)(const lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->path_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
             uint32_t wasm_anim = addr_native_to_app((void *)var);
 
-            ESP_LOGD(TAG, "lvgl_anim_path_cb_wrapper: %p -> %p", var, wasm_anim);
+            ESP_LOGD(TAG, "lvgl_anim_path_cb_wrapper: %p -> %"PRIu32"", var, wasm_anim);
 
             argv[0] = wasm_anim ? wasm_anim : (uint32_t)var;
 
@@ -713,6 +710,15 @@ static lv_image_dsc_t *lvgl_clone_img_desc(wasm_exec_env_t exec_env, const void 
     }
 
     return res;
+}
+
+static uint32_t lv_selector_revert(lv_style_selector_t selector)
+{
+    if (selector == ESP_BROOKESIA_SELECTOR_TRANS_VALUE) {
+        selector = 0;
+    }
+
+    return selector;
 }
 
 static void lv_img_dsc_destructor(void *ext_data)
@@ -810,7 +816,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_subject_add_observer_obj)
     lvgl_native_get_arg(void *, user_data);
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    ESP_LOGI(TAG, "lv_subject_add_observer_obj, sub: %p, obj: %p", subject, obj);
     if (!subject->ext_data) {
         lvgl_subject_cb_wrapper_t *wrapper = calloc(1, sizeof(lvgl_subject_cb_wrapper_t));
         if (wrapper) {
@@ -1554,20 +1559,25 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_start)
 
     a = map_anim(exec_env, a);
 
+#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA
     vTaskSetThreadLocalStoragePointer(NULL, LVGL_WASM_TASK_LOCAL_STORAGE_INDEX, module_inst);
+#endif
 
     wrapper = calloc(1, sizeof(lvgl_anim_cb_wrapper_t));
     if (wrapper) {
         lv_anim_t a_new;
         memcpy(&a_new, a, sizeof(lv_anim_t));
+        if (a->exec_cb || a->custom_exec_cb) {
+            if (a->exec_cb) {
+                wrapper->cb_type = 0;
+                wrapper->custom_exec_cb = (uint32_t)a->exec_cb;
+                a->custom_exec_cb = (lv_anim_custom_exec_cb_t)a->exec_cb;
+                a_new.exec_cb = (lv_anim_exec_xcb_t)NULL;
+            } else {
+                wrapper->cb_type = 1;
+                wrapper->custom_exec_cb = (uint32_t)a->custom_exec_cb;
+            }
 
-        if (a->exec_cb) {
-            wrapper->exec_cb = (uint32_t)a->exec_cb;
-            a_new.exec_cb = lvgl_anim_exec_cb_wrapper;
-        }
-
-        if (a->custom_exec_cb) {
-            wrapper->custom_exec_cb = (uint32_t)a->custom_exec_cb;
             a_new.custom_exec_cb = lvgl_anim_custom_exec_cb_wrapper;
         }
 
@@ -1606,7 +1616,9 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_start)
         }
     }
 
+#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA
     vTaskSetThreadLocalStoragePointer(NULL, LVGL_WASM_TASK_LOCAL_STORAGE_INDEX, NULL);
+#endif
 
     lvgl_native_set_return(res);
 }
@@ -2442,8 +2454,10 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_bg_image_src)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_image_dsc_t *, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
+    bool clone_img = false;
 
     if (selector) {
+        selector = lv_selector_revert(selector);
         res[0] = lvgl_clone_img_desc(exec_env, (const void *)value);
         if (res[0]) {
             lv_obj_set_external_data(obj, (void **)res, LV_EXT_DATA_MAX_NUM, lv_img_dsc_destructor);
@@ -4617,7 +4631,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_exec_cb)
     lvgl_native_get_arg(lv_anim_exec_xcb_t, exec_cb);
 
     a = map_anim(exec_env, a);
-    lv_anim_set_exec_cb(a, exec_cb); 
+    lv_anim_set_exec_cb(a, exec_cb);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_path_cb)
@@ -6837,6 +6851,7 @@ WM_EXT_WASM_NATIVE_EXPORT_FN(wm_ext_wasm_native_lvgl_export)
     return wm_ext_wasm_native_lvgl_export();
 }
 
+#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA
 void __wrap_lv_mem_init(void)
 {
 }
@@ -6931,3 +6946,4 @@ lv_result_t __wrap_lv_mem_test_core(void)
 {
     return LV_RESULT_OK;
 }
+#endif
