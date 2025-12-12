@@ -1,13 +1,13 @@
 diff --git a/Kconfig b/Kconfig
-index 3348a94f9..bdf3a2b1d 100644
+index 3348a94f9..0d6979fb2 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -796,6 +796,32 @@ menu "LVGL configuration"
+@@ -796,6 +796,23 @@ menu "LVGL configuration"
  				bool "Enable the multi-touch gesture recognition feature"
  				depends on LV_USE_FLOAT
  				default n
 +
-+			config LV_EXTERNAL_DATA_AND_DESTRUCTOR
++			config LV_USE_EXT_DATA
 +				bool "External data and destructor"
 +				default n
 +				help
@@ -23,29 +23,34 @@ index 3348a94f9..bdf3a2b1d 100644
 +						- display
 +						- indev (input device)
 +						- theme
-+
-+			config LV_EXT_DATA_MAX_NUM
-+				int "Maximum number of external data"
-+				depends on LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+				default 3
-+				help
-+					The default number of external data arrays is 3, if the number of external data arrays set
-+					by lv_obj_set_external_data is greater than 3, you need to reconfigure LV_EXT_DATA_MAX_NUM
-+
  		endmenu
  	endmenu
  
+diff --git a/lv_conf_template.h b/lv_conf_template.h
+index 9afdf2341..a8eb32b75 100644
+--- a/lv_conf_template.h
++++ b/lv_conf_template.h
+@@ -1311,6 +1311,9 @@
+     #define LV_QNX_BUF_COUNT        1    /**< 1 or 2 */
+ #endif
+ 
++/** Enable or disable for external data and destructor function */
++#define LV_USE_EXT_DATA   0
++
+ /*=====================
+ * BUILD OPTIONS
+ *======================*/
 diff --git a/src/core/lv_group.c b/src/core/lv_group.c
-index d1cdb3176..fe1861f29 100644
+index d1cdb3176..f02e4fe25 100644
 --- a/src/core/lv_group.c
 +++ b/src/core/lv_group.c
 @@ -67,6 +67,10 @@ lv_group_t * lv_group_create(void)
      group->refocus_policy = LV_GROUP_REFOCUS_POLICY_PREV;
      group->wrap           = 1;
      group->user_data      = NULL;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    group->destructor = NULL;
-+    group->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    group->ext_data.free_cb = NULL;
++    group->ext_data.data = NULL;
 +#endif
  
      return group;
@@ -54,27 +59,30 @@ index d1cdb3176..fe1861f29 100644
  
      lv_ll_clear(&(group->obj_ll));
      lv_ll_remove(group_ll_p, group);
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    if(group->destructor && group->ext_data) {
-+        group->destructor(group->ext_data);
-+        group->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    if(group->ext_data.free_cb) {
++        group->ext_data.free_cb(group->ext_data.data);
++        group->ext_data.data = NULL;
 +    }
 +#endif
      lv_free(group);
  }
  
-@@ -410,6 +420,17 @@ lv_group_t  * lv_group_by_index(uint32_t index)
+@@ -410,6 +420,20 @@ lv_group_t  * lv_group_by_index(uint32_t index)
  
      return NULL;
  }
 +
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+void lv_group_set_external_data(lv_group_t * group, void * ext_data, void (* destructor)(void * ext_data))
++#if LV_USE_EXT_DATA
++void lv_group_set_external_data(lv_group_t * group, void * data, void (* free_cb)(void * data))
 +{
-+    LV_ASSERT_NULL(group);
++    if(!group) {
++        LV_LOG_WARN("Can't attach external user data and destructor callback to a NULL group");
++        return;
++    }
 +
-+    group->ext_data = ext_data;
-+    group->destructor = destructor;
++    group->ext_data.data = data;
++    group->ext_data.free_cb = free_cb;
 +}
 +#endif
 +
@@ -82,105 +90,86 @@ index d1cdb3176..fe1861f29 100644
   *   STATIC FUNCTIONS
   **********************/
 diff --git a/src/core/lv_group.h b/src/core/lv_group.h
-index f092848e3..0f7d6941a 100644
+index f092848e3..ea725538b 100644
 --- a/src/core/lv_group.h
 +++ b/src/core/lv_group.h
 @@ -237,6 +237,22 @@ uint32_t lv_group_get_count(void);
   */
  lv_group_t  * lv_group_by_index(uint32_t index);
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
++#if LV_USE_EXT_DATA
 +/**
 + * @brief Attaches external user data and destructor callback to a group
-+ * 
++ *
 + * Associates custom user data with an LVGL group and specifies a destructor function
 + * that will be automatically invoked when the group is deleted to properly clean up
 + * the associated resources.
 + *
-+ * @param group      Pointer to a group(must not be NULL)
-+ * @param ext_data   User-defined data pointer to associate with a group (may be NULL)
-+ * @param destructor Callback function for cleaning up ext_data when group is deleted.
++ * @param group      Pointer to a group
++ * @param data       User-defined data pointer to associate with a group
++ * @param free_cb    Callback function for cleaning up ext_data when group is deleted.
 + *                   Receives ext_data as parameter. NULL means no cleanup required.
 + */
-+void lv_group_set_external_data(lv_group_t * group, void * ext_data, void (* destructor)(void * ext_data));
++void lv_group_set_external_data(lv_group_t * group, void * data, void (* free_cb)(void * data));
 +#endif
 +
  /**********************
   *      MACROS
   **********************/
 diff --git a/src/core/lv_group_private.h b/src/core/lv_group_private.h
-index fe5f22b0e..f4ce892e4 100644
+index fe5f22b0e..9e8411576 100644
 --- a/src/core/lv_group_private.h
 +++ b/src/core/lv_group_private.h
-@@ -45,6 +45,10 @@ struct _lv_group_t {
-                                    deletion.*/
-     uint8_t wrap : 1;           /**< 1: Focus next/prev can wrap at end of list. 0: Focus next/prev stops at end
-                                    of list.*/
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data;
-+#endif
- };
+@@ -14,6 +14,7 @@ extern "C" {
+  *      INCLUDES
+  *********************/
  
++#include "../misc/lv_ext_data.h"
+ #include "lv_group.h"
+ 
+ /*********************
+@@ -29,6 +30,9 @@ extern "C" {
+  * They are NOT for laying out objects on a screen (try layouts for that).
+  */
+ struct _lv_group_t {
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
++#endif
+     lv_ll_t obj_ll;        /**< Linked list to store the objects in the group*/
+     lv_obj_t ** obj_focus; /**< The object in focus*/
  
 diff --git a/src/core/lv_obj_class.c b/src/core/lv_obj_class.c
-index cb5a396b0..54509d2f2 100644
+index cb5a396b0..db5a9421f 100644
 --- a/src/core/lv_obj_class.c
 +++ b/src/core/lv_obj_class.c
-@@ -135,6 +135,15 @@ void lv_obj_class_init_obj(lv_obj_t * obj)
+@@ -135,6 +135,13 @@ void lv_obj_class_init_obj(lv_obj_t * obj)
  
  void lv_obj_destruct(lv_obj_t * obj)
  {
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    for (int i = 0; i < LV_EXT_DATA_MAX_NUM; i++) {
-+        if(obj->destructor && obj->ext_data[i]) {
-+            obj->destructor(obj->ext_data[i]);
-+            obj->ext_data[i] = NULL;
-+        }
++#if LV_USE_EXT_DATA
++    if(obj->ext_data.free_cb) {
++        obj->ext_data.free_cb(obj->ext_data.data);
++        obj->ext_data.data = NULL;
 +    }
 +#endif
 +
      if(obj->class_p->destructor_cb) obj->class_p->destructor_cb(obj->class_p, obj);
  
      if(obj->class_p->base_class) {
-@@ -170,12 +179,56 @@ bool lv_obj_is_group_def(lv_obj_t * obj)
+@@ -170,12 +177,30 @@ bool lv_obj_is_group_def(lv_obj_t * obj)
      return class_p->group_def == LV_OBJ_CLASS_GROUP_DEF_TRUE;
  }
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+void lv_obj_set_external_data(lv_obj_t *obj, void *ext_data[], int ext_data_num,
-+                              void (* destructor)(void * ext_data))
++#if LV_USE_EXT_DATA
++void lv_obj_set_external_data(lv_obj_t * obj, void * data, void (* free_cb)(void * data))
 +{
-+    LV_ASSERT_NULL(obj);
-+    if(ext_data_num > LV_EXT_DATA_MAX_NUM) {
-+        LV_LOG_WARN("ext_data_num (%d) exceeds LV_EXT_DATA_MAX_NUM (%d), truncating input array.",
-+                     ext_data_num, LV_EXT_DATA_MAX_NUM);
++    if(!obj) {
++        LV_LOG_WARN("Can't attach external user data and destructor callback to a NULL object");
++        return;
 +    }
 +
-+    int num = ext_data_num < LV_EXT_DATA_MAX_NUM ? ext_data_num : LV_EXT_DATA_MAX_NUM;
-+
-+    for (int i = 0; i < num; i++) {
-+        bool exists = false;
-+        for (int c = 0; c < LV_EXT_DATA_MAX_NUM; c++) {
-+            if (ext_data[i] != NULL && obj->ext_data[c] == ext_data[i]) {
-+                exists = true;
-+                break;
-+            }
-+        }
-+
-+        if (!exists && ext_data[i] != NULL) {
-+            for (int c = 0; c < LV_EXT_DATA_MAX_NUM; c++) {
-+                if (obj->ext_data[c] == NULL) {
-+                    obj->ext_data[c] = ext_data[i];
-+                    break;
-+                }
-+            }
-+        }
-+    }
-+
-+    if (destructor) {
-+        obj->destructor = destructor;
-+    }
++    obj->ext_data.data = data;
++    obj->ext_data.free_cb = free_cb;
 +}
 +#endif
 +
@@ -190,66 +179,66 @@ index cb5a396b0..54509d2f2 100644
  
  static void lv_obj_construct(const lv_obj_class_t * class_p, lv_obj_t * obj)
  {
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    obj->destructor = NULL;
-+    for (int i = 0; i < LV_EXT_DATA_MAX_NUM; i++) {
-+        obj->ext_data[i] = NULL;
-+    }
++#if LV_USE_EXT_DATA
++    obj->ext_data.free_cb = NULL;
++    obj->ext_data.data = NULL;
 +#endif
 +
      if(obj->class_p->base_class) {
          const lv_obj_class_t * original_class_p = obj->class_p;
  
 diff --git a/src/core/lv_obj_class.h b/src/core/lv_obj_class.h
-index 4c3bdcb24..b2e8d1c15 100644
+index 4c3bdcb24..25b371973 100644
 --- a/src/core/lv_obj_class.h
 +++ b/src/core/lv_obj_class.h
-@@ -61,6 +61,28 @@ bool lv_obj_is_editable(lv_obj_t * obj);
+@@ -61,6 +61,23 @@ bool lv_obj_is_editable(lv_obj_t * obj);
  
  bool lv_obj_is_group_def(lv_obj_t * obj);
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
++#if LV_USE_EXT_DATA
 +/**
-+ * @brief Associates an array of external data pointers with an LVGL object
-+ * 
-+ * Attaches multiple user-defined data pointers to an LVGL object along with an optional
-+ * destructor callback that will be called when the object is deleted. The function:
-+ * - Safely handles NULL checks for object and input array
-+ * - Respects LV_EXT_DATA_MAX_NUM limit
-+ * - Avoids duplicate entries
-+ * - Preserves existing non-NULL data slots
++ * @brief Associates external data with an LVGL object
 + *
-+ * @param obj Target LVGL object (if NULL, function returns early)
-+ * @param ext_data Array of data pointers to associate (elements can be NULL)
-+ * @param ext_data_num Number of elements in ext_data array
-+ * @param destructor Cleanup function called for each non-NULL data pointer during
-+ *                   object deletion. Receives single data pointer as parameter.
-+ *                   NULL means no automatic cleanup.
++ * Associates custom user data with an LVGL object and specifies a destructor function
++ * that will be automatically invoked when the object is deleted to properly clean up
++ * the associated resources.
++ *
++ * @param obj          Target LVGL object
++ * @param data         User-defined data pointer to associate with a object
++ * @param free_cb      Cleanup function called for each non-NULL data pointer during
++ *                     object deletion. Receives single data pointer as parameter.
++ *                     NULL means no automatic cleanup.
 + */
-+void lv_obj_set_external_data(lv_obj_t *obj, void *ext_data[], int ext_data_num,
-+                              void (* destructor)(void * ext_data));
++void lv_obj_set_external_data(lv_obj_t * obj, void * data, void (* free_cb)(void * data));
 +#endif
 +
  /**********************
   *      MACROS
   **********************/
 diff --git a/src/core/lv_obj_private.h b/src/core/lv_obj_private.h
-index 5b1100fb8..66d5b0f87 100644
+index 5b1100fb8..c2413ad5c 100644
 --- a/src/core/lv_obj_private.h
 +++ b/src/core/lv_obj_private.h
-@@ -76,6 +76,10 @@ struct _lv_obj_t {
-     uint16_t h_layout   : 1;
-     uint16_t w_layout   : 1;
-     uint16_t is_deleting : 1;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data[LV_EXT_DATA_MAX_NUM];
-+#endif
+@@ -14,6 +14,7 @@ extern "C" {
+  *      INCLUDES
+  *********************/
+ 
++#include "../misc/lv_ext_data.h"
+ #include "lv_obj.h"
+ 
+ /*********************
+@@ -53,6 +54,9 @@ struct _lv_obj_spec_attr_t {
  };
  
- 
+ struct _lv_obj_t {
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
++#endif
+     const lv_obj_class_t * class_p;
+     lv_obj_t * parent;
+     lv_obj_spec_attr_t * spec_attr;
 diff --git a/src/display/lv_display.c b/src/display/lv_display.c
-index c183b392f..bff5dd42c 100644
+index c183b392f..630250a83 100644
 --- a/src/display/lv_display.c
 +++ b/src/display/lv_display.c
 @@ -76,7 +76,10 @@ lv_display_t * lv_display_create(int32_t hor_res, int32_t ver_res)
@@ -257,9 +246,9 @@ index c183b392f..bff5dd42c 100644
      disp->dpi              = LV_DPI_DEF;
      disp->color_format = LV_COLOR_FORMAT_NATIVE;
 -
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    disp->destructor = NULL;
-+    disp->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    disp->ext_data.free_cb = NULL;
++    disp->ext_data.data = NULL;
 +#endif
  
  #if defined(LV_DRAW_SW_DRAW_UNIT_CNT) && (LV_DRAW_SW_DRAW_UNIT_CNT != 0)
@@ -268,27 +257,30 @@ index c183b392f..bff5dd42c 100644
      if(disp->layer_deinit) disp->layer_deinit(disp, disp->layer_head);
      lv_free(disp->layer_head);
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    if(disp->destructor && disp->ext_data) {
-+        disp->destructor(disp->ext_data);
-+        disp->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    if(disp->ext_data.free_cb) {
++        disp->ext_data.free_cb(disp->ext_data.data);
++        disp->ext_data.data = NULL;
 +    }
 +#endif
 +
      lv_free(disp);
  
      if(was_default) lv_display_set_default(lv_ll_get_head(disp_ll_p));
-@@ -1216,6 +1226,16 @@ int32_t lv_display_dpx(const lv_display_t * disp, int32_t n)
+@@ -1216,6 +1226,19 @@ int32_t lv_display_dpx(const lv_display_t * disp, int32_t n)
      return LV_DPX_CALC(lv_display_get_dpi(disp), n);
  }
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+void lv_display_set_external_data(lv_display_t * disp, void * ext_data, void (* destructor)(void * ext_data))
++#if LV_USE_EXT_DATA
++void lv_display_set_external_data(lv_display_t * disp, void * data, void (* free_cb)(void * data))
 +{
-+    LV_ASSERT_NULL(disp);
++    if(!disp) {
++        LV_LOG_WARN("Can't attach external user data and destructor callback to a NULL display");
++        return;
++    }
 +
-+    disp->ext_data = ext_data;
-+    disp->destructor = destructor;
++    disp->ext_data.data = data;
++    disp->ext_data.free_cb = free_cb;
 +}
 +#endif
 +
@@ -296,58 +288,66 @@ index c183b392f..bff5dd42c 100644
   *   STATIC FUNCTIONS
   **********************/
 diff --git a/src/display/lv_display.h b/src/display/lv_display.h
-index ddcd1ee05..c23ea8dd2 100644
+index ddcd1ee05..d90e18457 100644
 --- a/src/display/lv_display.h
 +++ b/src/display/lv_display.h
 @@ -703,6 +703,22 @@ int32_t lv_dpx(int32_t n);
   */
  int32_t lv_display_dpx(const lv_display_t * disp, int32_t n);
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
++#if LV_USE_EXT_DATA
 +/**
 + * @brief Attaches external user data and destructor callback to a display
-+ * 
++ *
 + * Associates custom user data with an LVGL display and specifies a destructor function
 + * that will be automatically invoked when the display is deleted to properly clean up
 + * the associated resources.
 + *
-+ * @param disp      Pointer to a display (must not be NULL)
-+ * @param ext_data   User-defined data pointer to associate with the display (may be NULL)
-+ * @param destructor Callback function for cleaning up ext_data when display is deleted.
-+ *                   Receives ext_data as parameter. NULL means no cleanup required.
++ * @param disp       Pointer to a display
++ * @param data       User-defined data pointer to associate with the display
++ * @param free_cb    Callback function for cleaning up data when display is deleted.
++ *                   Receives data as parameter. NULL means no cleanup required.
 + */
-+void lv_display_set_external_data(lv_display_t * disp, void * ext_data, void (* destructor)(void * ext_data));
++void lv_display_set_external_data(lv_display_t * disp, void * data, void (* free_cb)(void * data));
 +#endif
 +
  #ifdef __cplusplus
  } /*extern "C"*/
  #endif
 diff --git a/src/display/lv_display_private.h b/src/display/lv_display_private.h
-index 6545b0c16..1399dad7d 100644
+index 6545b0c16..1b8ca68a3 100644
 --- a/src/display/lv_display_private.h
 +++ b/src/display/lv_display_private.h
-@@ -171,6 +171,10 @@ struct _lv_display_t {
-     lv_obj_t * mem_label;
- #endif
+@@ -13,6 +13,7 @@ extern "C" {
+ /*********************
+  *      INCLUDES
+  *********************/
++#include "../misc/lv_ext_data.h"
+ #include "../misc/lv_types.h"
+ #include "../core/lv_obj.h"
+ #include "../draw/lv_draw.h"
+@@ -34,7 +35,9 @@ extern "C" {
+  **********************/
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data;
+ struct _lv_display_t {
+-
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
 +#endif
- };
- 
- /**********************
+     /*---------------------
+      * Resolution
+      *--------------------*/
 diff --git a/src/indev/lv_indev.c b/src/indev/lv_indev.c
-index 84ac23f74..357258a06 100644
+index 84ac23f74..3b18702c5 100644
 --- a/src/indev/lv_indev.c
 +++ b/src/indev/lv_indev.c
 @@ -142,6 +142,10 @@ lv_indev_t * lv_indev_create(void)
      indev->gesture_limit        = LV_INDEV_DEF_GESTURE_LIMIT;
      indev->gesture_min_velocity = LV_INDEV_DEF_GESTURE_MIN_VELOCITY;
      indev->rotary_sensitivity  = LV_INDEV_DEF_ROTARY_SENSITIVITY;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    indev->destructor = NULL;
-+    indev->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    indev->ext_data.free_cb = NULL;
++    indev->ext_data.data = NULL;
 +#endif
  
      indev_init_gesture_recognizers(indev);
@@ -357,27 +357,30 @@ index 84ac23f74..357258a06 100644
      /*Remove the input device from the list*/
      lv_ll_remove(indev_ll_head, indev);
 +
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    if(indev->destructor && indev->ext_data) {
-+        indev->destructor(indev->ext_data);
-+        indev->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    if(indev->ext_data.free_cb) {
++        indev->ext_data.free_cb(indev->ext_data.data);
++        indev->ext_data.data = NULL;
 +    }
 +#endif
 +
      /*Free the memory of the input device*/
      lv_free(indev);
  }
-@@ -683,6 +695,16 @@ lv_result_t lv_indev_send_event(lv_indev_t * indev, lv_event_code_t code, void *
+@@ -683,6 +695,19 @@ lv_result_t lv_indev_send_event(lv_indev_t * indev, lv_event_code_t code, void *
      return res;
  }
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+void lv_indev_set_external_data(lv_indev_t * indev, void * ext_data, void (* destructor)(void * ext_data))
++#if LV_USE_EXT_DATA
++void lv_indev_set_external_data(lv_indev_t * indev, void * data, void (* free_cb)(void * data))
 +{
-+    LV_ASSERT_NULL(indev);
++    if(!indev) {
++        LV_LOG_WARN("Can't attach external user data and free_cb callback to a NULL indev");
++        return;
++    }
 +
-+    indev->ext_data = ext_data;
-+    indev->destructor = destructor;
++    indev->ext_data.data = data;
++    indev->ext_data.free_cb = free_cb;
 +}
 +#endif
 +
@@ -385,76 +388,68 @@ index 84ac23f74..357258a06 100644
   *   STATIC FUNCTIONS
   **********************/
 diff --git a/src/indev/lv_indev.h b/src/indev/lv_indev.h
-index d6c60c404..1454a3385 100644
+index d6c60c404..30144dbfa 100644
 --- a/src/indev/lv_indev.h
 +++ b/src/indev/lv_indev.h
 @@ -441,6 +441,22 @@ uint32_t lv_indev_remove_event_cb_with_user_data(lv_indev_t * indev, lv_event_cb
   */
  lv_result_t lv_indev_send_event(lv_indev_t * indev, lv_event_code_t code, void * param);
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
++#if LV_USE_EXT_DATA
 +/**
 + * @brief Attaches external user data and destructor callback to an indev
-+ * 
++ *
 + * Associates custom user data with an LVGL indev and specifies a destructor function
 + * that will be automatically invoked when the indev is deleted to properly clean up
 + * the associated resources.
 + *
-+ * @param indev      Pointer to a indev (must not be NULL)
-+ * @param ext_data   User-defined data pointer to associate with the indev (may be NULL)
-+ * @param destructor Callback function for cleaning up ext_data when indev is deleted.
++ * @param indev      Pointer to an indev
++ * @param data       User-defined data pointer to associate with the indev
++ * @param free_cb    Callback function for cleaning up ext_data when indev is deleted.
 + *                   Receives ext_data as parameter. NULL means no cleanup required.
 + */
-+void lv_indev_set_external_data(lv_indev_t * indev, void * ext_data, void (* destructor)(void * ext_data));
++void lv_indev_set_external_data(lv_indev_t * indev, void * data, void (* free_cb)(void * data));
 +#endif
 +
  /**********************
   *      MACROS
   **********************/
 diff --git a/src/indev/lv_indev_private.h b/src/indev/lv_indev_private.h
-index 83b65c77b..07dcbe4fc 100644
+index 83b65c77b..2b5ad0c7c 100644
 --- a/src/indev/lv_indev_private.h
 +++ b/src/indev/lv_indev_private.h
-@@ -124,6 +124,11 @@ struct _lv_indev_t {
-     void * gesture_data[LV_INDEV_GESTURE_CNT];
-     lv_indev_gesture_type_t gesture_type[LV_INDEV_GESTURE_CNT];
- #endif
-+
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data;
-+#endif
- };
+@@ -13,6 +13,7 @@ extern "C" {
+ /*********************
+  *      INCLUDES
+  *********************/
++#include "../misc/lv_ext_data.h"
+ #include "lv_indev.h"
+ #include "../misc/lv_anim.h"
+ #include "lv_indev_scroll.h"
+@@ -27,6 +28,9 @@ extern "C" {
+  **********************/
  
- /**********************
+ struct _lv_indev_t {
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
++#endif
+     /** Input device type*/
+     lv_indev_type_t type;
+ 
 diff --git a/src/lv_conf_internal.h b/src/lv_conf_internal.h
-index d5b30d873..0f05b7e62 100644
+index d5b30d873..16b9e5f08 100644
 --- a/src/lv_conf_internal.h
 +++ b/src/lv_conf_internal.h
-@@ -4250,6 +4250,29 @@
+@@ -4250,6 +4250,15 @@
      #endif
  #endif
  
-+/** 1: Enable external data and destructor */
-+#ifndef LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    #ifdef CONFIG_LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+        #define LV_EXTERNAL_DATA_AND_DESTRUCTOR CONFIG_LV_EXTERNAL_DATA_AND_DESTRUCTOR
++/** Enable or disable for external data and destructor function */
++#ifndef LV_USE_EXT_DATA
++    #ifdef CONFIG_LV_USE_EXT_DATA
++        #define LV_USE_EXT_DATA CONFIG_LV_USE_EXT_DATA
 +    #else
-+        #define LV_EXTERNAL_DATA_AND_DESTRUCTOR 0
-+    #endif
-+#endif
-+
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    #ifndef LV_EXT_DATA_MAX_NUM
-+        #ifdef CONFIG_LV_EXT_DATA_MAX_NUM
-+            #define LV_EXT_DATA_MAX_NUM CONFIG_LV_EXT_DATA_MAX_NUM
-+        #else
-+            #define LV_EXT_DATA_MAX_NUM 3
-+        #endif
-+    #endif
-+
-+    #if (LV_EXT_DATA_MAX_NUM < 1)
-+        #error "LV_EXT_DATA_MAX_NUM must be larger than 0"
++        #define LV_USE_EXT_DATA   0
 +    #endif
 +#endif
 +
@@ -462,202 +457,208 @@ index d5b30d873..0f05b7e62 100644
  * BUILD OPTIONS
  *======================*/
 diff --git a/src/misc/lv_anim.c b/src/misc/lv_anim.c
-index 7eab8fbfa..4435404e5 100644
+index 7eab8fbfa..08ea09e8d 100644
 --- a/src/misc/lv_anim.c
 +++ b/src/misc/lv_anim.c
 @@ -89,6 +89,10 @@ void lv_anim_init(lv_anim_t * a)
      a->repeat_cnt = 1;
      a->path_cb = lv_anim_path_linear;
      a->early_apply = 1;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    a->destructor = NULL;
-+    a->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    a->ext_data.free_cb = NULL;
++    a->ext_data.data = NULL;
 +#endif
  }
  
  lv_anim_t * lv_anim_start(const lv_anim_t * a)
-@@ -530,6 +534,16 @@ void lv_anim_resume(lv_anim_t * a)
+@@ -530,6 +534,19 @@ void lv_anim_resume(lv_anim_t * a)
      a->run_round = state.anim_run_round;
  }
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+void lv_anim_set_external_data(lv_anim_t * a, void * ext_data, void (* destructor)(void * ext_data))
++#if LV_USE_EXT_DATA
++void lv_anim_set_external_data(lv_anim_t * anim, void * data, void (* free_cb)(void * data))
 +{
-+    LV_ASSERT_NULL(a);
++    if(!anim) {
++        LV_LOG_WARN("Can't attach external user data and destructor callback to a NULL animation");
++        return;
++    }
 +
-+    a->ext_data = ext_data;
-+    a->destructor = destructor;
++    anim->ext_data.data = data;
++    anim->ext_data.free_cb = free_cb;
 +}
 +#endif
 +
  /**********************
   *   STATIC FUNCTIONS
   **********************/
-@@ -655,6 +669,12 @@ static void anim_completed_handler(lv_anim_t * a)
+@@ -655,6 +672,12 @@ static void anim_completed_handler(lv_anim_t * a)
          /*Call the callback function at the end*/
          if(a->completed_cb != NULL) a->completed_cb(a);
          if(a->deleted_cb != NULL) a->deleted_cb(a);
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+        if(a->destructor && a->ext_data) {
-+            a->destructor(a->ext_data);
-+            a->ext_data = NULL;
++#if LV_USE_EXT_DATA
++        if(a->ext_data.free_cb) {
++            a->ext_data.free_cb(a->ext_data.data);
++            a->ext_data.data = NULL;
 +        }
 +#endif
          lv_free(a);
      }
      /*If the animation is not deleted then restart it*/
-@@ -746,6 +766,12 @@ static bool remove_concurrent_anims(const lv_anim_t * a_current)
+@@ -746,6 +769,12 @@ static bool remove_concurrent_anims(const lv_anim_t * a_current)
              /*|| (a->custom_exec_cb && a->custom_exec_cb == a_current->custom_exec_cb)*/)) {
              lv_ll_remove(anim_ll_p, a);
              if(a->deleted_cb != NULL) a->deleted_cb(a);
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+            if(a->destructor && a->ext_data) {
-+                a->destructor(a->ext_data);
-+                a->ext_data = NULL;
++#if LV_USE_EXT_DATA
++            if(a->ext_data.free_cb) {
++                a->ext_data.free_cb(a->ext_data.data);
++                a->ext_data.data = NULL;
 +            }
 +#endif
              lv_free(a);
              /*Read by `anim_timer`. It need to know if a delete occurred in the linked list*/
              anim_mark_list_change();
-@@ -767,5 +793,11 @@ static void remove_anim(void * a)
+@@ -767,5 +796,11 @@ static void remove_anim(void * a)
      lv_anim_t * anim = a;
      lv_ll_remove(anim_ll_p, a);
      if(anim->deleted_cb != NULL) anim->deleted_cb(anim);
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    if(anim->destructor && anim->ext_data) {
-+        anim->destructor(anim->ext_data);
-+        anim->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    if(anim->ext_data.free_cb) {
++        anim->ext_data.free_cb(anim->ext_data.data);
++        anim->ext_data.data = NULL;
 +    }
 +#endif
      lv_free(a);
  }
 diff --git a/src/misc/lv_anim.h b/src/misc/lv_anim.h
-index 9cd977106..b8df7fa1b 100644
+index 9cd977106..10416892b 100644
 --- a/src/misc/lv_anim.h
 +++ b/src/misc/lv_anim.h
-@@ -155,6 +155,10 @@ struct _lv_anim_t {
-                                                * time animation timer executes), indicates this animation needs to be updated. */
-     uint8_t start_cb_called : 1;              /**< Indicates that `start_cb` was already called */
-     uint8_t early_apply  : 1;                 /**< 1: Apply start value immediately even is there is a `delay` */
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data;
-+#endif
- };
+@@ -14,6 +14,7 @@ extern "C" {
+  *      INCLUDES
+  *********************/
+ #include "../lv_conf_internal.h"
++#include "lv_ext_data.h"
+ #include "lv_types.h"
+ #include "lv_math.h"
+ #include "lv_timer.h"
+@@ -122,6 +123,9 @@ typedef struct {
  
- /**********************
-@@ -555,6 +559,32 @@ int32_t lv_anim_path_step(const lv_anim_t * a);
+ /** Describes an animation*/
+ struct _lv_anim_t {
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
++#endif
+     void * var;                               /**< Variable (Widget or other user-provided object) to animate */
+     lv_anim_exec_xcb_t exec_cb;               /**< Function to execute to animate */
+     lv_anim_custom_exec_cb_t custom_exec_cb;  /**< Function to execute to animate,
+@@ -555,6 +559,25 @@ int32_t lv_anim_path_step(const lv_anim_t * a);
   */
  int32_t lv_anim_path_custom_bezier3(const lv_anim_t * a);
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+
-+/**
-+ * Get the currently running animation.
-+ * @return      pointer to an animation that is currently being processed.
-+ */
-+lv_anim_t * lv_anim_get_running_anim(void);
-+
++#if LV_USE_EXT_DATA
 +/**
 + * @brief Associates external user data with an animation instance
-+ * 
++ *
 + * Attaches arbitrary user-defined data to an LVGL animation object along with an optional
 + * destructor callback that will be automatically invoked when the animation completes
 + * or is deleted, enabling proper resource cleanup.
 + *
-+ * @param anim Pointer to the animation object to configure (must not be NULL)
-+ * @param ext_data User-defined data pointer to associate (may be NULL)
-+ * @param destructor Cleanup callback that receives ext_data when:
++ * @param anim       Pointer to the animation object to configure
++ * @param data       User-defined data pointer to associate
++ * @param free_cb    Cleanup callback that receives ext_data when:
 + *                   - Animation completes naturally
 + *                   - Animation is deleted prematurely
 + *                   - New data replaces current association
 + *                   NULL indicates no cleanup required
 + */
-+void lv_anim_set_external_data(lv_anim_t *anim, void * ext_data, void (*destructor)(void * ext_data));
++void lv_anim_set_external_data(lv_anim_t * anim, void * data, void (* free_cb)(void * data));
 +#endif
 +
  /**********************
   *   GLOBAL VARIABLES
   **********************/
 diff --git a/src/misc/lv_event.c b/src/misc/lv_event.c
-index 81a0e9603..49cf73549 100644
+index 81a0e9603..8c0676699 100644
 --- a/src/misc/lv_event.c
 +++ b/src/misc/lv_event.c
-@@ -54,6 +54,16 @@ static lv_event_dsc_t ** event_array_at(lv_event_list_t * list, uint32_t index);
+@@ -54,6 +54,19 @@ static lv_event_dsc_t ** event_array_at(lv_event_list_t * list, uint32_t index);
   *   GLOBAL FUNCTIONS
   **********************/
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+void lv_event_desc_set_external_data(lv_event_dsc_t * dsc, void * ext_data, void (* destructor)(void * ext_data))
++#if LV_USE_EXT_DATA
++void lv_event_desc_set_external_data(lv_event_dsc_t * dsc, void * data, void (* free_cb)(void * data))
 +{
-+    LV_ASSERT_NULL(dsc);
++    if(!dsc) {
++        LV_LOG_WARN("Can't attach external user data and destructor callback to a NULL event descriptor");
++        return;
++    }
 +
-+    dsc->ext_data = ext_data;
-+    dsc->destructor = destructor;
++    dsc->ext_data.data = data;
++    dsc->ext_data.free_cb = free_cb;
 +}
 +#endif
 +
  void lv_event_push(lv_event_t * e)
  {
      /*Build a simple linked list from the objects used in the events
-@@ -95,6 +105,9 @@ lv_result_t lv_event_send(lv_event_list_t * list, lv_event_t * e, bool preproces
+@@ -95,6 +108,9 @@ lv_result_t lv_event_send(lv_event_list_t * list, lv_event_t * e, bool preprocess
          lv_event_code_t filter = dsc->filter & ~LV_EVENT_PREPROCESS;
          if(filter == LV_EVENT_ALL || filter == e->code) {
              e->user_data = dsc->user_data;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+            e->ext_data = dsc->ext_data;
++#if LV_USE_EXT_DATA
++            e->ext_data.data = dsc->ext_data.data;
 +#endif
              dsc->cb(e);
              if(e->stop_processing) break;
  
-@@ -126,6 +139,10 @@ lv_event_dsc_t * lv_event_add(lv_event_list_t * list, lv_event_cb_t cb, lv_event
+@@ -126,6 +142,10 @@ lv_event_dsc_t * lv_event_add(lv_event_list_t * list, lv_event_cb_t cb, lv_event
      dsc->cb = cb;
      dsc->filter = filter;
      dsc->user_data = user_data;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    dsc->destructor = NULL;
-+    dsc->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    dsc->ext_data.free_cb = NULL;
++    dsc->ext_data.data = NULL;
 +#endif
  
      if(event_array_size(list) == 0) {
          /*event list hasn't been initialized.*/
-@@ -145,6 +162,12 @@ bool lv_event_remove_dsc(lv_event_list_t * list, lv_event_dsc_t * dsc)
+@@ -145,6 +165,12 @@ bool lv_event_remove_dsc(lv_event_list_t * list, lv_event_dsc_t * dsc)
      for(uint32_t i = 0; i < size; i++) {
          lv_event_dsc_t * event = *event_array_at(list, i);
          if(event == dsc) {
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+            if (dsc->ext_data && dsc->destructor) {
-+                dsc->destructor(dsc->ext_data);
-+                dsc->ext_data = NULL;
++#if LV_USE_EXT_DATA
++            if(dsc->ext_data.free_cb) {
++                dsc->ext_data.free_cb(dsc->ext_data.data);
++                dsc->ext_data.data = NULL;
 +            }
 +#endif
              event_mark_deleting(list, event);
              cleanup_event_list(list);
              return true;
-@@ -185,6 +208,12 @@ bool lv_event_remove(lv_event_list_t * list, uint32_t index)
+@@ -185,6 +211,12 @@ bool lv_event_remove(lv_event_list_t * list, uint32_t index)
      LV_ASSERT_NULL(list);
      lv_event_dsc_t * dsc = lv_event_get_dsc(list, index);
      if(dsc == NULL) return false;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    if (dsc->ext_data && dsc->destructor) {
-+        dsc->destructor(dsc->ext_data);
-+        dsc->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    if(dsc->ext_data.free_cb) {
++        dsc->ext_data.free_cb(dsc->ext_data.data);
++        dsc->ext_data.data = NULL;
 +    }
 +#endif
      event_mark_deleting(list, dsc);
      cleanup_event_list(list);
      return true;
-@@ -194,8 +223,17 @@ void lv_event_remove_all(lv_event_list_t * list)
+@@ -194,8 +226,17 @@ void lv_event_remove_all(lv_event_list_t * list)
  {
      LV_ASSERT_NULL(list);
      const uint32_t size = event_array_size(list);
 -    for(uint32_t i = 0; i < size; i++)
 +    for(uint32_t i = 0; i < size; i++) {
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
++#if LV_USE_EXT_DATA
 +        lv_event_dsc_t * dsc = lv_event_get_dsc(list, i);
-+        if (dsc && dsc->ext_data && dsc->destructor) {
-+            dsc->destructor(dsc->ext_data);
-+            dsc->ext_data = NULL;
++        if(dsc && dsc->ext_data.free_cb) {
++            dsc->ext_data.free_cb(dsc->ext_data.data);
++            dsc->ext_data.data = NULL;
 +        }
 +#endif
          event_mark_deleting(list, *event_array_at(list, i));
@@ -667,96 +668,151 @@ index 81a0e9603..49cf73549 100644
  }
  
 diff --git a/src/misc/lv_event.h b/src/misc/lv_event.h
-index a51def981..2a609a398 100644
+index a51def981..86b257dea 100644
 --- a/src/misc/lv_event.h
 +++ b/src/misc/lv_event.h
 @@ -225,6 +225,19 @@ uint32_t lv_event_register_id(void);
   */
  const char * lv_event_code_get_name(lv_event_code_t code);
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
++#if LV_USE_EXT_DATA
 +/**
 + * Set external data and its destructor for an event descriptor.
 + * This allows associating custom data with an event callback that will be automatically cleaned up
 + * when the event descriptor is removed or destroyed.
 + * @param dsc         pointer to an event descriptor (from lv_obj_add_event_cb)
 + * @param data        pointer to the external data to associate with the event descriptor
-+ * @param destructor  function pointer to a destructor that will be called to clean up the external data.
++ * @param free_cb     function pointer to a destructor that will be called to clean up the external data.
 + *                    The destructor will receive the data pointer as its parameter.
 + */
-+void lv_event_desc_set_external_data(lv_event_dsc_t * dsc, void * data, void (* destructor)(void * data));
++void lv_event_desc_set_external_data(lv_event_dsc_t * dsc, void * data, void (* free_cb)(void * data));
 +#endif
 +
  /**********************
   *      MACROS
   **********************/
 diff --git a/src/misc/lv_event_private.h b/src/misc/lv_event_private.h
-index 5ba0e5a53..cc9865fe2 100644
+index 5ba0e5a53..2564b8d56 100644
 --- a/src/misc/lv_event_private.h
 +++ b/src/misc/lv_event_private.h
-@@ -28,6 +28,10 @@ struct _lv_event_dsc_t {
+@@ -14,6 +14,7 @@ extern "C" {
+  *      INCLUDES
+  *********************/
+ 
++#include "lv_ext_data.h"
+ #include "lv_event.h"
+ 
+ /*********************
+@@ -25,6 +26,9 @@ extern "C" {
+  **********************/
+ 
+ struct _lv_event_dsc_t {
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
++#endif
      lv_event_cb_t cb;
      void * user_data;
      uint32_t filter;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data;
-+#endif
- };
- 
- struct _lv_event_t {
-@@ -40,6 +44,10 @@ struct _lv_event_t {
+@@ -40,6 +44,9 @@ struct _lv_event_t {
      uint8_t deleted : 1;
      uint8_t stop_processing : 1;
      uint8_t stop_bubbling : 1;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data;
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
 +#endif
  };
  
  
-diff --git a/src/misc/lv_timer.c b/src/misc/lv_timer.c
-index 55f3319c4..6c4aa74c5 100644
---- a/src/misc/lv_timer.c
-+++ b/src/misc/lv_timer.c
-@@ -178,6 +178,11 @@ lv_timer_t * lv_timer_create(lv_timer_cb_t timer_xcb, uint32_t period, void * us
-     new_timer->user_data = user_data;
-     new_timer->auto_delete = true;
- 
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    new_timer->destructor = NULL;
-+    new_timer->ext_data = NULL;
+diff --git a/src/misc/lv_ext_data.h b/src/misc/lv_ext_data.h
+new file mode 100644
+index 000000000..e4ac6e58b
+--- /dev/null
++++ b/src/misc/lv_ext_data.h
+@@ -0,0 +1,41 @@
++/**
++ * @file lv_ext_data.h
++ *
++ */
++
++#ifndef LV_EXT_DATA_H
++#define LV_EXT_DATA_H
++
++#ifdef __cplusplus
++extern "C" {
 +#endif
 +
++/*********************
++ *      INCLUDES
++ *********************/
++
++/*********************
++ *      DEFINES
++ *********************/
++
++/**********************
++ *      TYPEDEFS
++ **********************/
++typedef struct {
++    void * data;
++    void (* free_cb)(void * data);
++} lv_ext_data_t;
++
++/**********************
++ * GLOBAL PROTOTYPES
++ **********************/
++
++/**********************
++ *      MACROS
++ **********************/
++
++#ifdef __cplusplus
++} /*extern "C"*/
++#endif
++
++#endif /* LV_EXT_DATA_H */
+diff --git a/src/misc/lv_timer.c b/src/misc/lv_timer.c
+index 55f3319c4..9f7c80236 100644
+--- a/src/misc/lv_timer.c
++++ b/src/misc/lv_timer.c
+@@ -177,6 +177,10 @@ lv_timer_t * lv_timer_create(lv_timer_cb_t timer_xcb, uint32_t period, void * us
+     new_timer->last_run = lv_tick_get();
+     new_timer->user_data = user_data;
+     new_timer->auto_delete = true;
++#if LV_USE_EXT_DATA
++    new_timer->ext_data.free_cb = NULL;
++    new_timer->ext_data.data = NULL;
++#endif
+ 
      state.timer_created = true;
  
-     lv_timer_handler_resume();
-@@ -196,6 +201,13 @@ void lv_timer_delete(lv_timer_t * timer)
+@@ -196,6 +200,13 @@ void lv_timer_delete(lv_timer_t * timer)
      lv_ll_remove(timer_ll_p, timer);
      state.timer_deleted = true;
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    if(timer->destructor && timer->ext_data) {
-+        timer->destructor(timer->ext_data);
-+        timer->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    if(timer->ext_data.free_cb) {
++        timer->ext_data.free_cb(timer->ext_data.data);
++        timer->ext_data.data = NULL;
 +    }
 +#endif
 +
      lv_free(timer);
  }
  
-@@ -299,6 +311,16 @@ bool lv_timer_get_paused(lv_timer_t * timer)
+@@ -299,6 +310,19 @@ bool lv_timer_get_paused(lv_timer_t * timer)
      return timer->paused;
  }
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+void lv_timer_set_external_data(lv_timer_t * timer, void * ext_data, void (* destructor)(void * ext_data))
++#if LV_USE_EXT_DATA
++void lv_timer_set_external_data(lv_timer_t * timer, void * data, void (* free_cb)(void * data))
 +{
-+    LV_ASSERT_NULL(timer);
++    if(!timer) {
++        LV_LOG_WARN("Can't attach external user data and destructor callback to a NULL timer");
++        return;
++    }
 +
-+    timer->ext_data = ext_data;
-+    timer->destructor = destructor;
++    timer->ext_data.data = data;
++    timer->ext_data.free_cb = free_cb;
 +}
 +#endif
 +
@@ -764,76 +820,86 @@ index 55f3319c4..6c4aa74c5 100644
   *   STATIC FUNCTIONS
   **********************/
 diff --git a/src/misc/lv_timer.h b/src/misc/lv_timer.h
-index 063b283ef..27dfb8514 100644
+index 063b283ef..ac93b6e6c 100644
 --- a/src/misc/lv_timer.h
 +++ b/src/misc/lv_timer.h
 @@ -195,6 +195,22 @@ void * lv_timer_get_user_data(lv_timer_t * timer);
   */
  bool lv_timer_get_paused(lv_timer_t * timer);
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
++#if LV_USE_EXT_DATA
 +/**
 + * @brief Attaches external user data and destructor callback to a timer object
-+ * 
++ *
 + * Associates custom user data with an LVGL timer and specifies a destructor function
 + * that will be automatically invoked when the timer is deleted to properly clean up
 + * the associated resources.
 + *
-+ * @param timer      Pointer to the timer object (must not be NULL)
-+ * @param ext_data   User-defined data pointer to associate with the timer (may be NULL)
-+ * @param destructor Callback function for cleaning up ext_data when timer is deleted.
++ * @param timer      Pointer to the timer object
++ * @param data       User-defined data pointer to associate with the timer
++ * @param free_cb    Callback function for cleaning up ext_data when timer is deleted.
 + *                   Receives ext_data as parameter. NULL means no cleanup required.
 + */
-+void lv_timer_set_external_data(lv_timer_t * timer, void * ext_data, void (* destructor)(void * ext_data));
++void lv_timer_set_external_data(lv_timer_t * timer, void * data, void (* free_cb)(void * data));
 +#endif
 +
  /**********************
   *      MACROS
   **********************/
 diff --git a/src/misc/lv_timer_private.h b/src/misc/lv_timer_private.h
-index 9f7269f58..f3153ed8d 100644
+index 9f7269f58..64ff3ca54 100644
 --- a/src/misc/lv_timer_private.h
 +++ b/src/misc/lv_timer_private.h
-@@ -35,6 +35,10 @@ struct _lv_timer_t {
-     int32_t repeat_count;      /**< 1: One time;  -1 : infinity;  n>0: residual times */
-     uint32_t paused : 1;
-     uint32_t auto_delete : 1;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data;
-+#endif
- };
+@@ -14,6 +14,7 @@ extern "C" {
+  *      INCLUDES
+  *********************/
  
- typedef struct {
++#include "lv_ext_data.h"
+ #include "lv_timer.h"
+ 
+ /*********************
+@@ -28,6 +29,9 @@ extern "C" {
+  * Descriptor of a lv_timer
+  */
+ struct _lv_timer_t {
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
++#endif
+     uint32_t period;           /**< How often the timer should run */
+     uint32_t last_run;         /**< Last time the timer ran */
+     lv_timer_cb_t timer_cb;    /**< Timer function */
 diff --git a/src/others/observer/lv_observer.c b/src/others/observer/lv_observer.c
-index 2603561a9..a123a250a 100644
+index 2603561a9..dc803d162 100644
 --- a/src/others/observer/lv_observer.c
 +++ b/src/others/observer/lv_observer.c
-@@ -83,6 +83,16 @@ static void lv_subject_notify_if_changed(lv_subject_t * subject);
+@@ -83,6 +83,19 @@ static void lv_subject_notify_if_changed(lv_subject_t * subject);
   *   GLOBAL FUNCTIONS
   **********************/
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+void lv_subject_set_external_data(lv_subject_t * subject, void * ext_data, void (* destructor)(void * ext_data))
++#if LV_USE_EXT_DATA
++void lv_subject_set_external_data(lv_subject_t * subject, void * data, void (* free_cb)(void * data))
 +{
-+    LV_ASSERT_NULL(subject);
++    if(!subject) {
++        LV_LOG_WARN("Can't attach external user data and destructor callback to a NULL subject");
++        return;
++    }
 +
-+    subject->ext_data = ext_data;
-+    subject->destructor = destructor;
++    subject->ext_data.data = data;
++    subject->ext_data.free_cb = free_cb;
 +}
 +#endif
 +
  void lv_subject_init_int(lv_subject_t * subject, int32_t value)
  {
      lv_memzero(subject, sizeof(lv_subject_t));
-@@ -396,6 +406,13 @@ void lv_observer_remove(lv_observer_t * observer)
+@@ -396,6 +409,13 @@ void lv_observer_remove(lv_observer_t * observer)
  
      observer->subject->notify_restart_query = 1;
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    if(observer->subject->destructor && observer->subject->ext_data) {
-+        observer->subject->destructor(observer->subject->ext_data);
-+        observer->subject->ext_data = NULL;
++#if LV_USE_EXT_DATA
++    if(observer->subject->ext_data.free_cb) {
++        observer->subject->ext_data.free_cb(observer->subject->ext_data.data);
++        observer->subject->ext_data.data = NULL;
 +    }
 +#endif
 +
@@ -841,59 +907,68 @@ index 2603561a9..a123a250a 100644
  
      if(observer->auto_free_user_data) {
 diff --git a/src/others/observer/lv_observer.h b/src/others/observer/lv_observer.h
-index fa4b305b6..e3f40a506 100644
+index fa4b305b6..badff83ba 100644
 --- a/src/others/observer/lv_observer.h
 +++ b/src/others/observer/lv_observer.h
-@@ -59,6 +59,10 @@ typedef struct {
-     uint32_t size                 : 24;  /**< String buffer size or group length */
-     uint32_t notify_restart_query :  1;  /**< If an Observer was deleted during notifcation,
-                                           * start notifying from the beginning. */
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data;
-+#endif
- } lv_subject_t;
+@@ -14,7 +14,9 @@ extern "C" {
+  *      INCLUDES
+  *********************/
  
- /**
-@@ -72,6 +76,27 @@ typedef void (*lv_observer_cb_t)(lv_observer_t * observer, lv_subject_t * subjec
++#include "../../misc/lv_ext_data.h"
+ #include "../../core/lv_obj.h"
++
+ #if LV_USE_OBSERVER
+ 
+ /*********************
+@@ -51,6 +53,9 @@ typedef union {
+  * The Subject (an observable value)
+  */
+ typedef struct {
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
++#endif
+     lv_ll_t subs_ll;                     /**< Subscribers */
+     lv_subject_value_t value;            /**< Current value */
+     lv_subject_value_t prev_value;       /**< Previous value */
+@@ -72,6 +77,27 @@ typedef void (*lv_observer_cb_t)(lv_observer_t * observer, lv_subject_t * subject
   * GLOBAL PROTOTYPES
   **********************/
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
++#if LV_USE_EXT_DATA
 +/**
 + * @brief Attaches external user data to an integer Subject with lifecycle management
-+ * 
-+ * Associates arbitrary user-defined data with an LVGL observer and registers a destructor
++ *
++ * Associates arbitrary user-defined data with an LVGL Subject and registers a destructor
 + * callback that will be automatically invoked when the observer is deleted. This enables:
 + * - Safe resource cleanup through the destructor mechanism
 + * - Contextual data storage for observer callbacks
 + * - Proper memory management for observer-related resources
 + *
-+ * @param observer Pointer to the observer object (must not be NULL)
-+ * @param ext_data User-defined data pointer to associate (may be NULL)
-+ * @param destructor Cleanup function called when:
-+ *                  - Observer is explicitly deleted
-+ *                  - Observed object is deleted
-+ *                  - New data replaces current association
-+ *                  NULL indicates no cleanup required
++ * @param subject    pointer to Subject
++ * @param data       User-defined data pointer to associate
++ * @param free_cb    Cleanup function called when:
++ *                   - Observer is explicitly deleted
++ *                   - Observed object is deleted
++ *                   - New data replaces current association
++ *                   NULL indicates no cleanup required
 + */
-+void lv_subject_set_external_data(lv_subject_t * subject, void * ext_data, void (* destructor)(void * ext_data));
++void lv_subject_set_external_data(lv_subject_t * subject, void * data, void (* free_cb)(void * data));
 +#endif
 +
  /**
   * Initialize an integer-type Subject.
   * @param subject   pointer to Subject
 diff --git a/src/themes/default/lv_theme_default.c b/src/themes/default/lv_theme_default.c
-index fceb3a35f..7b56b210f 100644
+index fceb3a35f..da25fab60 100644
 --- a/src/themes/default/lv_theme_default.c
 +++ b/src/themes/default/lv_theme_default.c
 @@ -664,6 +664,10 @@ lv_theme_t * lv_theme_default_init(lv_display_t * disp, lv_color_t color_primary
      theme->base.font_large = font;
      theme->base.apply_cb = theme_apply;
      theme->base.flags = dark ? MODE_DARK : 0;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    theme->base.destructor = NULL;
-+    theme->base.ext_data = NULL;
++#if LV_USE_EXT_DATA
++    theme->base.ext_data.free_cb = NULL;
++    theme->base.ext_data.data = NULL;
 +#endif
  
      style_init(theme);
@@ -902,30 +977,33 @@ index fceb3a35f..7b56b210f 100644
              }
  
          }
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+        if(theme->base.destructor && theme->base.ext_data) {
-+            theme->base.destructor(theme->base.ext_data);
-+            theme->base.ext_data = NULL;
++#if LV_USE_EXT_DATA
++        if(theme->base.ext_data.free_cb) {
++            theme->base.ext_data.free_cb(theme->base.ext_data.data);
++            theme->base.ext_data.data = NULL;
 +        }
 +#endif
          lv_free(theme_def);
          theme_def = NULL;
      }
 diff --git a/src/themes/lv_theme.c b/src/themes/lv_theme.c
-index 5dcd6c6ae..30f72e76c 100644
+index 5dcd6c6ae..3bec76bd0 100644
 --- a/src/themes/lv_theme.c
 +++ b/src/themes/lv_theme.c
-@@ -93,6 +93,16 @@ lv_color_t lv_theme_get_color_secondary(lv_obj_t * obj)
+@@ -93,6 +93,19 @@ lv_color_t lv_theme_get_color_secondary(lv_obj_t * obj)
      return th ? th->color_secondary : lv_palette_main(LV_PALETTE_BLUE);
  }
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+void lv_theme_set_external_data(lv_theme_t * theme, void * ext_data, void (* destructor)(void * ext_data))
++#if LV_USE_EXT_DATA
++void lv_theme_set_external_data(lv_theme_t * theme, void * data, void (* free_cb)(void * data))
 +{
-+    LV_ASSERT_NULL(theme);
++    if(!theme) {
++        LV_LOG_WARN("Can't attach external user data and destructor callback to a NULL theme");
++        return;
++    }
 +
-+    theme->ext_data = ext_data;
-+    theme->destructor = destructor;
++    theme->ext_data.data = data;
++    theme->ext_data.free_cb = free_cb;
 +}
 +#endif
 +
@@ -933,59 +1011,66 @@ index 5dcd6c6ae..30f72e76c 100644
   *   STATIC FUNCTIONS
   **********************/
 diff --git a/src/themes/lv_theme.h b/src/themes/lv_theme.h
-index 21cb09b11..f66a4c8f5 100644
+index 21cb09b11..5ba196807 100644
 --- a/src/themes/lv_theme.h
 +++ b/src/themes/lv_theme.h
 @@ -93,6 +93,22 @@ lv_color_t lv_theme_get_color_primary(lv_obj_t * obj);
   */
  lv_color_t lv_theme_get_color_secondary(lv_obj_t * obj);
  
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
++#if LV_USE_EXT_DATA
 +/**
 + * @brief Attaches external user data and destructor callback to the theme
-+ * 
++ *
 + * Associates custom user data with an LVGL theme and specifies a destructor function
 + * that will be automatically invoked when the theme is deleted to properly clean up
 + * the associated resources.
 + *
-+ * @param theme      Pointer to theme which callback should be set (must not be NULL)
-+ * @param ext_data   User-defined data pointer to associate with the theme (may be NULL)
-+ * @param destructor Callback function for cleaning up ext_data when theme is deleted.
++ * @param theme      Pointer to theme which callback should be set
++ * @param data       User-defined data pointer to associate with the theme
++ * @param free_cb    Callback function for cleaning up ext_data when theme is deleted.
 + *                   Receives ext_data as parameter. NULL means no cleanup required.
 + */
-+void lv_theme_set_external_data(lv_theme_t * theme, void * ext_data, void (* destructor)(void * ext_data));
++void lv_theme_set_external_data(lv_theme_t * theme, void * data, void (* free_cb)(void * data));
 +#endif
 +
  /**********************
   *    MACROS
   **********************/
 diff --git a/src/themes/lv_theme_private.h b/src/themes/lv_theme_private.h
-index f7bb24cd1..eb04768b0 100644
+index f7bb24cd1..4a8ebcbdd 100644
 --- a/src/themes/lv_theme_private.h
 +++ b/src/themes/lv_theme_private.h
-@@ -35,6 +35,10 @@ struct _lv_theme_t {
-     const lv_font_t * font_normal;
-     const lv_font_t * font_large;
-     uint32_t flags;                 /**< Any custom flag used by the theme */
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    void (* destructor)(void * ext_data);
-+    void * ext_data;
+@@ -14,6 +14,7 @@ extern "C" {
+  *      INCLUDES
+  *********************/
+ 
++#include "../misc/lv_ext_data.h"
+ #include "lv_theme.h"
+ 
+ /*********************
+@@ -25,6 +26,9 @@ extern "C" {
+  **********************/
+ 
+ struct _lv_theme_t {
++#if LV_USE_EXT_DATA
++    lv_ext_data_t ext_data;
 +#endif
- };
- 
- 
+     lv_theme_apply_cb_t apply_cb;
+     lv_theme_t * parent;            /**< Apply the current theme's style on top of this theme. */
+     void * user_data;
 diff --git a/src/themes/mono/lv_theme_mono.c b/src/themes/mono/lv_theme_mono.c
-index 9f69f7b02..e529b074c 100644
+index 9f69f7b02..16b42ee40 100644
 --- a/src/themes/mono/lv_theme_mono.c
 +++ b/src/themes/mono/lv_theme_mono.c
 @@ -198,6 +198,12 @@ void lv_theme_mono_deinit(void)
                  lv_style_reset(theme_styles + i);
              }
          }
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+        if(theme->base.destructor && theme->base.ext_data) {
-+            theme->base.destructor(theme->base.ext_data);
-+            theme->base.ext_data = NULL;
++#if LV_USE_EXT_DATA
++        if(theme->base.ext_data.free_cb) {
++            theme->base.ext_data.free_cb(theme->base.ext_data.data);
++            theme->base.ext_data.data = NULL;
 +        }
 +#endif
          lv_free(theme_def);
@@ -995,25 +1080,25 @@ index 9f69f7b02..e529b074c 100644
      theme->base.font_normal = LV_FONT_DEFAULT;
      theme->base.font_large = LV_FONT_DEFAULT;
      theme->base.apply_cb = theme_apply;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    theme->base.destructor = NULL;
-+    theme->base.ext_data = NULL;
++#if LV_USE_EXT_DATA
++    theme->base.ext_data.free_cb = NULL;
++    theme->base.ext_data.data = NULL;
 +#endif
  
      style_init(theme, dark_bg, font);
  
 diff --git a/src/themes/simple/lv_theme_simple.c b/src/themes/simple/lv_theme_simple.c
-index 8a325550f..3eb0288bc 100644
+index 8a325550f..ea8f49600 100644
 --- a/src/themes/simple/lv_theme_simple.c
 +++ b/src/themes/simple/lv_theme_simple.c
 @@ -169,6 +169,12 @@ void lv_theme_simple_deinit(void)
                  lv_style_reset(theme_styles + i);
              }
          }
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+        if(theme->base.destructor && theme->base.ext_data) {
-+            theme->base.destructor(theme->base.ext_data);
-+            theme->base.ext_data = NULL;
++#if LV_USE_EXT_DATA
++        if(theme->base.ext_data.free_cb) {
++            theme->base.ext_data.free_cb(theme->base.ext_data.data);
++            theme->base.ext_data.data = NULL;
 +        }
 +#endif
          lv_free(theme_def);
@@ -1023,13 +1108,13 @@ index 8a325550f..3eb0288bc 100644
      theme->base.font_normal = LV_FONT_DEFAULT;
      theme->base.font_large = LV_FONT_DEFAULT;
      theme->base.apply_cb = theme_apply;
-+#if LV_EXTERNAL_DATA_AND_DESTRUCTOR
-+    theme->base.destructor = NULL;
-+    theme->base.ext_data = NULL;
++#if LV_USE_EXT_DATA
++    theme->base.ext_data.free_cb = NULL;
++    theme->base.ext_data.data = NULL;
 +#endif
  
      style_init(theme);
  
 -- 
-2.25.1
+2.34.1
 

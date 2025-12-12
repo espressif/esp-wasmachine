@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -34,7 +34,7 @@
 #include "src/others/observer/lv_observer_private.h"
 #include "src/draw/sw/lv_draw_sw.h"
 
-#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA
+#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_USE_WASM_HEAP
 #if configNUM_THREAD_LOCAL_STORAGE_POINTERS < 3
 #error "configNUM_THREAD_LOCAL_STORAGE_POINTERS should be at least 3"
 #else
@@ -46,6 +46,9 @@
 #define LVGL_ARG_NUM_MAX        64
 
 #define LVGL_WASM_CALLBACK_STACK_SIZE   (8192)
+
+#define MAX_BUTTONMAP_ITER      256
+#define MAX_TEXT_ITER           65536
 
 #define lvgl_native_return_type(type)       type *lvgl_ret = (type *)(args_ret)
 #define lvgl_native_get_arg(type, name)     type name = *((type *)(args++))
@@ -91,22 +94,7 @@ typedef struct {
 typedef struct {
     uint32_t event_cb;
     wasm_module_inst_t module_inst;
-} lvgl_timer_cb_wrapper_t;
-
-typedef struct {
-    uint32_t event_cb;
-    wasm_module_inst_t module_inst;
-} lvgl_event_cb_wrapper_t;
-
-typedef struct {
-    uint32_t event_cb;
-    wasm_module_inst_t module_inst;
-} lvgl_disp_drv_cb_wrapper_t;
-
-typedef struct {
-    uint32_t event_cb;
-    wasm_module_inst_t module_inst;
-} lvgl_subject_cb_wrapper_t;
+} lvgl_cb_wrapper_t;
 
 typedef struct {
     uint32_t custom_exec_cb;
@@ -121,8 +109,13 @@ typedef struct {
 
 typedef struct _lv_async_info_t {
     lv_async_cb_t cb;
-    void * user_data;
+    void *user_data;
 } lv_async_info_t;
+
+typedef struct {
+    char **map;
+    int size;
+} wasm_text_map_t;
 
 static const char *TAG = "wm_lvgl_wrapper";
 
@@ -202,107 +195,6 @@ static bool ptr_is_in_ram_or_rom(const void *ptr)
     return ret;
 }
 
-static lv_style_t *map_style(wasm_exec_env_t exec_env, lv_style_t *style)
-{
-    void *ptr;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(style)) {
-        return style;
-    }
-
-    ptr = addr_app_to_native((uint32_t)style);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map style=%p", style);
-        LVGL_TRACE_ABORT();
-    } else {
-        style = ptr;
-    }
-
-    return style;
-}
-
-static lv_anim_t *map_anim(wasm_exec_env_t exec_env, lv_anim_t *anim)
-{
-    void *ptr;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(anim)) {
-        return anim;
-    }
-
-    ptr = addr_app_to_native((uint32_t)anim);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map anim=%p", anim);
-        LVGL_TRACE_ABORT();
-    } else {
-        anim = ptr;
-    }
-
-    return anim;
-}
-
-static lv_image_dsc_t *map_img_dsc(wasm_exec_env_t exec_env, const lv_image_dsc_t *_img_dsc)
-{
-    void *ptr;
-    lv_image_dsc_t *img_dsc = (lv_image_dsc_t *)_img_dsc;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(img_dsc)) {
-        return img_dsc;
-    }
-
-    ptr = addr_app_to_native((uint32_t)img_dsc);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map img_dsc=%p", img_dsc);
-        LVGL_TRACE_ABORT();
-    } else {
-        img_dsc = ptr;
-    }
-
-    return img_dsc;
-}
-
-static const lv_point_precise_t *map_points(wasm_exec_env_t exec_env, const lv_point_precise_t *point)
-{
-    void *ptr;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(point)) {
-        return point;
-    }
-
-    ptr = addr_app_to_native((uint32_t)point);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map point=%p", point);
-        LVGL_TRACE_ABORT();
-    } else {
-        point = ptr;
-    }
-
-    return point;
-}
-
-static const char *map_string(wasm_exec_env_t exec_env, const char *s)
-{
-    void *ptr;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(s)) {
-        return s;
-    }
-
-    ptr = (char *)addr_app_to_native((uint32_t)s);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map s=%p", s);
-        LVGL_TRACE_ABORT();
-    } else {
-        s = ptr;
-    }
-
-    return s;
-}
-
 static void *map_ptr(wasm_exec_env_t exec_env, const void *app_addr)
 {
     void *ptr;
@@ -315,116 +207,10 @@ static void *map_ptr(wasm_exec_env_t exec_env, const void *app_addr)
     ptr = (void *)addr_app_to_native((uint32_t)app_addr);
     if (!ptr) {
         ESP_LOGE(TAG, "failed to map app_addr=%p", app_addr);
-        LVGL_TRACE_ABORT();
-    } else {
-        app_addr = ptr;
+        return NULL;
     }
 
-    return (void *)app_addr;
-}
-
-static lv_subject_t *map_obs_sub(wasm_exec_env_t exec_env, lv_subject_t *subject)
-{
-    void *ptr;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(subject)) {
-        return subject;
-    }
-
-    ptr = addr_app_to_native((uint32_t)subject);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map subject=%p", subject);
-        LVGL_TRACE_ABORT();
-    } else {
-        subject = ptr;
-    }
-
-    return subject;
-}
-
-
-static lv_theme_t *map_theme(wasm_exec_env_t exec_env, lv_theme_t * theme)
-{
-    void *ptr;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(theme)) {
-        return theme;
-    }
-
-    ptr = addr_app_to_native((uint32_t)theme);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map theme=%p", theme);
-        LVGL_TRACE_ABORT();
-    } else {
-        theme = ptr;
-    }
-
-    return theme;
-}
-
-static lv_font_glyph_dsc_t *map_g_dsc(wasm_exec_env_t exec_env, lv_font_glyph_dsc_t * _g_dsc)
-{
-    void *ptr;
-    lv_font_glyph_dsc_t *g_dsc = (lv_font_glyph_dsc_t *)_g_dsc;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(_g_dsc)) {
-        return _g_dsc;
-    }
-
-    ptr = addr_app_to_native((uint32_t)g_dsc);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map g_dsc=%p", g_dsc);
-        LVGL_TRACE_ABORT();
-    } else {
-        g_dsc = ptr;
-    }
-
-    return g_dsc;
-}
-
-static lv_draw_buf_t *map_draw_buf(wasm_exec_env_t exec_env, lv_draw_buf_t *_draw_buf)
-{
-    void *ptr;
-    lv_draw_buf_t *draw_buf = (lv_draw_buf_t *)_draw_buf;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(_draw_buf)) {
-        return _draw_buf;
-    }
-
-    ptr = addr_app_to_native((uint32_t)draw_buf);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map draw_buf=%p", draw_buf);
-        LVGL_TRACE_ABORT();
-    } else {
-        draw_buf = ptr;
-    }
-
-    return draw_buf;
-}
-
-static const lv_font_t *map_font(wasm_exec_env_t exec_env, const lv_font_t * _font)
-{
-    void *ptr;
-    const lv_font_t *font = (const lv_font_t *)_font;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-
-    if (ptr_is_in_ram_or_rom(_font)) {
-        return _font;
-    }
-
-    ptr = addr_app_to_native((uint32_t)font);
-    if (!ptr) {
-        ESP_LOGE(TAG, "failed to map g_dsc=%p", font);
-        LVGL_TRACE_ABORT();
-    } else {
-        font = ptr;
-    }
-
-    return font;
+    return ptr;
 }
 
 static bool lvgl_run_wasm(void *_module_inst, uint32_t cb, int argc, uint32_t *argv)
@@ -452,8 +238,8 @@ static void lvgl_event_cb_wrapper(lv_event_t *e)
 {
     uint32_t argv[1];
 
-    if (e) {
-        lvgl_event_cb_wrapper_t *wrapper = (lvgl_event_cb_wrapper_t *)e->ext_data;
+    if (e && e->ext_data.data) {
+        lvgl_cb_wrapper_t *wrapper = (lvgl_cb_wrapper_t *)e->ext_data.data;
         if (wrapper && wrapper->module_inst) {
             argv[0] = (uint32_t)e;
             lvgl_run_wasm(wrapper->module_inst, wrapper->event_cb, 1, argv);
@@ -465,25 +251,6 @@ static void lvgl_event_wrapper_destructor(void *ext_data)
 {
     free(ext_data);
 }
-
-#if 0
-static void lvgl_disp_drv_cb_wrapper(struct _lv_disp_drv_t *disp_drv, uint32_t time, uint32_t px)
-{
-    uint32_t argv[3];
-    lvgl_event_cb_wrapper_t *wrapper = (lvgl_event_cb_wrapper_t *)disp_drv->ext_data;
-
-    argv[0] = (uint32_t)disp_drv;
-    argv[1] = time;
-    argv[2] = px;
-
-    lvgl_run_wasm(wrapper->module_inst, wrapper->event_cb, 3, argv);
-}
-
-static void lvgl_disp_drv_wrapper_destructor(void *ext_data)
-{
-    free(ext_data);
-}
-#endif
 
 static bool esp_addr_executable(uint32_t addr)
 {
@@ -499,13 +266,13 @@ static void lvgl_timer_cb_wrapper(lv_timer_t *timer)
     uint32_t argv[1];
 
     if (timer) {
-        lvgl_timer_cb_wrapper_t *wrapper = (lvgl_timer_cb_wrapper_t *)timer->ext_data;
+        lvgl_cb_wrapper_t *wrapper = (lvgl_cb_wrapper_t *)timer->ext_data.data;
         void (* timer_cb)(lv_timer_t *timer);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->event_cb)) {
             argv[0] = (uint32_t)timer;
 
             lvgl_run_wasm(wrapper->module_inst, wrapper->event_cb, 1, argv);
-        } else {
+        } else if (wrapper && wrapper->event_cb) {
             timer_cb = (void *)wrapper->event_cb;
             timer_cb(timer);
         }
@@ -521,7 +288,11 @@ static void lvgl_anim_custom_exec_cb_wrapper(lv_anim_t *var, int32_t value)
 {
     uint32_t argv[2];
     if (var) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data.data;
+        if (!wrapper) {
+            return;
+        }
+
         void (* custom_exec_cb)(lv_anim_t *var, int32_t value);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->custom_exec_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
@@ -555,7 +326,11 @@ static void lvgl_anim_start_cb_wrapper(lv_anim_t *var)
 {
     uint32_t argv[1];
     if (var) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data.data;
+        if (!wrapper) {
+            return;
+        }
+
         void (* start_cb)(lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->start_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
@@ -577,7 +352,11 @@ static void lvgl_anim_ready_cb_wrapper(lv_anim_t *var)
 {
     uint32_t argv[1];
     if (var) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data.data;
+        if (!wrapper) {
+            return;
+        }
+
         void (* ready_cb)(lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->ready_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
@@ -599,7 +378,11 @@ static void lvgl_anim_deleted_cb_wrapper(lv_anim_t *var)
 {
     uint32_t argv[1];
     if (var) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data.data;
+        if (!wrapper) {
+            return;
+        }
+
         void (* deleted_cb)(lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->deleted_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
@@ -622,7 +405,11 @@ static int32_t lvgl_anim_get_value_cb_wrapper(lv_anim_t *var)
     bool ret;
     uint32_t argv[1];
     if (var) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data.data;
+        if (!wrapper) {
+            return 0;
+        }
+
         int32_t (* get_value_cb)(lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->get_value_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
@@ -649,7 +436,11 @@ static int32_t lvgl_anim_path_cb_wrapper(const lv_anim_t *var)
     bool ret;
     uint32_t argv[1];
     if (var) {
-        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data;
+        lvgl_anim_cb_wrapper_t *wrapper = (lvgl_anim_cb_wrapper_t *)var->ext_data.data;
+        if (!wrapper) {
+            return 0;
+        }
+
         int32_t (* path_cb)(const lv_anim_t *var);
         if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->path_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
@@ -689,23 +480,20 @@ static lv_image_dsc_t *lvgl_clone_img_desc(wasm_exec_env_t exec_env, const void 
     dsc = (lv_image_dsc_t *)addr_app_to_native((uint32_t)_dsc);
     if (!dsc) {
         ESP_LOGE(TAG, "failed to map _dsc=%p", _dsc);
-        LVGL_TRACE_ABORT();
         return NULL;
     }
 
     res = calloc(1, sizeof(lv_image_dsc_t));
     if (!res) {
         ESP_LOGE(TAG, "failed to allocate memory for res");
-        LVGL_TRACE_ABORT();
         return NULL;
     }
 
     memcpy(res, dsc, sizeof(lv_image_dsc_t));
     res->data = (const uint8_t *)addr_app_to_native((uint32_t)dsc->data);
     if (!res->data) {
-        ESP_LOGE(TAG, "failed to map dsc->data=%p", dsc->data);
-        LVGL_TRACE_ABORT();
         free(res);
+        ESP_LOGE(TAG, "failed to map dsc->data=%p", dsc->data);
         return NULL;
     }
 
@@ -724,6 +512,13 @@ static uint32_t lv_selector_revert(lv_style_selector_t selector)
 static void lv_img_dsc_destructor(void *ext_data)
 {
     free(ext_data);
+}
+
+static void lv_imagebutton_dsc_destructor(void *ext_data)
+{
+    if (ext_data) {
+        free(ext_data);
+    }
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_display_get_next)
@@ -785,14 +580,14 @@ static void lvgl_subject_cb_wrapper_destructor(void *ext_data)
     free(ext_data);
 }
 
-static void lvgl_subject_cb_wrapper(lv_observer_t * observer, lv_subject_t * subject)
+static void lvgl_subject_cb_wrapper(lv_observer_t *observer, lv_subject_t *subject)
 {
     uint32_t argv[2];
 
-    if (observer && observer->cb && subject && subject->ext_data) {
-        lvgl_subject_cb_wrapper_t *wrapper = (lvgl_subject_cb_wrapper_t *)subject->ext_data;
-        void (* observer_cb)(lv_observer_t * observer, lv_subject_t * subject);
-        if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->event_cb)) {
+    if (observer && observer->cb && subject && subject->ext_data.data) {
+        lvgl_cb_wrapper_t *wrapper = (lvgl_cb_wrapper_t *)subject->ext_data.data;
+        void (* observer_cb)(lv_observer_t *observer, lv_subject_t *subject);
+        if (wrapper && wrapper->module_inst && wrapper->event_cb && !esp_addr_executable(wrapper->event_cb)) {
             argv[0] = (uint32_t)observer;
             argv[1] = (uint32_t)subject;
             lvgl_run_wasm(wrapper->module_inst, wrapper->event_cb, 2, argv);
@@ -816,8 +611,8 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_subject_add_observer_obj)
     lvgl_native_get_arg(void *, user_data);
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    if (!subject->ext_data) {
-        lvgl_subject_cb_wrapper_t *wrapper = calloc(1, sizeof(lvgl_subject_cb_wrapper_t));
+    if (!subject->ext_data.data) {
+        lvgl_cb_wrapper_t *wrapper = calloc(1, sizeof(lvgl_cb_wrapper_t));
         if (wrapper) {
             wrapper->event_cb = (uint32_t)cb;
             wrapper->module_inst = module_inst;
@@ -829,9 +624,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_subject_add_observer_obj)
         }
     } else {
         if (!cb) {
-            lv_subject_add_observer_obj(subject, NULL, obj, user_data);
-            free(subject->ext_data);
-            subject->ext_data = NULL;
+            res = lv_subject_add_observer_obj(subject, NULL, obj, user_data);
+            if (res) {
+                free(subject->ext_data.data);
+                subject->ext_data.data = NULL;
+            }
         }
     }
 
@@ -1051,7 +848,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_style)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_obj_add_style: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_obj_add_style(obj, (const lv_style_t *)style, selector);
 }
@@ -1117,7 +919,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_label_set_text)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, txt);
 
-    txt = map_string(exec_env, txt);
+    const void *orig_txt = txt;
+    txt = (const char *)map_ptr(exec_env, (const void *)txt);
+    if (!txt) {
+        ESP_LOGE(TAG, "lv_label_set_text: map_ptr failed for txt=%p", orig_txt);
+        return;
+    }
 
     lv_label_set_text(obj, txt);
 }
@@ -1167,7 +974,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_table_set_cell_value)
     lvgl_native_get_arg(uint32_t, col);
     lvgl_native_get_arg(const char *, txt);
 
-    txt = map_string(exec_env, txt);
+    const void *orig_txt = txt;
+    txt = (const char *)map_ptr(exec_env, (const void *)txt);
+    if (!txt) {
+        ESP_LOGE(TAG, "lv_table_set_cell_value: map_ptr failed for txt=%p", orig_txt);
+        return;
+    }
 
     lv_table_set_cell_value(obj, row, col, txt);
 }
@@ -1189,7 +1001,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_timer_create)
     lvgl_native_get_arg(void *, user_data);
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    lvgl_timer_cb_wrapper_t *wrapper = calloc(1, sizeof(lvgl_timer_cb_wrapper_t));
+    lvgl_cb_wrapper_t *wrapper = calloc(1, sizeof(lvgl_cb_wrapper_t));
     if (wrapper) {
         wrapper->event_cb = (uint32_t)timer_xcb;
         wrapper->module_inst = module_inst;
@@ -1217,7 +1029,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_init)
 {
     lvgl_native_get_arg(lv_style_t *, style);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_init: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_init(style);
 }
@@ -1226,7 +1043,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_reset)
 {
     lvgl_native_get_arg(lv_style_t *, style);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_reset: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_reset(style);
 }
@@ -1236,7 +1058,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_bg_opa)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_opa_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_bg_opa: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_bg_opa(style, value);
 }
@@ -1246,7 +1073,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_radius)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(int32_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_radius: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_radius(style, value);
 }
@@ -1256,7 +1088,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_border_width)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(int32_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_border_width: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_border_width(style, value);
 }
@@ -1266,7 +1103,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_border_opa)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_opa_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_border_opa: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_border_opa(style, value);
 }
@@ -1276,7 +1118,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_border_side)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_border_side_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_border_side: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_border_side(style, value);
 }
@@ -1286,7 +1133,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_shadow_opa)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_opa_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_shadow_opa: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_shadow_opa(style, value);
 }
@@ -1296,7 +1148,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_shadow_width)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(int32_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_shadow_width: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_shadow_width(style, value);
 }
@@ -1306,7 +1163,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_shadow_offset_x)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(int32_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_shadow_offset_x: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_shadow_offset_x(style, value);
 }
@@ -1316,7 +1178,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_shadow_offset_y)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(int32_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_shadow_offset_y: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_shadow_offset_y(style, value);
 }
@@ -1326,7 +1193,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_shadow_spread)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(int32_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_shadow_spread: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_shadow_spread(style, value);
 }
@@ -1336,7 +1208,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_image_opa)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_opa_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_image_opa: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_image_opa(style, value);
 }
@@ -1346,7 +1223,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_image_recolor_opa)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_opa_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_image_recolor_opa: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_image_recolor_opa(style, value);
 }
@@ -1356,10 +1238,10 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_text_font)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(const lv_font_t *, font);
 
-    style = map_style(exec_env, style);
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
 
     if (!ptr_is_in_ram_or_rom(font)) {
-        ESP_LOGE(TAG, "Wrong font addr%p", font);
+        ESP_LOGE(TAG, "Wrong font addr %p", font);
         LVGL_TRACE_ABORT();
     }
 
@@ -1371,7 +1253,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_text_opa)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_opa_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_text_opa: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_text_opa(style, value);
 }
@@ -1381,7 +1268,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_line_width)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(int32_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_line_width: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_line_width(style, value);
 }
@@ -1391,7 +1283,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_line_opa)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_opa_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_line_opa: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_line_opa(style, value);
 }
@@ -1401,7 +1298,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_arc_width)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(int32_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_arc_width: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_arc_width(style, value);
 }
@@ -1411,7 +1313,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_arc_opa)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_opa_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_arc_opa: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_arc_opa(style, value);
 }
@@ -1421,7 +1328,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_blend_mode)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(lv_blend_mode_t, value);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_blend_mode: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_style_set_blend_mode(style, value);
 }
@@ -1431,7 +1343,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_text_color)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(uint32_t, color_packed);
 
-    style = map_style(exec_env, style);
+    void *orig_style = style;
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_text_color: map_ptr failed for style=%p", orig_style);
+        return;
+    }
+
     lv_color_t value = {
         .blue = color_packed & 0xFF,
         .green = (color_packed >> 8) & 0xFF,
@@ -1458,7 +1376,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_line_set_points)
     lvgl_native_get_arg(const lv_point_precise_t *, points);
     lvgl_native_get_arg(uint32_t, point_num);
 
-    points = map_points(exec_env, points);
+    points = (const lv_point_precise_t *)map_ptr(exec_env, (const void *)points);
 
     lv_line_set_points(obj, (const lv_point_precise_t *)points, point_num);
 }
@@ -1504,14 +1422,14 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_image_create)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_image_set_src)
 {
-    lv_image_dsc_t *res[LV_EXT_DATA_MAX_NUM] = {NULL};
+    lv_image_dsc_t *res = NULL;
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_image_dsc_t *, src);
 
-    res[0] = lvgl_clone_img_desc(exec_env, (const void *)src);
-    if (res[0]) {
-        lv_image_set_src(obj, res[0]);
-        lv_obj_set_external_data(obj, (void **)res, LV_EXT_DATA_MAX_NUM, lv_img_dsc_destructor);
+    res = lvgl_clone_img_desc(exec_env, (const void *)src);
+    if (res) {
+        lv_image_set_src(obj, res);
+        lv_obj_set_external_data(obj, res, lv_img_dsc_destructor);
     }
 }
 
@@ -1543,7 +1461,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_init)
 {
     lvgl_native_get_arg(lv_anim_t *, a);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
 
     lv_anim_init(a);
 
@@ -1557,9 +1475,9 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_start)
     lvgl_native_get_arg(lv_anim_t *, a);
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
 
-#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA
+#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_USE_WASM_HEAP
     vTaskSetThreadLocalStoragePointer(NULL, LVGL_WASM_TASK_LOCAL_STORAGE_INDEX, module_inst);
 #endif
 
@@ -1616,7 +1534,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_start)
         }
     }
 
-#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA
+#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_USE_WASM_HEAP
     vTaskSetThreadLocalStoragePointer(NULL, LVGL_WASM_TASK_LOCAL_STORAGE_INDEX, NULL);
 #endif
 
@@ -1667,7 +1585,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_theme_default_init)
     lvgl_native_get_arg(const lv_font_t *, font);
 
     if (!ptr_is_in_ram_or_rom(font)) {
-        ESP_LOGE(TAG, "Wrong font addr%p", font);
+        ESP_LOGE(TAG, "Wrong font addr %p", font);
         LVGL_TRACE_ABORT();
     }
 
@@ -1706,8 +1624,8 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_font_get_bitmap_fmt_txt)
     lvgl_native_get_arg(lv_font_glyph_dsc_t *, g_dsc);
     lvgl_native_get_arg(lv_draw_buf_t *, draw_buf);
 
-    g_dsc = map_g_dsc(exec_env, g_dsc);
-    draw_buf = map_draw_buf(exec_env, draw_buf);
+    g_dsc = (lv_font_glyph_dsc_t *)map_ptr(exec_env, (const void *)g_dsc);
+    draw_buf = (lv_draw_buf_t *)map_ptr(exec_env, (const void *)draw_buf);
 
     res = lv_font_get_bitmap_fmt_txt(g_dsc, draw_buf);
 
@@ -1723,9 +1641,9 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_font_get_glyph_dsc_fmt_txt)
     lvgl_native_get_arg(uint32_t, unicode_letter);
     lvgl_native_get_arg(uint32_t, unicode_letter_next);
 
-    dsc_out = map_g_dsc(exec_env, dsc_out);
+    dsc_out = (lv_font_glyph_dsc_t *)map_ptr(exec_env, (const void *)dsc_out);
     if (!ptr_is_in_ram_or_rom(font)) {
-        ESP_LOGE(TAG, "Wrong font addr%p", font);
+        ESP_LOGE(TAG, "Wrong font addr %p", font);
         LVGL_TRACE_ABORT();
     }
 
@@ -1762,7 +1680,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_text_font)
     lvgl_native_get_arg(const lv_font_t *, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
-    value = map_font(exec_env, value);
+    value = (const lv_font_t *)map_ptr(exec_env, (const void *)value);
 
     lv_obj_set_style_text_font(obj, value, selector);
 }
@@ -1794,7 +1712,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_tabview_add_tab)
     lvgl_native_get_arg(lv_obj_t *, tv);
     lvgl_native_get_arg(const char *, name);
 
-    name = map_string(exec_env, name);
+    name = (const char *)map_ptr(exec_env, (const void *)name);
 
     res = lv_tabview_add_tab(tv, name);
 
@@ -1879,14 +1797,14 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_set_placeholder_text)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, value);
 
-    value = map_string(exec_env, value);
+    value = (const char *)map_ptr(exec_env, (const void *)value);
 
     lv_textarea_set_placeholder_text(obj, value);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_event_cb)
 {
-    lvgl_event_cb_wrapper_t *wrapper;
+    lvgl_cb_wrapper_t *wrapper;
     lv_event_dsc_t *res = NULL;
     lvgl_native_return_type(struct _lv_event_dsc_t *);
     lvgl_native_get_arg(lv_obj_t *, obj);
@@ -1895,7 +1813,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_add_event_cb)
     lvgl_native_get_arg(void *, user_data);
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    wrapper = calloc(1, sizeof(lvgl_event_cb_wrapper_t));
+    wrapper = calloc(1, sizeof(lvgl_cb_wrapper_t));
     if (wrapper) {
         res = lv_obj_add_event_cb(obj, lvgl_event_cb_wrapper, filter, user_data);
         if (res) {
@@ -1934,7 +1852,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_dropdown_set_options_static)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, value);
 
-    value = map_string(exec_env, value);
+    value = (const char *)map_ptr(exec_env, (const void *)value);
 
     lv_dropdown_set_options_static(obj, value);
 }
@@ -2048,22 +1966,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_group_add_obj)
     lv_group_add_obj(group, obj);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_axis_tick)
-{
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_chart_axis_t, axis);
-    lvgl_native_get_arg(int32_t, major_len);
-    lvgl_native_get_arg(int32_t, minor_len);
-    lvgl_native_get_arg(int32_t, major_cnt);
-    lvgl_native_get_arg(int32_t, minor_cnt);
-    lvgl_native_get_arg(bool, label_en);
-    lvgl_native_get_arg(int32_t, draw_size);
-
-    lv_chart_set_axis_tick(obj, axis, major_len, minor_len, major_cnt, minor_cnt, label_en, draw_size);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_div_line_count)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
@@ -2080,16 +1982,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_point_count)
 
     lv_chart_set_point_count(obj, value);
 }
-
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_zoom_x)
-{
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(uint16_t, value);
-
-    lv_chart_set_zoom_x(obj, value);
-}
-#endif
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_border_side)
 {
@@ -2198,76 +2090,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_parent)
     lvgl_native_set_return(res);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_scale)
-{
-    lv_meter_scale_t *res;
-    lvgl_native_return_type(lv_meter_scale_t *);
-    lvgl_native_get_arg(lv_obj_t *, obj);
-
-    res = lv_meter_add_scale(obj);
-
-    lvgl_native_set_return(res);
-}
-
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_scale_range)
-{
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_meter_scale_t *, scale);
-    lvgl_native_get_arg(int32_t, min);
-    lvgl_native_get_arg(int32_t, max);
-    lvgl_native_get_arg(uint32_t, angle_range);
-    lvgl_native_get_arg(uint32_t, rotation);
-
-    lv_meter_set_scale_range(obj, scale, min, max, angle_range, rotation);
-}
-
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_scale_ticks)
-{
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_meter_scale_t *, scale);
-    lvgl_native_get_arg(uint16_t, cnt);
-    lvgl_native_get_arg(uint16_t, width);
-    lvgl_native_get_arg(uint16_t, len);
-    lvgl_native_get_arg(uint32_t, color_packed);
-
-    lv_meter_set_scale_ticks(obj, scale, cnt, width, len, color);
-}
-
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_arc)
-{
-    lv_meter_indicator_t *res;
-    lvgl_native_return_type(lv_meter_indicator_t *);
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_meter_scale_t *, scale);
-    lvgl_native_get_arg(uint16_t, width);
-    lvgl_native_get_arg(uint32_t, color_packed);
-    lvgl_native_get_arg(uint16_t, r_mod);
-
-    res = lv_meter_add_arc(obj, scale, width, color, r_mod);
-
-    lvgl_native_set_return(res);
-}
-
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_indicator_start_value)
-{
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_meter_indicator_t *, indic);
-    lvgl_native_get_arg(int32_t, value);
-
-    lv_meter_set_indicator_start_value(obj, indic, value);
-}
-
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_indicator_end_value)
-{
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_meter_indicator_t *, indic);
-    lvgl_native_get_arg(int32_t, value);
-
-    lv_meter_set_indicator_end_value(obj, indic, value);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_right)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
@@ -2331,37 +2153,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_outline_width)
     lv_obj_set_style_outline_width(obj, value, selector);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_scale_major_ticks)
-{
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_meter_scale_t *, scale);
-    lvgl_native_get_arg(uint16_t, cnt);
-    lvgl_native_get_arg(uint16_t, width);
-    lvgl_native_get_arg(uint16_t, len);
-    lvgl_native_get_arg(uint32_t, color_packed);
-    lvgl_native_get_arg(int16_t, label_gap);
-
-    lv_meter_set_scale_major_ticks(obj, scale, cnt, width, len, color, label_gap);
-}
-
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_scale_lines)
-{
-    lv_meter_indicator_t *res;
-    lvgl_native_return_type(lv_meter_indicator_t *);
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_meter_scale_t *, scale);
-    lvgl_native_get_arg(lv_color_t, color_start);
-    lvgl_native_get_arg(lv_color_t, color_end);
-    lvgl_native_get_arg(bool, local);
-    lvgl_native_get_arg(int16_t, width_mod);
-
-    res = lv_meter_add_scale_lines(obj, scale, color_start, color_end, local, width_mod);
-
-    lvgl_native_set_return(res);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_pad_bottom)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
@@ -2398,7 +2189,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_checkbox_set_text)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, value);
 
-    value = map_string(exec_env, value);
+    value = (const char *)map_ptr(exec_env, (const void *)value);
 
     lv_checkbox_set_text(obj, value);
 }
@@ -2450,22 +2241,21 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_shadow_width)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_bg_image_src)
 {
-    lv_image_dsc_t *res[LV_EXT_DATA_MAX_NUM] = {NULL};
+    lv_image_dsc_t *res = NULL;
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(lv_image_dsc_t *, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
-    bool clone_img = false;
 
     if (selector) {
         selector = lv_selector_revert(selector);
-        res[0] = lvgl_clone_img_desc(exec_env, (const void *)value);
-        if (res[0]) {
-            lv_obj_set_external_data(obj, (void **)res, LV_EXT_DATA_MAX_NUM, lv_img_dsc_destructor);
-            lv_obj_set_style_bg_image_src(obj, res[0], selector);
+        res = lvgl_clone_img_desc(exec_env, (const void *)value);
+        if (res) {
+            lv_obj_set_external_data(obj, res, lv_img_dsc_destructor);
+            lv_obj_set_style_bg_image_src(obj, res, selector);
         }
     } else {
-        res[0] = map_img_dsc(exec_env, value);
-        lv_obj_set_style_bg_image_src(obj, res[0], selector);
+        res = (lv_image_dsc_t *)map_ptr(exec_env, (const void *)value);
+        lv_obj_set_style_bg_image_src(obj, res, selector);
     }
 }
 
@@ -2645,9 +2435,15 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_text_get_size)
     lvgl_native_get_arg(lv_text_flag_t, flag);
 
     size_res = map_ptr(exec_env, size_res);
-    text = map_string(exec_env, text);
+    const void *orig_text = text;
+    text = (const char *)map_ptr(exec_env, (const void *)text);
+    if (!text) {
+        ESP_LOGE(TAG, "lv_text_get_size: map_ptr failed for text=%p", orig_text);
+        return;
+    }
+
     if (!ptr_is_in_ram_or_rom(font)) {
-        ESP_LOGE(TAG, "Wrong font addr%p", font);
+        ESP_LOGE(TAG, "Wrong font addr %p", font);
         LVGL_TRACE_ABORT();
     }
 
@@ -2732,7 +2528,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_set_text)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, value);
 
-    value = map_string(exec_env, value);
+    value = (const char *)map_ptr(exec_env, (const void *)value);
 
     lv_textarea_set_text(obj, value);
 }
@@ -2762,52 +2558,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_get_type)
     lvgl_native_set_return(res);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_mask_line_points_init)
-{
-    lvgl_native_get_arg(lv_draw_mask_line_param_t *, param);
-    lvgl_native_get_arg(int32_t, p1x);
-    lvgl_native_get_arg(int32_t, p1y);
-    lvgl_native_get_arg(int32_t, p2x);
-    lvgl_native_get_arg(int32_t, p2y);
-    lvgl_native_get_arg(lv_draw_mask_line_side_t, side);
-
-    param = map_ptr(exec_env, param);
-
-    lv_draw_mask_line_points_init(param, p1x, p1y, p2x, p2y, side);
-}
-
-DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_mask_add)
-{
-    int16_t res;
-    lvgl_native_return_type(int16_t);
-    lvgl_native_get_arg(void *, param);
-    lvgl_native_get_arg(void *, custom_id);
-
-    param = map_ptr(exec_env, param);
-    custom_id = map_ptr(exec_env, custom_id);
-
-    res = lv_draw_mask_add(param, custom_id);
-
-    lvgl_native_set_return(res);
-}
-
-DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_mask_fade_init)
-{
-    lvgl_native_get_arg(lv_draw_mask_fade_param_t *, param);
-    lvgl_native_get_arg(lv_area_t *, coords);
-    lvgl_native_get_arg(lv_opa_t, opa_top);
-    lvgl_native_get_arg(int32_t, y_top);
-    lvgl_native_get_arg(lv_opa_t, opa_bottom);
-    lvgl_native_get_arg(int32_t, y_bottom);
-
-    param = map_ptr(exec_env, param);
-    coords = map_ptr(exec_env, coords);
-
-    lv_draw_mask_fade_init(param, coords, opa_top, y_top, opa_bottom, y_bottom);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_area_intersect)
 {
     bool res;
@@ -2824,19 +2574,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_area_intersect)
 
     lvgl_native_set_return(res);
 }
-
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_mask_remove_id)
-{
-    void *res;
-    lvgl_native_return_type(void *);
-    lvgl_native_get_arg(int16_t, id);
-
-    res = lv_draw_mask_remove_id(id);
-
-    lvgl_native_set_return(res);
-}
-#endif
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_get_pressed_point)
 {
@@ -2861,19 +2598,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_get_series_next)
     lvgl_native_set_return(res);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_create)
-{
-    lv_obj_t *res;
-    lvgl_native_return_type(lv_obj_t *);
-    lvgl_native_get_arg(lv_obj_t *, obj);
-
-    res = lv_meter_create(obj);
-
-    lvgl_native_set_return(res);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_child)
 {
     lv_obj_t *res;
@@ -2885,17 +2609,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_child)
 
     lvgl_native_set_return(res);
 }
-
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_set_indicator_value)
-{
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_meter_indicator_t *, indic);
-    lvgl_native_get_arg(int32_t, value);
-
-    lv_meter_set_indicator_value(obj, indic, value);
-}
-#endif
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_set_series_color)
 {
@@ -2938,23 +2651,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_child_count)
     lvgl_native_set_return(res);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_meter_add_needle_line)
-{
-    lv_meter_indicator_t *res;
-    lvgl_native_return_type(lv_meter_indicator_t *);
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_meter_scale_t *, scale);
-    lvgl_native_get_arg(uint16_t, width);
-    lvgl_native_get_arg(uint32_t, color_packed);
-    lvgl_native_get_arg(int16_t, r_mod);
-
-    res = lv_meter_add_needle_line(obj, scale, width, color, r_mod);
-
-    lvgl_native_set_return(res);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_mem_test)
 {
     lv_result_t res;
@@ -2974,21 +2670,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_mem_monitor)
     lv_mem_monitor(mon_p);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_colorwheel_create)
-{
-    lv_obj_t *res;
-    lvgl_native_return_type(lv_obj_t *);
-    lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(bool, knob_recolor);
-
-    res = lv_colorwheel_create(obj, knob_recolor);
-
-    lvgl_native_set_return(res);
-}
-
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_tabview_set_active)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
@@ -2997,17 +2678,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_tabview_set_active)
 
     lv_tabview_set_active(obj, id, anim_en);
 }
-
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_del_anim_ready_cb)
-{
-    lvgl_native_get_arg(lv_anim_t *, a);
-
-    a = map_ptr(exec_env, a);
-
-    lv_obj_del_anim_ready_cb(a);
-}
-#endif
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_delete_async)
 {
@@ -3081,7 +2751,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_win_add_title)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, txt);
 
-    txt = map_string(exec_env, txt);
+    txt = (const char *)map_ptr(exec_env, (const void *)txt);
 
     res = lv_win_add_title(obj, txt);
 
@@ -3127,7 +2797,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_dropdown_set_options)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, options);
 
-    options = map_string(exec_env, options);
+    options = (const char *)map_ptr(exec_env, (const void *)options);
 
     lv_dropdown_set_options(obj, options);
 }
@@ -3164,7 +2834,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_roller_set_options)
     lvgl_native_get_arg(const char *, options);
     lvgl_native_get_arg(lv_roller_mode_t, mode);
 
-    options = map_string(exec_env, options);
+    options = (const char *)map_ptr(exec_env, (const void *)options);
 
     lv_roller_set_options(obj, options, mode);
 }
@@ -3244,7 +2914,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_list_add_button)
     lvgl_native_get_arg(const char *, txt);
 
     icon = map_ptr(exec_env, icon);
-    txt = map_string(exec_env, txt);
+    txt = (const char *)map_ptr(exec_env, (const void *)txt);
 
     res = lv_list_add_button(obj, icon, txt);
 
@@ -3280,7 +2950,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_add_text)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, txt);
 
-    txt = map_string(exec_env, txt);
+    txt = (const char *)map_ptr(exec_env, (const void *)txt);
 
     lv_textarea_add_text(obj, txt);
 }
@@ -3338,15 +3008,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_scroll_by)
     lv_obj_scroll_by(obj, x, y, anim_en);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_del_char_forward)
-{
-    lvgl_native_get_arg(lv_obj_t *, obj);
-
-    lv_textarea_del_char_forward(obj);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_msgbox_close)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
@@ -3368,7 +3029,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_bg_color)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(uint32_t, color_packed);
 
+    void *orig_style = style;
     style = map_ptr(exec_env, style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_bg_color: map_ptr failed for style=%p", orig_style);
+        return;
+    }
+
     lv_color_t value = {
         .blue = color_packed & 0xFF,
         .green = (color_packed >> 8) & 0xFF,
@@ -3483,28 +3150,87 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_imagebutton_create)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_imagebutton_set_src)
 {
-    lv_image_dsc_t *res[LV_EXT_DATA_MAX_NUM] = {NULL};
+    lv_image_dsc_t *res[3] = {NULL};
     lvgl_native_get_arg(lv_obj_t *, imgbtn);
     lvgl_native_get_arg(lv_imagebutton_state_t, state);
     lvgl_native_get_arg(const void *, src_left);
     lvgl_native_get_arg(const void *, src_mid);
     lvgl_native_get_arg(const void *, src_right);
 
+    // Check if this button already has external data allocated for image descriptors
+    // If it does and it's our destructor, reuse it; otherwise allocate new
+    lv_image_dsc_t *button_dsc = NULL;
+    if (imgbtn->ext_data.data && imgbtn->ext_data.free_cb == lv_imagebutton_dsc_destructor) {
+        // External data already exists for this button, reuse it
+        button_dsc = (lv_image_dsc_t *)imgbtn->ext_data.data;
+    } else {
+        // Allocate new descriptors for this button instance
+        button_dsc = (lv_image_dsc_t *)calloc(1, 3 * LV_IMAGEBUTTON_STATE_NUM * sizeof(lv_image_dsc_t));
+        if (!button_dsc) {
+            ESP_LOGE(TAG, "failed to allocate memory for button descriptors");
+            return;
+        }
+
+        // Associate the allocation with the button for automatic cleanup
+        lv_obj_set_external_data(imgbtn, button_dsc, lv_imagebutton_dsc_destructor);
+    }
+
+    lv_image_dsc_t *dsc;
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
+
     if (src_left) {
-        res[0] = lvgl_clone_img_desc(exec_env, src_left);
+        dsc = (lv_image_dsc_t *)addr_app_to_native((uint32_t)src_left);
+        if (!dsc) {
+            ESP_LOGE(TAG, "failed to map _dsc=%p", src_left);
+            return;
+        }
+
+        res[0] = &button_dsc[state];
+        memcpy(res[0], dsc, sizeof(lv_image_dsc_t));
+
+        res[0]->data = (const uint8_t *)addr_app_to_native((uint32_t)dsc->data);
+        if (!res[0]->data) {
+            ESP_LOGE(TAG, "failed to map dsc->data=%p", dsc->data);
+            return;
+        }
     }
 
     if (src_mid) {
-        res[1] = lvgl_clone_img_desc(exec_env, src_mid);
+        dsc = (lv_image_dsc_t *)addr_app_to_native((uint32_t)src_mid);
+        if (!dsc) {
+            ESP_LOGE(TAG, "failed to map _dsc=%p", src_mid);
+            return;
+        }
+
+        res[1] = &button_dsc[LV_IMAGEBUTTON_STATE_NUM + state];
+        memcpy(res[1], dsc, sizeof(lv_image_dsc_t));
+
+        res[1]->data = (const uint8_t *)addr_app_to_native((uint32_t)dsc->data);
+        if (!res[1]->data) {
+            ESP_LOGE(TAG, "failed to map dsc->data=%p", dsc->data);
+            return;
+        }
     }
 
     if (src_right) {
-        res[2] = lvgl_clone_img_desc(exec_env, src_right);
+        dsc = (lv_image_dsc_t *)addr_app_to_native((uint32_t)src_right);
+        if (!dsc) {
+            ESP_LOGE(TAG, "failed to map _dsc=%p", src_right);
+            return;
+        }
+
+        res[2] = &button_dsc[2 * LV_IMAGEBUTTON_STATE_NUM + state];
+        memcpy(res[2], dsc, sizeof(lv_image_dsc_t));
+
+        res[2]->data = (const uint8_t *)addr_app_to_native((uint32_t)dsc->data);
+        if (!res[2]->data) {
+            ESP_LOGE(TAG, "failed to map dsc->data=%p", dsc->data);
+            return;
+        }
     }
 
     if (src_left || src_mid || src_right) {
         lv_imagebutton_set_src(imgbtn, state, res[0], res[1], res[2]);
-        lv_obj_set_external_data(imgbtn, (void **)res, LV_EXT_DATA_MAX_NUM, lv_img_dsc_destructor);
     }
 }
 
@@ -3705,22 +3431,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_trigo_sin)
     lvgl_native_set_return(res);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_polygon)
-{
-    lvgl_native_get_arg(lv_draw_ctx_t *, draw_ctx);
-    lvgl_native_get_arg(lv_draw_rect_dsc_t *, draw_dsc);
-    lvgl_native_get_arg(lv_point_t *, points);
-    lvgl_native_get_arg(uint16_t, point_cnt);
-
-    draw_ctx = map_ptr(exec_env, draw_ctx);
-    draw_dsc = map_ptr(exec_env, draw_dsc);
-    points = map_ptr(exec_env, points);
-
-    lv_draw_polygon(draw_ctx, draw_dsc, points, point_cnt);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_indev_get_gesture_dir)
 {
     lv_dir_t res;
@@ -3860,27 +3570,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_rect_dsc_set_data)
 
     lvgl_native_set_return(res);
 }
-
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_chart_series_get_data)
-{
-    int res = -1;
-    lvgl_native_return_type(int);
-    lvgl_native_get_arg(lv_chart_series_t *, ser);
-    lvgl_native_get_arg(int, type);
-    lvgl_native_get_arg(void *, pdata);
-    lvgl_native_get_arg(int, n);
-
-    pdata = map_ptr(exec_env, pdata);
-
-    if (type == LV_CHART_SERIES_COLOR && n == sizeof(ser->color)) {
-        memcpy(pdata, &ser->color, sizeof(ser->color));
-        res = 0;
-    }
-
-    lvgl_native_set_return(res);
-}
-#endif
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_font_get_font)
 {
@@ -4086,7 +3775,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_font_get_data)
     lvgl_native_get_arg(int, n);
 
     if (!ptr_is_in_ram_or_rom(font)) {
-        ESP_LOGE(TAG, "Wrong font addr%p", font);
+        ESP_LOGE(TAG, "Wrong font addr %p", font);
         LVGL_TRACE_ABORT();
     }
 
@@ -4105,7 +3794,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_label_set_text_static)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, text);
 
-    text = map_string(exec_env, text);
+    text = (const char *)map_ptr(exec_env, (const void *)text);
 
     lv_label_set_text_static(obj, text);
 }
@@ -4115,7 +3804,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_border_color)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(uint32_t, color_packed);
 
+    void *orig_style = style;
     style = map_ptr(exec_env, style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_border_color: map_ptr failed for style=%p", orig_style);
+        return;
+    }
+
     lv_color_t value = {
         .blue = color_packed & 0xFF,
         .green = (color_packed >> 8) & 0xFF,
@@ -4130,7 +3825,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_shadow_color)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(uint32_t, color_packed);
 
+    void *orig_style = style;
     style = map_ptr(exec_env, style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_shadow_color: map_ptr failed for style=%p", orig_style);
+        return;
+    }
+
     lv_color_t value = {
         .blue = color_packed & 0xFF,
         .green = (color_packed >> 8) & 0xFF,
@@ -4145,7 +3846,13 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_outline_color)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(uint32_t, color_packed);
 
+    void *orig_style = style;
     style = map_ptr(exec_env, style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_outline_color: map_ptr failed for style=%p", orig_style);
+        return;
+    }
+
     lv_color_t value = {
         .blue = color_packed & 0xFF,
         .green = (color_packed >> 8) & 0xFF,
@@ -4465,25 +4172,6 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_get_timer)
     lvgl_native_set_return(res);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_disp_get_data)
-{
-    int res = -1;
-    lvgl_native_return_type(int);
-    lvgl_native_get_arg(lv_display_t *, disp);
-    lvgl_native_get_arg(void *, pdata);
-    lvgl_native_get_arg(int, n);
-
-    pdata = map_ptr(exec_env, pdata);
-    if (n == sizeof(*disp->refr_timer) && disp->refr_timer) {
-        memcpy(pdata, disp->refr_timer, sizeof(*disp->refr_timer));
-        res = 0;
-    }
-
-    lvgl_native_set_return(res);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_timer_get_data)
 {
     int res = -1;
@@ -4585,7 +4273,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_var)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(void *, var);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_var(a, var);
 }
 
@@ -4594,7 +4282,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_duration)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(uint32_t, duration);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_duration(a, duration);
 }
 
@@ -4604,7 +4292,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_delay)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(uint32_t, delay);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_delay(a, delay);
 }
 
@@ -4612,7 +4300,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_delete_anim_completed_cb)
 {
     lvgl_native_get_arg(lv_anim_t *, a);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_obj_delete_anim_completed_cb(a);
 }
 
@@ -4621,7 +4309,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_completed_cb)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(lv_anim_completed_cb_t, completed_cb);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_completed_cb(a, completed_cb);
 }
 
@@ -4630,7 +4318,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_exec_cb)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(lv_anim_exec_xcb_t, exec_cb);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_exec_cb(a, exec_cb);
 }
 
@@ -4639,8 +4327,8 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_path_cb)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(lv_anim_path_cb_t, path_cb);
 
-    a = map_anim(exec_env, a);
-    lv_anim_set_path_cb(a, path_cb); 
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
+    lv_anim_set_path_cb(a, path_cb);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_values)
@@ -4649,7 +4337,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_values)
     lvgl_native_get_arg(int32_t, start);
     lvgl_native_get_arg(int32_t, end);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_values(a, start, end);
 }
 
@@ -4658,7 +4346,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_reverse_duration)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(uint32_t, duration);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_reverse_duration(a, duration);
 }
 
@@ -4667,7 +4355,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_repeat_count)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(uint32_t, cnt);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_repeat_count(a, cnt);
 }
 
@@ -4697,7 +4385,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_msgbox_add_title)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, title);
 
-    title = map_string(exec_env, title);
+    title = (const char *)map_ptr(exec_env, (const void *)title);
 
     res = lv_msgbox_add_title(obj, title);
 
@@ -4725,7 +4413,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_msgbox_add_text)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, text);
 
-    text = map_string(exec_env, text);
+    text = (const char *)map_ptr(exec_env, (const void *)text);
 
     res = lv_msgbox_add_text(obj, text);
 
@@ -4739,7 +4427,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_msgbox_add_footer_button)
     lvgl_native_get_arg(lv_obj_t *, obj);
     lvgl_native_get_arg(const char *, text);
 
-    text = map_string(exec_env, text);
+    text = (const char *)map_ptr(exec_env, (const void *)text);
 
     res = lv_msgbox_add_footer_button(obj, text);
 
@@ -4801,8 +4489,8 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_dsc_base_get_data)
     } else if (type == LV_DRAW_DSC_BASE_ID1 && n == sizeof(dsc->id1)) {
         memcpy(pdata, &dsc->id1, sizeof(dsc->id1));
         res = 0;
-    } else if (type == LV_DRAW_DSC_BASE_ID2 && n == sizeof(dsc->id1)) {
-        memcpy(pdata, &dsc->id2, sizeof(dsc->id1));
+    } else if (type == LV_DRAW_DSC_BASE_ID2 && n == sizeof(dsc->id2)) {
+        memcpy(pdata, &dsc->id2, sizeof(dsc->id2));
         res = 0;
     } else if (type == LV_DRAW_DSC_BASE_LAYER && n == sizeof(*dsc->layer)) {
         memcpy(pdata, dsc->layer, sizeof(*dsc->layer));
@@ -4824,11 +4512,20 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_dsc_base_set_data)
     lvgl_native_get_arg(void *, pdata);
     lvgl_native_get_arg(int, n);
 
+    // Check if dsc is NULL
+    if (!dsc) {
+        lvgl_native_set_return(res);
+        return;
+    }
+
     pdata = map_ptr(exec_env, pdata);
 
     if (type == LV_DRAW_DSC_BASE_OBJ && n == sizeof(*dsc->obj)) {
-        memcpy(dsc->obj, pdata, sizeof(*dsc->obj));
-        res = 0;
+        // Check if dsc->obj is NULL before memcpy
+        if (dsc->obj) {
+            memcpy(dsc->obj, pdata, sizeof(*dsc->obj));
+            res = 0;
+        }
     } else if (type == LV_DRAW_DSC_BASE_PART && n == sizeof(dsc->part)) {
         memcpy(&dsc->part, pdata, sizeof(dsc->part));
         res = 0;
@@ -4839,8 +4536,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_draw_dsc_base_set_data)
         memcpy(&dsc->id2, pdata, sizeof(dsc->id2));
         res = 0;
     } else if (type == LV_DRAW_DSC_BASE_LAYER && n == sizeof(*dsc->layer)) {
-        memcpy(dsc->layer, pdata, sizeof(*dsc->layer));
-        res = 0;
+        // Check if dsc->layer is NULL before memcpy
+        if (dsc->layer) {
+            memcpy(dsc->layer, pdata, sizeof(*dsc->layer));
+            res = 0;
+        }
     } else if (type == LV_DRAW_DSC_BASE_DSC_SIZE && n == sizeof(dsc->dsc_size)) {
         memcpy(&dsc->dsc_size, pdata, sizeof(dsc->dsc_size));
         res = 0;
@@ -4990,7 +4690,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_scale_add_section)
 
 static void lv_scale_set_text_src_destructor(void *ext_data)
 {
-    free(ext_data);
+    wasm_text_map_t *text_map = (wasm_text_map_t *)ext_data;
+    if (text_map && text_map->map) {
+        free(text_map->map);
+    }
+    free(text_map);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_scale_set_text_src)
@@ -5007,6 +4711,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_scale_set_text_src)
 
     int txt_size = 1;
     do {
+        if (txt_size > MAX_TEXT_ITER) {
+            ESP_LOGW(TAG, "lv_scale_set_text_src: maximum iteration limit (%d) exceeded, txt_size=%d, app_txt[%d]=%p, breaking to avoid infinite loop",
+                     MAX_TEXT_ITER, txt_size, txt_size - 1, (void *)app_txt[txt_size - 1]);
+            break;
+        }
+
         char *str = (char *)addr_app_to_native((uint32_t)app_txt[txt_size - 1]);
         if (!str) {
             ESP_LOGW(TAG, "using APP app_txt[%d]=0x%"PRIx32, txt_size - 1, (uint32_t)app_txt[txt_size - 1]);
@@ -5037,11 +4747,17 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_scale_set_text_src)
 
     lv_scale_set_text_src(obj, (const char **)wasm_map);
 
-    lv_image_dsc_t *res[LV_EXT_DATA_MAX_NUM] = {
-        [0] = (lv_image_dsc_t *)wasm_map
-    };
+    // Create a properly typed wrapper struct instead of unsafe cast
+    wasm_text_map_t *text_map = (wasm_text_map_t *)malloc(sizeof(wasm_text_map_t));
+    if (!text_map) {
+        ESP_LOGE(TAG, "failed to malloc text_map");
+        free(wasm_map);
+        return;
+    }
+    text_map->map = wasm_map;
+    text_map->size = txt_size;
 
-    lv_obj_set_external_data(obj, (void **)res, 1, lv_scale_set_text_src_destructor);
+    lv_obj_set_external_data(obj, text_map, lv_scale_set_text_src_destructor);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_scale_set_section_range)
@@ -5060,7 +4776,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_scale_set_section_style_main)
     lvgl_native_get_arg(lv_scale_section_t *, section);
     lvgl_native_get_arg(lv_style_t *, style);
 
-    style = map_style(exec_env, style);
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
 
     lv_scale_set_section_style_main(scale, section, (const lv_style_t *)style);
 }
@@ -5071,7 +4787,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_scale_set_section_style_indicator)
     lvgl_native_get_arg(lv_scale_section_t *, section);
     lvgl_native_get_arg(lv_style_t *, style);
 
-    style = map_style(exec_env, style);
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
 
     lv_scale_set_section_style_indicator(scale, section, (const lv_style_t *)style);
 }
@@ -5082,7 +4798,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_scale_set_section_style_items)
     lvgl_native_get_arg(lv_scale_section_t *, section);
     lvgl_native_get_arg(lv_style_t *, style);
 
-    style = map_style(exec_env, style);
+    style = (lv_style_t *)map_ptr(exec_env, (const void *)style);
 
     lv_scale_set_section_style_items(scale, section, (const lv_style_t *)style);
 }
@@ -5343,7 +5059,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_content_height)
 
     res = lv_obj_get_content_height(obj);
 
-    lvgl_native_set_return(res);;
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_scroll_bottom)
@@ -5354,7 +5070,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_scroll_bottom)
 
     res = lv_obj_get_scroll_bottom(obj);
 
-    lvgl_native_set_return(res);;
+    lvgl_native_set_return(res);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_opa_layered)
@@ -5389,7 +5105,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_arc_color)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(uint32_t, color_packed);
 
+    void *orig_style = style;
     style = map_ptr(exec_env, style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_arc_color: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_color_t value = {
         .blue = color_packed & 0xFF,
@@ -5405,7 +5126,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_style_set_line_color)
     lvgl_native_get_arg(lv_style_t *, style);
     lvgl_native_get_arg(uint32_t, color_packed);
 
+    void *orig_style = style;
     style = map_ptr(exec_env, style);
+    if (!style) {
+        ESP_LOGE(TAG, "lv_style_set_line_color: map_ptr failed for style=%p", orig_style);
+        return;
+    }
 
     lv_color_t value = {
         .blue = color_packed & 0xFF,
@@ -5685,7 +5411,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_font_get_line_height)
     lvgl_native_get_arg(const lv_font_t *, font);
 
     if (!ptr_is_in_ram_or_rom(font)) {
-        ESP_LOGE(TAG, "Wrong font addr%p", font);
+        ESP_LOGE(TAG, "Wrong font addr %p", font);
         LVGL_TRACE_ABORT();
     }
 
@@ -5754,6 +5480,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_buttonmatrix_set_map)
 
     int map_size = 1;
     do {
+        if (map_size > MAX_BUTTONMAP_ITER) {
+            ESP_LOGW(TAG, "lv_buttonmatrix_set_map: maximum iteration limit (%d) exceeded, map_size=%d, map[%d]=%p, breaking to avoid infinite loop",
+                     MAX_BUTTONMAP_ITER, map_size, map_size - 1, (void *)map[map_size - 1]);
+            break;
+        }
+
         char *str = (char *)addr_app_to_native((uint32_t)map[map_size - 1]);
         if (!str) {
             ESP_LOGW(TAG, "using APP map[%d]=0x%"PRIx32, map_size - 1, (uint32_t)map[map_size - 1]);
@@ -5761,7 +5493,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_buttonmatrix_set_map)
         }
 
         ESP_LOGD(TAG, "str=%p", (void *)str);
-        
+
         if (str[0] == '\0') {
             break;
         }
@@ -5784,13 +5516,9 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_buttonmatrix_set_map)
         }
     }
 
-    lv_buttonmatrix_set_map(obj, (const char * const *)wasm_map);
+    lv_buttonmatrix_set_map(obj, (const char *const *)wasm_map);
 
-    lv_image_dsc_t *res[LV_EXT_DATA_MAX_NUM] = {
-        [0] = (lv_image_dsc_t *)wasm_map
-    };
-
-    lv_obj_set_external_data(obj, (void **)res, 1, lv_buttonmatrix_set_map_destructor);
+    lv_obj_set_external_data(obj, (void *)wasm_map, lv_buttonmatrix_set_map_destructor);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_buttonmatrix_set_button_width)
@@ -5824,17 +5552,18 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_buttonmatrix_get_selected_button)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_buttonmatrix_get_button_text)
 {
-    const char * res;
+    const char *res;
     lvgl_native_return_type(const char *);
     lvgl_native_get_arg(const lv_obj_t *, obj);
     lvgl_native_get_arg(uint32_t, btn_id);
 
     res = lv_buttonmatrix_get_button_text(obj, btn_id);
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
-    char *app_text = (char *)addr_native_to_app((void *)res);
+    char *app_text = (char *)(uintptr_t)addr_native_to_app((void *)res);
     if (!app_text) {
-        ESP_LOGE(TAG, "failed to get app_text addr: %p", app_text);
+        ESP_LOGE(TAG, "addr_native_to_app failed for lv_buttonmatrix_get_button_text res=%p", (void *)res);
         lvgl_native_set_return(NULL);
+        return;
     }
 
     lvgl_native_set_return((const char *)app_text);
@@ -5855,11 +5584,15 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_label_ins_text)
     lvgl_native_get_arg(uint32_t, pos);
     lvgl_native_get_arg(const char *, txt);
 
-    txt = map_string(exec_env, txt);
+    txt = (const char *)map_ptr(exec_env, (const void *)txt);
 
     lv_label_ins_text(obj, pos, txt);
 }
 
+/* Returns a heap-allocated pointer in the WASM module (via module_malloc).
+ * The caller is responsible for freeing it using the corresponding module_free API.
+ * The returned pointer is obtained via addr_native_to_app(app_text) where app_text
+ * is allocated by module_malloc. Use lvgl_native_set_return to set the return value. */
 DEFINE_LVGL_NATIVE_WRAPPER(lv_label_get_text2)
 {
     char *res;
@@ -5867,6 +5600,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_label_get_text2)
     lvgl_native_get_arg(const lv_obj_t *, obj);
 
     char *text = lv_label_get_text(obj);
+    if (!text) {
+        lvgl_native_set_return(NULL);
+        return;
+    }
+
     int size = strlen(text) + 1;
     char *app_text;
 
@@ -5875,10 +5613,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_label_get_text2)
     if (!app_text) {
         ESP_LOGE(TAG, "failed to malloc app_text");
         lvgl_native_set_return(NULL);
+        return;
     }
 
     memcpy(app_text, text, size);
-    res = (char *)addr_native_to_app((void *)app_text);
+    res = (char *)(uintptr_t)addr_native_to_app((void *)app_text);
     lvgl_native_set_return(res);
 }
 
@@ -5889,6 +5628,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_get_text2)
     lvgl_native_get_arg(const lv_obj_t *, obj);
 
     const char *text = lv_textarea_get_text(obj);
+    if (!text) {
+        lvgl_native_set_return(NULL);
+        return;
+    }
+
     int size = strlen(text) + 1;
     char *app_text;
 
@@ -5897,10 +5641,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_get_text2)
     if (!app_text) {
         ESP_LOGE(TAG, "failed to malloc app_text");
         lvgl_native_set_return(NULL);
+        return;
     }
 
     memcpy(app_text, text, size);
-    res = (char *)addr_native_to_app((void *)app_text);
+    res = (char *)(uintptr_t)addr_native_to_app((void *)app_text);
     lvgl_native_set_return(res);
 }
 
@@ -5910,7 +5655,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_subject_get_pointer)
     lvgl_native_return_type(const void *);
     lvgl_native_get_arg(lv_subject_t *, subject);
 
-    subject = map_obs_sub(exec_env, subject);
+    subject = (lv_subject_t *)map_ptr(exec_env, (const void *)subject);
     res = lv_subject_get_pointer(subject);
 
     lvgl_native_set_return(res);
@@ -6000,7 +5745,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_screen_load)
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_theme_simple_init)
 {
-    lv_theme_t * res;
+    lv_theme_t *res;
     lvgl_native_return_type(lv_theme_t *);
     lvgl_native_get_arg(lv_display_t *, disp);
 
@@ -6014,7 +5759,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_display_set_theme)
     lvgl_native_get_arg(lv_display_t *, disp);
     lvgl_native_get_arg(lv_theme_t *, th);
 
-    th = map_theme(exec_env, th);
+    th = (lv_theme_t *)map_ptr(exec_env, (const void *)th);
 
     lv_display_set_theme(disp, th);
 }
@@ -6070,7 +5815,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_border_opa)
 DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_style_shadow_spread)
 {
     lvgl_native_get_arg(lv_obj_t *, obj);
-    lvgl_native_get_arg(lv_opa_t, value);
+    lvgl_native_get_arg(int32_t, value);
     lvgl_native_get_arg(lv_style_selector_t, selector);
 
     lv_obj_set_style_shadow_spread(obj, value, selector);
@@ -6096,32 +5841,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_y_aligned)
     lvgl_native_set_return(res);
 }
 
-#if 0
-DEFINE_LVGL_NATIVE_WRAPPER(lv_malloc)
-{
-    void * res;
-    lvgl_native_return_type(void *);
-    lvgl_native_get_arg(size_t, size);
-
-    res = lv_malloc(size);
-
-    lvgl_native_set_return(res);
-}
-
-DEFINE_LVGL_NATIVE_WRAPPER(lv_free)
-{
-    lvgl_native_get_arg(void *, data);
-
-    lv_free(data);
-}
-#endif
-
 DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_user_data)
 {
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(void *, user_data);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_user_data(a, user_data);
 }
 
@@ -6130,7 +5855,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_custom_exec_cb)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(lv_anim_custom_exec_cb_t, exec_cb);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_custom_exec_cb(a, exec_cb);
 }
 
@@ -6139,7 +5864,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_deleted_cb)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(lv_anim_deleted_cb_t, deleted_cb);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_deleted_cb(a, deleted_cb);
 }
 
@@ -6148,7 +5873,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_reverse_delay)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(uint32_t, delay);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_reverse_delay(a, delay);
 }
 
@@ -6157,7 +5882,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_repeat_delay)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(uint32_t, delay);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_repeat_delay(a, delay);
 }
 
@@ -6166,7 +5891,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_early_apply)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(bool, en);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_early_apply(a, en);
 }
 
@@ -6175,7 +5900,7 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_set_get_value_cb)
     lvgl_native_get_arg(lv_anim_t *, a);
     lvgl_native_get_arg(lv_anim_get_value_cb_t, get_value_cb);
 
-    a = map_anim(exec_env, a);
+    a = (lv_anim_t *)map_ptr(exec_env, (const void *)a);
     lv_anim_set_get_value_cb(a, get_value_cb);
 }
 
@@ -6214,15 +5939,18 @@ static void lv_async_timer_cb_wrapper(lv_timer_t *timer)
     uint32_t argv[1];
 
     /*Save the info because an lv_async_call_cancel might delete it in the callback*/
-    lv_async_info_t * info = (lv_async_info_t *)timer->user_data;
+    lv_async_info_t *info = (lv_async_info_t *)timer->user_data;
     lv_async_info_t info_save = *info;
-    lv_timer_delete(timer);
-    lv_free(info);
 
-    if (timer) {
-        lvgl_timer_cb_wrapper_t *wrapper = (lvgl_timer_cb_wrapper_t *)timer->ext_data;
+    /*Save the wrapper pointer before deleting the timer to avoid use-after-free*/
+    lvgl_cb_wrapper_t *wrapper = NULL;
+    if (timer && timer->ext_data.data) {
+        wrapper = (lvgl_cb_wrapper_t *)timer->ext_data.data;
+    }
+
+    if (wrapper) {
         lv_async_cb_t info_cb;
-        if (wrapper && wrapper->module_inst && !esp_addr_executable(wrapper->event_cb)) {
+        if (wrapper->module_inst && !esp_addr_executable(wrapper->event_cb)) {
             wasm_module_inst_t module_inst = wrapper->module_inst;
             uint32_t wasm_user_data = addr_native_to_app(info_save.user_data);
 
@@ -6236,6 +5964,9 @@ static void lv_async_timer_cb_wrapper(lv_timer_t *timer)
             info_cb(info_save.user_data);
         }
     }
+
+    lv_timer_delete(timer);
+    lv_free(info);
 }
 
 DEFINE_LVGL_NATIVE_WRAPPER(lv_async_call)
@@ -6246,21 +5977,22 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_async_call)
     lvgl_native_get_arg(void *, user_data);
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    lvgl_timer_cb_wrapper_t *wrapper = calloc(1, sizeof(lvgl_timer_cb_wrapper_t));
+    lvgl_cb_wrapper_t *wrapper = calloc(1, sizeof(lvgl_cb_wrapper_t));
     if (wrapper) {
         wrapper->event_cb = (uint32_t)async_xcb;
         wrapper->module_inst = module_inst;
 
         /*Allocate an info structure*/
-        lv_async_info_t * info = lv_malloc(sizeof(lv_async_info_t));
+        lv_async_info_t *info = lv_malloc(sizeof(lv_async_info_t));
 
-        if(info == NULL) {
+        if (info == NULL) {
+            free(wrapper);
             goto Exit;
         }
 
         /*Create a new timer*/
-        lv_timer_t * timer = lv_timer_create(lv_async_timer_cb_wrapper, 0, info);
-        if(timer == NULL) {
+        lv_timer_t *timer = lv_timer_create(lv_async_timer_cb_wrapper, 0, info);
+        if (timer == NULL) {
             lv_free(info);
             free(wrapper);
             goto Exit;
@@ -6284,7 +6016,12 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_get_subject)
     lv_subject_t *res;
     lvgl_native_return_type(lv_subject_t *);
 
-    lv_display_t * disp = lv_display_get_default();
+    lv_display_t *disp = lv_display_get_default();
+    if (!disp) {
+        lvgl_native_set_return(NULL);
+        return;
+    }
+
     res = &disp->perf_sysmon_backend.subject;
 
     lvgl_native_set_return(res);
@@ -6298,6 +6035,66 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_remove_from_subject)
     lv_obj_remove_from_subject(obj, subject);
 }
 
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_refr_pos)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+
+    lv_obj_refr_pos(obj);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_image_set_offset_x)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(int32_t, x);
+
+    lv_image_set_offset_x(obj, x);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_delete_all)
+{
+    lv_anim_delete_all();
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_obj_set_parent)
+{
+    lvgl_native_get_arg(lv_obj_t *, obj);
+    lvgl_native_get_arg(lv_obj_t *, parent);
+
+    lv_obj_set_parent(obj, parent);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_tick_get)
+{
+    uint32_t res;
+    lvgl_native_return_type(uint32_t);
+
+    res = lv_tick_get();
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_tick_elaps)
+{
+    uint32_t res;
+    lvgl_native_return_type(uint32_t);
+    lvgl_native_get_arg(uint32_t, prev_tick);
+    res = lv_tick_elaps(prev_tick);
+
+    lvgl_native_set_return(res);
+}
+
+DEFINE_LVGL_NATIVE_WRAPPER(lv_anim_get_user_data)
+{
+    void *res;
+    lvgl_native_return_type(void *);
+    lvgl_native_get_arg(const lv_anim_t *, a);
+
+    a = (const lv_anim_t *)map_ptr(exec_env, (const void *)a);
+    res = lv_anim_get_user_data(a);
+
+    lvgl_native_set_return(res);
+}
+
 static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_FONT_GET_FONT, lv_font_get_font, 1),
     LVGL_NATIVE_WRAPPER(LV_DISP_GET_NEXT, lv_display_get_next, 1),
@@ -6305,7 +6102,6 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_DISP_GET_SCR_ACT, lv_display_get_screen_active, 1),
     LVGL_NATIVE_WRAPPER(LV_DISP_GET_HOR_RES, lv_display_get_horizontal_resolution, 1),
     LVGL_NATIVE_WRAPPER(LV_DISP_GET_VER_RES, lv_display_get_vertical_resolution, 1),
-//    LVGL_NATIVE_WRAPPER(LV_DISP_SET_MONITOR_CB, lv_disp_set_monitor_cb, 2),
     LVGL_NATIVE_WRAPPER(LV_OBJ_REMOVE_STYLE, lv_obj_remove_style, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_BG_OPA, lv_obj_set_style_bg_opa, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_POS, lv_obj_set_pos, 3),
@@ -6410,10 +6206,8 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_CHART_CREATE, lv_chart_create, 1),
     LVGL_NATIVE_WRAPPER(LV_GROUP_GET_DEFAULT, lv_group_get_default, 1),
     LVGL_NATIVE_WRAPPER(LV_GROUP_ADD_OBJ, lv_group_add_obj, 2),
-//    LVGL_NATIVE_WRAPPER(LV_CHART_SET_AXIS_TICK, lv_chart_set_axis_tick, 8),
     LVGL_NATIVE_WRAPPER(LV_CHART_SET_DIV_LINE_COUNT, lv_chart_set_div_line_count, 3),
     LVGL_NATIVE_WRAPPER(LV_CHART_SET_POINT_COUNT, lv_chart_set_point_count, 2),
-//    LVGL_NATIVE_WRAPPER(LV_CHART_SET_ZOOM_X, lv_chart_set_zoom_x, 2),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_BORDER_SIDE, lv_obj_set_style_border_side, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_RADIUS, lv_obj_set_style_radius, 3),
     LVGL_NATIVE_WRAPPER(LV_CHART_ADD_SERIES, lv_chart_add_series, 3),
@@ -6424,20 +6218,12 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_PAD_COLUMN, lv_obj_set_style_pad_column, 3),
     LVGL_NATIVE_WRAPPER(LV_PALETTE_LIGHTEN, lv_palette_lighten, 2),
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_PARENT, lv_obj_get_parent, 1),
-//    LVGL_NATIVE_WRAPPER(LV_METER_ADD_SCALE, lv_meter_add_scale, 1),
-//    LVGL_NATIVE_WRAPPER(LV_METER_SET_SCALE_RANGE, lv_meter_set_scale_range, 6),
-//    LVGL_NATIVE_WRAPPER(LV_METER_SET_SCALE_TICKS, lv_meter_set_scale_ticks, 6),
-//    LVGL_NATIVE_WRAPPER(LV_METER_ADD_ARC, lv_meter_add_arc, 5),
-//    LVGL_NATIVE_WRAPPER(LV_METER_SET_INDICATOR_START_VALUE, lv_meter_set_indicator_start_value, 3),
-//    LVGL_NATIVE_WRAPPER(LV_METER_SET_INDICATOR_END_VALUE, lv_meter_set_indicator_end_value, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_PAD_RIGHT, lv_obj_set_style_pad_right, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_WIDTH, lv_obj_set_style_width, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_HEIGHT, lv_obj_set_style_height, 3),
     LVGL_NATIVE_WRAPPER(LV_PALETTE_DARKEN, lv_palette_darken, 2),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_OUTLINE_COLOR, lv_obj_set_style_outline_color, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_OUTLINE_WIDTH, lv_obj_set_style_outline_width, 3),
-//    LVGL_NATIVE_WRAPPER(LV_METER_SET_SCALE_MAJOR_TICKS, lv_meter_set_scale_major_ticks, 7),
-//    LVGL_NATIVE_WRAPPER(LV_METER_ADD_SCALE_LINES, lv_meter_add_scale_lines, 6),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_PAD_BOTTOM, lv_obj_set_style_pad_bottom, 3),
     LVGL_NATIVE_WRAPPER(LV_DISP_GET_DPI, lv_display_get_dpi, 1),
     LVGL_NATIVE_WRAPPER(LV_CHECKBOX_CREATE, lv_checkbox_create, 1),
@@ -6475,25 +6261,16 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_OBJ_DEL, lv_obj_delete, 1),
     LVGL_NATIVE_WRAPPER(LV_OBJ_INVALIDATE, lv_obj_invalidate, 1),
     LVGL_NATIVE_WRAPPER(LV_CHART_GET_TYPE, lv_chart_get_type, 1),
-//    LVGL_NATIVE_WRAPPER(LV_DRAW_MASK_LINE_POINTS_INIT, lv_draw_mask_line_points_init, 6),
-//    LVGL_NATIVE_WRAPPER(LV_DRAW_MASK_ADD, lv_draw_mask_add, 2),
-//    LVGL_NATIVE_WRAPPER(LV_DRAW_MASK_FADE_INIT, lv_draw_mask_fade_init, 6),
     LVGL_NATIVE_WRAPPER(_LV_AREA_INTERSECT, lv_area_intersect, 3),
-//    LVGL_NATIVE_WRAPPER(LV_DRAW_MASK_REMOVE_ID, lv_draw_mask_remove_id, 1),
     LVGL_NATIVE_WRAPPER(LV_CHART_GET_PRESSED_POINT, lv_chart_get_pressed_point, 1),
     LVGL_NATIVE_WRAPPER(LV_CHART_GET_SERIES_NEXT, lv_chart_get_series_next, 2),
-//    LVGL_NATIVE_WRAPPER(LV_METER_CREATE, lv_meter_create, 1),
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_CHILD, lv_obj_get_child, 2),
-//    LVGL_NATIVE_WRAPPER(LV_METER_SET_INDICATOR_VALUE, lv_meter_set_indicator_value, 3),
     LVGL_NATIVE_WRAPPER(LV_CHART_SET_SERIES_COLOR, lv_chart_set_series_color, 3),
     LVGL_NATIVE_WRAPPER(LV_MAP, lv_map, 5),
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_CHILD_CNT, lv_obj_get_child_count, 1),
-//    LVGL_NATIVE_WRAPPER(LV_METER_ADD_NEEDLE_LINE, lv_meter_add_needle_line, 5),
     LVGL_NATIVE_WRAPPER(LV_MEM_TEST, lv_mem_test, 1),
     LVGL_NATIVE_WRAPPER(LV_MEM_MONITOR, lv_mem_monitor, 1),
-//    LVGL_NATIVE_WRAPPER(LV_COLORWHEEL_CREATE, lv_colorwheel_create, 2),
     LVGL_NATIVE_WRAPPER(LV_TABVIEW_SET_ACT, lv_tabview_set_active, 3),
-//    LVGL_NATIVE_WRAPPER(LV_OBJ_DEL_ANIM_READY_CB, lv_obj_del_anim_ready_cb, 1),
     LVGL_NATIVE_WRAPPER(LV_OBJ_DEL_ASYNC, lv_obj_delete_async, 1),
     LVGL_NATIVE_WRAPPER(LV_BAR_CREATE, lv_bar_create, 1),
     LVGL_NATIVE_WRAPPER(LV_BAR_SET_RANGE, lv_bar_set_range, 3),
@@ -6527,7 +6304,6 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_SPINBOX_SET_STEP, lv_spinbox_set_step, 2),
     LVGL_NATIVE_WRAPPER(LV_SPINBOX_INCREMENT, lv_spinbox_increment, 1),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SCROLL_BY, lv_obj_scroll_by, 4),
-//    LVGL_NATIVE_WRAPPER(LV_TEXTAREA_DEL_CHAR_FORWARD, lv_textarea_del_char_forward, 1),
     LVGL_NATIVE_WRAPPER(LV_MSGBOX_CLOSE, lv_msgbox_close, 1),
     LVGL_NATIVE_WRAPPER(LV_STYLE_SET_WIDTH, lv_style_set_width, 2),
     LVGL_NATIVE_WRAPPER(LV_STYLE_SET_BG_COLOR, lv_style_set_bg_color, 2),
@@ -6561,14 +6337,12 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_STYLE_PROP, lv_obj_get_style_prop, 3),
     LVGL_NATIVE_WRAPPER(LV_IMG_GET_ZOOM, lv_image_get_scale, 1),
     LVGL_NATIVE_WRAPPER(LV_TRIGO_SIN, lv_trigo_sin, 1),
-//    LVGL_NATIVE_WRAPPER(LV_DRAW_POLYGON, lv_draw_polygon, 4),
     LVGL_NATIVE_WRAPPER(LV_INDEV_GET_GESTURE_DIR, lv_indev_get_gesture_dir, 1),
     LVGL_NATIVE_WRAPPER(LV_ANIM_PATH_EASE_IN, lv_anim_path_ease_in, 1),
     LVGL_NATIVE_WRAPPER(LV_TIMER_GET_USER_DATA, lv_timer_get_user_data, 1),
     LVGL_NATIVE_WRAPPER(LV_OBJ_DRAW_PART_DSC_GET_DATA, lv_draw_rect_dsc_get_data, 4),
     LVGL_NATIVE_WRAPPER(LV_OBJ_DRAW_PART_DSC_SET_DATA, lv_draw_rect_dsc_set_data, 4),
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_DATA, lv_obj_get_data, 4),
-//    LVGL_NATIVE_WRAPPER(LV_CHART_SERIES_GET_DATA, lv_chart_series_get_data, 4),
     LVGL_NATIVE_WRAPPER(LV_FONT_GET_DATA, lv_font_get_data, 4),
     LVGL_NATIVE_WRAPPER(LV_LABEL_SET_TEXT_STATIC, lv_label_set_text_static, 2),
     LVGL_NATIVE_WRAPPER(LV_STYLE_SET_BORDER_COLOR, lv_style_set_border_color, 2),
@@ -6607,7 +6381,6 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_DISP_GET_REFR_TIMER, lv_display_get_refr_timer, 1),
     LVGL_NATIVE_WRAPPER(LV_TIMER_SET_PERIOD, lv_timer_set_period, 2),
     LVGL_NATIVE_WRAPPER(LV_ANIM_GET_TIMER, lv_anim_get_timer, 1),
-//    LVGL_NATIVE_WRAPPER(LV_DISP_GET_DATA, lv_disp_get_data, 3),
     LVGL_NATIVE_WRAPPER(LV_ANIM_TIMER_GET_DATA, lv_anim_timer_get_data, 3),
     LVGL_NATIVE_WRAPPER(LV_TABLE_SET_ROW_CNT, lv_table_set_row_count, 2),
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_STYLE_OPA_RECURSIVE, lv_obj_get_style_opa_recursive, 2),
@@ -6738,8 +6511,6 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_SHADOW_SPREAD, lv_obj_set_style_shadow_spread, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_SET_STYLE_IMAGE_RECOLOR_OPA, lv_obj_set_style_image_recolor_opa, 3),
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_Y_ALIGNED, lv_obj_get_y_aligned, 1),
-//    LVGL_NATIVE_WRAPPER(LV_MALLOC, lv_malloc, 1),
-//    LVGL_NATIVE_WRAPPER(LV_FREE, lv_free, 1),
     LVGL_NATIVE_WRAPPER(LV_ANIM_SET_USER_DATA, lv_anim_set_user_data, 2),
     LVGL_NATIVE_WRAPPER(LV_ANIM_SET_CUSTOM_EXEC_CB, lv_anim_set_custom_exec_cb, 2),
     LVGL_NATIVE_WRAPPER(LV_ANIM_SET_DELETED_CB, lv_anim_set_deleted_cb, 2),
@@ -6753,6 +6524,13 @@ static const lvgl_func_desc_t lvgl_func_desc_table[] = {
     LVGL_NATIVE_WRAPPER(LV_ASYNC_CALL, lv_async_call, 2),
     LVGL_NATIVE_WRAPPER(LV_OBJ_GET_SUBJECT, lv_obj_get_subject, 1),
     LVGL_NATIVE_WRAPPER(LV_OBJ_REMOVE_FROM_SUBJECT, lv_obj_remove_from_subject, 2),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_REFR_POS, lv_obj_refr_pos, 1),
+    LVGL_NATIVE_WRAPPER(LV_IMAGE_SET_OFFSET_X, lv_image_set_offset_x, 2),
+    LVGL_NATIVE_WRAPPER(LV_ANIM_DELETE_ALL, lv_anim_delete_all, 1),
+    LVGL_NATIVE_WRAPPER(LV_OBJ_SET_PARENT, lv_obj_set_parent, 2),
+    LVGL_NATIVE_WRAPPER(LV_TICK_GET, lv_tick_get, 1),
+    LVGL_NATIVE_WRAPPER(LV_TICK_ELAPS, lv_tick_elaps, 1),
+    LVGL_NATIVE_WRAPPER(LV_ANIM_GET_USER_DATA, lv_anim_get_user_data, 1),
 };
 
 static void esp_lvgl_call_native_func_wrapper(wasm_exec_env_t exec_env,
@@ -6851,7 +6629,7 @@ WM_EXT_WASM_NATIVE_EXPORT_FN(wm_ext_wasm_native_lvgl_export)
     return wm_ext_wasm_native_lvgl_export();
 }
 
-#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA
+#if CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_USE_WASM_HEAP
 void __wrap_lv_mem_init(void)
 {
 }
@@ -6869,33 +6647,49 @@ void __wrap_lv_mem_remove_pool(lv_mem_pool_t pool)
 {
 }
 
-void * __wrap_lv_malloc_core(size_t size)
+void *__wrap_lv_malloc_core(size_t size)
 {
     // add a pointer to the beginning of the memory to store the module instance
-    size_t size_with_module_inst = size + sizeof(uintptr_t);
+    // and a size_t to store the original allocation size
+    size_t size_with_header = size + sizeof(uintptr_t) + sizeof(size_t);
     uintptr_t *p = NULL;
     wasm_module_inst_t module_inst = (wasm_module_inst_t)pvTaskGetThreadLocalStoragePointer(NULL, LVGL_WASM_TASK_LOCAL_STORAGE_INDEX);
     if (module_inst) {
-        if (module_malloc(size_with_module_inst, (void **)&p)) {
+        if (module_malloc(size_with_header, (void **)&p)) {
+            // Check if allocation succeeded
+            if (!p) {
+                return NULL;
+            }
+
             // store the module instance pointer at the beginning of the memory
             p[0] = (uintptr_t)module_inst;
+            // store the original allocation size
+            ((size_t *)&p[1])[0] = size;
+        } else {
+            // module_malloc failed
+            return NULL;
         }
     } else {
-        p = heap_caps_malloc(size_with_module_inst, MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
-        if (p) {
-            p[0] = 0;
+        p = heap_caps_malloc(size_with_header, MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+        if (!p) {
+            return NULL;
         }
+
+        p[0] = 0;
+        // store the original allocation size
+        ((size_t *)&p[1])[0] = size;
     }
 
-    // ESP_LOGD(TAG, "lv_malloc_core: %p", &p[1]);
-
-    return (void *)&p[1];
+    return (void *) & ((size_t *)&p[1])[1];
 }
 
 void __wrap_lv_free_core(void *p)
 {
-    // ESP_LOGD(TAG, "lv_free_core: %p", p);
-    void *p_native = (void *)((uint32_t)p - sizeof(void *));
+    if (!p) {
+        return;
+    }
+
+    void *p_native = (void *)((char *)p - sizeof(size_t) - sizeof(uintptr_t));
     wasm_module_inst_t module_inst = *(void **)p_native;
     if (module_inst) {
         module_free(addr_native_to_app(p_native));
@@ -6904,38 +6698,67 @@ void __wrap_lv_free_core(void *p)
     }
 }
 
-void * __wrap_lv_realloc_core(void *p, size_t new_size)
+void *__wrap_lv_realloc_core(void *p, size_t new_size)
 {
     // if new_size is 0, free the memory
-    if (!new_size && p) {
-        heap_caps_free(p);
+    if (!new_size) {
+        if (p) {
+            __wrap_lv_free_core(p);
+        }
         return NULL;
     }
 
+    size_t old_size = 0;
+    wasm_module_inst_t module_inst = NULL;
+
+    // if p is not NULL, retrieve the old size and module instance from the header
+    if (p) {
+        void *p_native = (void *)((char *)p - sizeof(size_t) - sizeof(uintptr_t));
+        module_inst = *(wasm_module_inst_t *)p_native;
+        old_size = ((size_t *)((uintptr_t *)p_native + 1))[0];
+    } else {
+        // if p is NULL, get module instance from thread local storage
+        module_inst = (wasm_module_inst_t)pvTaskGetThreadLocalStoragePointer(NULL, LVGL_WASM_TASK_LOCAL_STORAGE_INDEX);
+    }
+
     // add a pointer to the beginning of the memory to store the module instance
-    size_t new_size_with_module_inst = new_size + sizeof(uintptr_t);
-    uintptr_t *new_p = NULL; 
-    wasm_module_inst_t module_inst = (wasm_module_inst_t)pvTaskGetThreadLocalStoragePointer(NULL, LVGL_WASM_TASK_LOCAL_STORAGE_INDEX);
+    // and a size_t to store the original allocation size
+    size_t new_size_with_header = new_size + sizeof(uintptr_t) + sizeof(size_t);
+    uintptr_t *new_p = NULL;
     if (module_inst) {
-        if (module_malloc(new_size_with_module_inst, (void **)&new_p)) {
+        if (module_malloc(new_size_with_header, (void **)&new_p)) {
             // store the module instance pointer at the beginning of the memory
             new_p[0] = (uintptr_t)module_inst;
+            // store the new allocation size
+            ((size_t *)&new_p[1])[0] = new_size;
         }
     } else {
-        new_p = heap_caps_malloc(new_size_with_module_inst, MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+        new_p = heap_caps_malloc(new_size_with_header, MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
         if (new_p) {
             new_p[0] = 0;
+            // store the new allocation size
+            ((size_t *)&new_p[1])[0] = new_size;
         }
+    }
+
+    // Check if allocation failed
+    if (!new_p) {
+        // Allocation failed, return NULL (original pointer p remains unchanged)
+        return NULL;
     }
 
     if (new_p && p && new_size) {
-        memcpy(&new_p[1], p, new_size);
-        __wrap_lv_free_core(p);
+        void *p_native = (void *)((char *)p - sizeof(size_t) - sizeof(uintptr_t));
+        // Only copy and free old memory if the allocation actually moved
+        if (new_p != p_native) {
+            // copy only min(old_size, new_size) bytes to prevent OOB reads
+            size_t copy_size = (old_size < new_size) ? old_size : new_size;
+            memcpy(&((size_t *)&new_p[1])[1], p, copy_size);
+            __wrap_lv_free_core(p);
+        }
     }
 
-    // ESP_LOGD(TAG, "lv_realloc_core: %p", &new_p[1]);
-
-    return (void *)&new_p[1];
+    return (void *) & ((size_t *)&new_p[1])[1];
 }
 
 void __wrap_lv_mem_monitor_core(lv_mem_monitor_t *mon_p)

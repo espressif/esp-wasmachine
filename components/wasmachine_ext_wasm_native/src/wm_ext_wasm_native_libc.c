@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -306,11 +306,9 @@ static void *map_ptr(wasm_exec_env_t exec_env, const void *app_addr)
     if (!ptr) {
         ESP_LOGE(TAG, "failed to map app_addr=%p", app_addr);
         return NULL;
-    } else {
-        app_addr = ptr;
     }
 
-    return (void *)app_addr;
+    return ptr;
 }
 
 static void set_wasm_errno(wasm_exec_env_t exec_env, int c_errno)
@@ -549,13 +547,19 @@ static int usleep_wrapper(wasm_exec_env_t exec_env, unsigned long us)
     return usleep(us);
 }
 
-static time_t time_wrapper(wasm_exec_env_t exec_env, time_t * timer)
+static time_t time_wrapper(wasm_exec_env_t exec_env, time_t *timer)
 {
+    time_t *mapped_timer = NULL;
+
     if (timer) {
-        timer = map_ptr(exec_env, timer);
+        mapped_timer = map_ptr(exec_env, timer);
+        if (!mapped_timer) {
+            set_wasm_errno(exec_env, EFAULT);
+            return (time_t) -1;
+        }
     }
 
-    return time(timer);
+    return time(mapped_timer);
 }
 
 static void srand_wrapper(wasm_exec_env_t exec_env, unsigned int seed)
@@ -570,28 +574,37 @@ static int rand_wrapper(wasm_exec_env_t exec_env)
 
 static struct tm *localtime_r_wrapper(wasm_exec_env_t exec_env, int32_t timer, int32_t tp)
 {
-    const time_t *naitve_timer = NULL;
-    struct tm *naitve_tp = NULL;
-    if (timer) {
-        naitve_timer = map_ptr(exec_env, (const void *)timer);
-    }
+    const time_t *native_timer = NULL;
+    struct tm *native_tp = NULL;
 
-    if (tp) {
-        naitve_tp = map_ptr(exec_env, (const void *)tp);
-    }
-
-    struct tm *naitve_tm = localtime_r(naitve_timer, naitve_tp);
-    struct tm *app_tm;
-    wasm_module_inst_t module_inst = get_module_inst(exec_env);
-    module_malloc(sizeof(struct tm), (void **)&app_tm);
-    if (!app_tm) {
-        ESP_LOGE(TAG, "failed to malloc app_tm");
+    /* Map timer pointer and check for NULL */
+    native_timer = map_ptr(exec_env, (const void *)timer);
+    if (!native_timer) {
+        ESP_LOGE(TAG, "localtime_r: failed to map timer pointer");
+        set_wasm_errno(exec_env, EFAULT);
         return NULL;
     }
 
-    memcpy(app_tm, naitve_tm, sizeof(struct tm));
-    struct tm *res = (struct tm *)addr_native_to_app((void *)app_tm);
-    return res;
+    /* Map tp pointer and check for NULL */
+    native_tp = map_ptr(exec_env, (const void *)tp);
+    if (!native_tp) {
+        ESP_LOGE(TAG, "localtime_r: failed to map tp pointer");
+        set_wasm_errno(exec_env, EFAULT);
+        return NULL;
+    }
+
+    /* Call localtime_r with validated non-NULL pointers */
+    struct tm *native_tm = localtime_r(native_timer, native_tp);
+    if (!native_tm) {
+        ESP_LOGE(TAG, "localtime_r failed");
+        /* errno is set by localtime_r, don't overwrite it */
+        return NULL;
+    }
+
+    /* Return the WASM offset (tp) since the native signature is NULL.
+       WAMR does not auto-convert returned pointers when signature is NULL,
+       so we must return the WASM offset directly, not the native pointer. */
+    return (struct tm *)tp;
 }
 
 static NativeSymbol wm_libc_wrapper_native_symbol[] = {

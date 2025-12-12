@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -460,6 +460,13 @@
 #define LV_ASYNC_CALL                   451
 #define LV_OBJ_GET_SUBJECT              452
 #define LV_OBJ_REMOVE_FROM_SUBJECT      453
+#define LV_OBJ_REFR_POS                 454
+#define LV_IMAGE_SET_OFFSET_X           455
+#define LV_ANIM_DELETE_ALL              456
+#define LV_OBJ_SET_PARENT               457
+#define LV_TICK_GET                     458
+#define LV_TICK_ELAPS                   459
+#define LV_ANIM_GET_USER_DATA           460
 
 #define LV_SYS_PERF_INFO_CALC             0
 
@@ -471,9 +478,9 @@
 
 #define LV_DRAW_FILL_DSC_COLOR            0
 
-#define LV_DRAW_TASK_DSC_BASE             0 /*!< type of set/get lv_obj_t->coords */
+#define LV_DRAW_TASK_DSC_BASE             0 /*!< type of set/get lv_draw_task_t->dsc_base */
 
-#define LV_SYSMON_BACKEND_DATA            0 /*!< type of set/get lv_obj_t->coords */
+#define LV_SYSMON_BACKEND_DATA            0 /*!< type of set/get sysmon backend data */
 
 #define LV_OBJ_COORDS                     0 /*!< type of set/get lv_obj_t->coords */
 
@@ -491,37 +498,37 @@
 #define LV_OBJ_DRAW_PART_DSC_SUB_PART_PTR 11 /*!< type of set/get lv_obj_draw_part_dsc_t->sub_part_ptr */
 #define LV_OBJ_DRAW_PART_DSC_DRAW_CTX     12 /*!< type of set/get lv_obj_draw_part_dsc_t->draw_ctx */
 
-#define LV_DRAW_RECT_DSC_BASE         0 /*!< type of set/get lv_obj_draw_part_dsc_t->type */
-#define LV_DRAW_RECT_DSC_RADIUS       1 /*!< type of set/get lv_obj_draw_part_dsc_t->part */
-#define LV_DRAW_RECT_DSC_BG_OPA           2 /*!< type of set/get lv_obj_draw_part_dsc_t->id */
-#define LV_DRAW_RECT_DSC_BG_COLOR         3 /*!< type of set/get lv_obj_draw_part_dsc_t->text */
-#define LV_DRAW_RECT_DSC_BG_GRAD        4 /*!< type of set/get lv_obj_draw_part_dsc_t->value */
-#define LV_DRAW_RECT_DSC_BG_IMAGE_RECOLOR           5 /*!< type of set/get lv_obj_draw_part_dsc_t->p1 */
-#define LV_DRAW_RECT_DSC_BG_IMAGE_OPA           6 /*!< type of set/get lv_obj_draw_part_dsc_t->p2 */
-#define LV_DRAW_RECT_DSC_BG_IMAGE_RECOLOR_OPA    7 /*!< type of set/get lv_draw_ctx_t->clip_area */
-#define LV_DRAW_RECT_DSC_BG_IMAGE_TILED    8 /*!< type of set/get lv_obj_draw_part_dsc_t->draw_area */
+#define LV_DRAW_RECT_DSC_BASE             0 /*!< type of set/get lv_draw_rect_dsc_t->base */
+#define LV_DRAW_RECT_DSC_RADIUS           1 /*!< type of set/get lv_draw_rect_dsc_t->radius */
+#define LV_DRAW_RECT_DSC_BG_OPA           2 /*!< type of set/get lv_draw_rect_dsc_t->bg_opa */
+#define LV_DRAW_RECT_DSC_BG_COLOR         3 /*!< type of set/get lv_draw_rect_dsc_t->bg_color */
+#define LV_DRAW_RECT_DSC_BG_GRAD          4 /*!< type of set/get lv_draw_rect_dsc_t->bg_grad */
+#define LV_DRAW_RECT_DSC_BG_IMAGE_RECOLOR 5 /*!< type of set/get lv_draw_rect_dsc_t->bg_image_recolor */
+#define LV_DRAW_RECT_DSC_BG_IMAGE_OPA     6 /*!< type of set/get lv_draw_rect_dsc_t->bg_image_opa */
+#define LV_DRAW_RECT_DSC_BG_IMAGE_RECOLOR_OPA 7 /*!< type of set/get lv_draw_rect_dsc_t->bg_image_recolor_opa */
+#define LV_DRAW_RECT_DSC_BG_IMAGE_TILED   8 /*!< type of set/get lv_draw_rect_dsc_t->bg_image_tiled */
 
-#define LV_DRAW_DSC_BASE_OBJ         0 /*!< type of set/get lv_obj_draw_part_dsc_t->type */
-#define LV_DRAW_DSC_BASE_PART       1 /*!< type of set/get lv_obj_draw_part_dsc_t->part */
-#define LV_DRAW_DSC_BASE_ID1           2 /*!< type of set/get lv_obj_draw_part_dsc_t->id */
-#define LV_DRAW_DSC_BASE_ID2         3 /*!< type of set/get lv_obj_draw_part_dsc_t->text */
-#define LV_DRAW_DSC_BASE_LAYER        4 /*!< type of set/get lv_obj_draw_part_dsc_t->value */
-#define LV_DRAW_DSC_BASE_DSC_SIZE           5 /*!< type of set/get lv_obj_draw_part_dsc_t->p1 */
+#define LV_DRAW_DSC_BASE_OBJ              0 /*!< type of set/get lv_draw_dsc_base_t->obj */
+#define LV_DRAW_DSC_BASE_PART             1 /*!< type of set/get lv_draw_dsc_base_t->part */
+#define LV_DRAW_DSC_BASE_ID1              2 /*!< type of set/get lv_draw_dsc_base_t->id1 */
+#define LV_DRAW_DSC_BASE_ID2              3 /*!< type of set/get lv_draw_dsc_base_t->id2 */
+#define LV_DRAW_DSC_BASE_LAYER            4 /*!< type of set/get lv_draw_dsc_base_t->layer */
+#define LV_DRAW_DSC_BASE_DSC_SIZE         5 /*!< type of set/get lv_draw_dsc_base_t->dsc_size */
 
-#define LV_DRAW_LINE_DSC_BASE         0 /*!< type of set/get lv_obj_draw_part_dsc_t->type */
-#define LV_DRAW_LINE_DSC_P1       1 /*!< type of set/get lv_obj_draw_part_dsc_t->part */
-#define LV_DRAW_LINE_DSC_P2           2 /*!< type of set/get lv_obj_draw_part_dsc_t->id */
-#define LV_DRAW_LINE_DSC_COLOR         3 /*!< type of set/get lv_obj_draw_part_dsc_t->text */
-#define LV_DRAW_LINE_DSC_WIDTH        4 /*!< type of set/get lv_obj_draw_part_dsc_t->value */
-#define LV_DRAW_LINE_DSC_DASH_WIDTH           5 /*!< type of set/get lv_obj_draw_part_dsc_t->p1 */
+#define LV_DRAW_LINE_DSC_BASE             0 /*!< type of set/get lv_draw_line_dsc_t->base */
+#define LV_DRAW_LINE_DSC_P1               1 /*!< type of set/get lv_draw_line_dsc_t->p1 */
+#define LV_DRAW_LINE_DSC_P2               2 /*!< type of set/get lv_draw_line_dsc_t->p2 */
+#define LV_DRAW_LINE_DSC_COLOR            3 /*!< type of set/get lv_draw_line_dsc_t->color */
+#define LV_DRAW_LINE_DSC_WIDTH            4 /*!< type of set/get lv_draw_line_dsc_t->width */
+#define LV_DRAW_LINE_DSC_DASH_WIDTH       5 /*!< type of set/get lv_draw_line_dsc_t->dash_width */
 
 #define LV_CHART_SERIES_COLOR             0 /*!< type of set/get lv_chart_series_t->color */
 
-#define LV_DRAW_FILL_DSC_RADIUS             0 /*!< type of set/get lv_chart_series_t->color */
+#define LV_DRAW_FILL_DSC_RADIUS           0 /*!< type of set/get lv_draw_fill_dsc_t->radius */
 
 #define LV_FONT_LINE_HEIGHT               0 /*!< type of set/get lv_font_t->line_height */
 
-#define LV_FONT_MONTSERRAT_8_FONT 0
+#define LV_FONT_MONTSERRAT_8_FONT  0
 #define LV_FONT_MONTSERRAT_10_FONT 1
 #define LV_FONT_MONTSERRAT_12_FONT 2
 #define LV_FONT_MONTSERRAT_14_FONT 3
@@ -543,9 +550,9 @@
 #define LV_FONT_MONTSERRAT_46_FONT 19
 #define LV_FONT_MONTSERRAT_48_FONT 20
 #define LV_FONT_MONTSERRAT_28_COMPRESSED_FONT 21
-#define LV_FONT_MONTSERRAT_12_SUBPX_FONT 22
-#define LV_FONT_UNSCII_8_FONT 23
-#define LV_FONT_UNSCII_16_FONT 24
+#define LV_FONT_MONTSERRAT_12_SUBPX_FONT      22
+#define LV_FONT_UNSCII_8_FONT     23
+#define LV_FONT_UNSCII_16_FONT    24
 #define LV_FONT_DEJAVU_16_PERSIAN_HEBREW_FONT 25
 #define LV_FONT_SIMSUN_16_CJK_FONT 26
 #define LV_FONT_BENCHMARK_MONTSERRAT_12_COMPR_AZ_FONT 27
@@ -558,7 +565,7 @@
 
 #define LV_TIMER_CTX_COUNT_VAL 0
 
-/* ESP-Wasmachine LVGL version: 0.1.0 */
-#define WM_LV_VERSION_MAJOR 0
-#define WM_LV_VERSION_MINOR 1
+/* ESP-Wasmachine LVGL version: 1.0.0 */
+#define WM_LV_VERSION_MAJOR 1
+#define WM_LV_VERSION_MINOR 0
 #define WM_LV_VERSION_PATCH 0

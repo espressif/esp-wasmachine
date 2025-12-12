@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 
 import os, subprocess, sys
@@ -9,6 +9,8 @@ from idf_build_apps.constants import SUPPORTED_TARGETS
 IGNORE_WARNINGS = [
     r'warning: \'nvs_handle\' is deprecated: Replace with nvs_handle_t',
     r'warning: \'ADC_ATTEN_DB_11\' is deprecated',
+    r'warning: #warning \"HTTP OTA resumption, needs IDF version >= 5.5.0\"',
+    r"warning: ignoring attribute 'section \(\".*\"\)' because it conflicts with previous 'section \(\".*\"\)' \[-Wattributes\]",
 ]
 
 def get_mr_files(modified_files: str) -> str:

@@ -72,9 +72,8 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
         idf_component_optional_requires(PRIVATE "lvgl__lvgl")
 
         idf_component_get_property(lvgl lvgl__lvgl COMPONENT_LIB)
-        target_compile_definitions(${lvgl} PUBLIC "-DLV_EXTERNAL_DATA_AND_DESTRUCTOR"
-                                                  "-DLV_EXT_DATA_MAX_NUM=3")
-        if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_TO_SUPPORT_BROOKESIA)
+        target_compile_definitions(${lvgl} PUBLIC LV_USE_EXT_DATA)
+        if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_USE_WASM_HEAP)
             set(WRAP_FUNCTIONS
                 lv_mem_init
                 lv_mem_deinit
