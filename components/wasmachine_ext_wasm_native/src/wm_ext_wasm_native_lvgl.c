@@ -3157,6 +3157,11 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_imagebutton_set_src)
     lvgl_native_get_arg(const void *, src_mid);
     lvgl_native_get_arg(const void *, src_right);
 
+    if ((int)state < 0 || (int)state >= LV_IMAGEBUTTON_STATE_NUM) {
+        ESP_LOGE(TAG, "invalid state=%d", (int)state);
+        return;
+    }
+
     // Check if this button already has external data allocated for image descriptors
     // If it does and it's our destructor, reuse it; otherwise allocate new
     lv_image_dsc_t *button_dsc = NULL;
@@ -4705,58 +4710,62 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_scale_set_text_src)
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
     char **app_txt = (char **)addr_app_to_native(txt_src);
     if (!app_txt) {
-        ESP_LOGW(TAG, "using APP map=0x%"PRIx32, txt_src);
+        ESP_LOGW(TAG, "lv_scale_set_text_src: failed to map txt_src=0x%"PRIx32, txt_src);
         return;
     }
 
     int txt_size = 1;
     do {
         if (txt_size > MAX_TEXT_ITER) {
-            ESP_LOGW(TAG, "lv_scale_set_text_src: maximum iteration limit (%d) exceeded, txt_size=%d, app_txt[%d]=%p, breaking to avoid infinite loop",
-                     MAX_TEXT_ITER, txt_size, txt_size - 1, (void *)app_txt[txt_size - 1]);
+            ESP_LOGW(TAG, "lv_scale_set_text_src: maximum iteration limit (%d) exceeded, capping", MAX_TEXT_ITER);
+            txt_size = MAX_TEXT_ITER;
+            break;
+        }
+
+        if (app_txt[txt_size - 1] == NULL) {
             break;
         }
 
         char *str = (char *)addr_app_to_native((uint32_t)app_txt[txt_size - 1]);
         if (!str) {
-            ESP_LOGW(TAG, "using APP app_txt[%d]=0x%"PRIx32, txt_size - 1, (uint32_t)app_txt[txt_size - 1]);
-            str = app_txt[txt_size - 1];
-        }
-
-        ESP_LOGD(TAG, "str=%p", (void *)str);
-
-        if (str[0] == '\0') {
-            break;
+            ESP_LOGW(TAG, "lv_scale_set_text_src: failed to map app_txt[%d]=0x%"PRIx32, txt_size - 1, (uint32_t)app_txt[txt_size - 1]);
+            return;
         }
 
         txt_size++;
     } while (1);
 
-    char **wasm_map = (char **)malloc(txt_size * sizeof(char *));
+    char **wasm_map = (char **)malloc((txt_size + 1) * sizeof(char *));
     if (!wasm_map) {
-        ESP_LOGE(TAG, "failed to malloc wasm_map");
+        ESP_LOGE(TAG, "lv_scale_set_text_src: failed to malloc wasm_map");
         return;
     }
 
     for (int i = 0; i < txt_size; i++) {
-        wasm_map[i] = (char *)addr_app_to_native((uint32_t)app_txt[i]);
-        if (!wasm_map[i]) {
-            wasm_map[i] = (char *)app_txt[i];
+        if (app_txt[i] == NULL) {
+            wasm_map[i] = NULL;
+        } else {
+            wasm_map[i] = (char *)addr_app_to_native((uint32_t)app_txt[i]);
+            if (!wasm_map[i]) {
+                ESP_LOGW(TAG, "lv_scale_set_text_src: failed to map app_txt[%d]=0x%"PRIx32, i, (uint32_t)app_txt[i]);
+                free(wasm_map);
+                return;
+            }
         }
     }
 
-    lv_scale_set_text_src(obj, (const char **)wasm_map);
+    wasm_map[txt_size] = NULL;
 
-    // Create a properly typed wrapper struct instead of unsafe cast
     wasm_text_map_t *text_map = (wasm_text_map_t *)malloc(sizeof(wasm_text_map_t));
     if (!text_map) {
-        ESP_LOGE(TAG, "failed to malloc text_map");
+        ESP_LOGE(TAG, "lv_scale_set_text_src: failed to malloc text_map");
         free(wasm_map);
         return;
     }
     text_map->map = wasm_map;
-    text_map->size = txt_size;
+    text_map->size = txt_size + 1;
 
+    lv_scale_set_text_src(obj, (const char **)wasm_map);
     lv_obj_set_external_data(obj, text_map, lv_scale_set_text_src_destructor);
 }
 
@@ -5606,11 +5615,10 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_label_get_text2)
     }
 
     int size = strlen(text) + 1;
-    char *app_text;
+    char *app_text = NULL;
 
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
-    module_malloc(size, (void **)&app_text);
-    if (!app_text) {
+    if (!module_malloc(size, (void **)&app_text) || !app_text) {
         ESP_LOGE(TAG, "failed to malloc app_text");
         lvgl_native_set_return(NULL);
         return;
@@ -5634,11 +5642,10 @@ DEFINE_LVGL_NATIVE_WRAPPER(lv_textarea_get_text2)
     }
 
     int size = strlen(text) + 1;
-    char *app_text;
+    char *app_text = NULL;
 
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
-    module_malloc(size, (void **)&app_text);
-    if (!app_text) {
+    if (!module_malloc(size, (void **)&app_text) || !app_text) {
         ESP_LOGE(TAG, "failed to malloc app_text");
         lvgl_native_set_return(NULL);
         return;

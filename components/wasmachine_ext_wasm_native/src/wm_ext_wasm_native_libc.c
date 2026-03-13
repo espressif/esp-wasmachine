@@ -574,10 +574,14 @@ static int rand_wrapper(wasm_exec_env_t exec_env)
 
 static struct tm *localtime_r_wrapper(wasm_exec_env_t exec_env, int32_t timer, int32_t tp)
 {
-    const time_t *native_timer = NULL;
-    struct tm *native_tp = NULL;
+    const time_t *native_timer;
+    struct tm *native_tp;
 
-    /* Map timer pointer and check for NULL */
+    if (timer == 0 || tp == 0) {
+        set_wasm_errno(exec_env, EFAULT);
+        return NULL;
+    }
+
     native_timer = map_ptr(exec_env, (const void *)timer);
     if (!native_timer) {
         ESP_LOGE(TAG, "localtime_r: failed to map timer pointer");
@@ -585,7 +589,6 @@ static struct tm *localtime_r_wrapper(wasm_exec_env_t exec_env, int32_t timer, i
         return NULL;
     }
 
-    /* Map tp pointer and check for NULL */
     native_tp = map_ptr(exec_env, (const void *)tp);
     if (!native_tp) {
         ESP_LOGE(TAG, "localtime_r: failed to map tp pointer");
@@ -593,11 +596,11 @@ static struct tm *localtime_r_wrapper(wasm_exec_env_t exec_env, int32_t timer, i
         return NULL;
     }
 
-    /* Call localtime_r with validated non-NULL pointers */
+    /* Both timer and tp mapped successfully; safe to call localtime_r */
     struct tm *native_tm = localtime_r(native_timer, native_tp);
     if (!native_tm) {
         ESP_LOGE(TAG, "localtime_r failed");
-        /* errno is set by localtime_r, don't overwrite it */
+        set_wasm_errno(exec_env, errno);
         return NULL;
     }
 

@@ -33,7 +33,7 @@
     IDF_CI_BUILD: "1"
   script:
     - echo "MODIFIED_FILES $MODIFIED_FILES"
-    - pip install --upgrade idf-component-manager
+    - pip install "idf-component-manager>=2.2,<3.0"
     - pip install idf_build_apps==1.1.4
     - if [ -n "$SDKCONFIG_DEFAULTS" ] && [ -n "$IDF_TARGET" ]; then
         python tools/ci/build_apps.py --sdkconfig-defaults $SDKCONFIG_DEFAULTS -t $IDF_TARGET;
