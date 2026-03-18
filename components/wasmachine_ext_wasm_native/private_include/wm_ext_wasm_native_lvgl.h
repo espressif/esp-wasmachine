@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -320,6 +320,167 @@
 #define LV_OBJ_GET_STYLE_OPA_RECURSIVE  311
 #define LV_TIMER_CTX_GET_DATA           312
 #define LV_TIMER_CTX_SET_DATA           313
+#define LV_TIMER_READY                  314
+#define LV_SUBJECT_ADD_OBSERVER_OBJ     315
+#define LV_SCREEN_ACTIVE                316
+#define LV_TABVIEW_SET_TAB_BAR_SIZE     317
+#define LV_ANIM_SET_VAR                 318
+#define LV_ANIM_SET_DURATION            319
+#define LV_ANIM_SET_DELAY               320
+#define LV_ANIM_SET_COMPLETED_CB        321
+#define LV_ANIM_SET_EXEC_CB             322
+#define LV_ANIM_SET_PATH_CB             323
+#define LV_ANIM_SET_VALUES              324
+#define LV_ANIM_SET_REVERSE_DURATION    325
+#define LV_ANIM_SET_REPEAT_COUNT        326
+#define LV_SCALE_CREATE                 327
+#define LV_SCALE_SET_MODE               328
+#define LV_SCALE_SET_ANGLE_RANGE        329
+#define LV_SCALE_SET_TEXT_SRC           330
+#define LV_SCALE_SET_TOTAL_TICK_COUNT   331
+#define LV_SCALE_SET_MAJOR_TICK_EVERY   332
+#define LV_SCALE_SET_RANGE              333
+#define LV_SCALE_SET_ROTATION           334
+#define LV_SCALE_ADD_SECTION            335
+#define LV_SCALE_SET_SECTION_RANGE      336
+#define LV_SCALE_SET_SECTION_STYLE_MAIN 337
+#define LV_SCALE_SET_SECTION_STYLE_INDICATOR 338
+#define LV_SCALE_SET_SECTION_STYLE_ITEMS     339
+#define LV_SCALE_SET_IMAGE_NEEDLE_VALUE 340
+#define LV_SCALE_SET_POST_DRAW          341
+#define LV_MSGBOX_ADD_TITLE             342
+#define LV_MSGBOX_ADD_HEADER_BUTTON     343
+#define LV_MSGBOX_ADD_TEXT              344
+#define LV_MSGBOX_ADD_FOOTER_BUTTON     345
+#define LV_TEXTAREA_DELETE_CHAR_FORWARD 346
+#define LV_LAYER_TOP                    347
+#define LV_DRAW_TASK_GET_TYPE           348
+#define LV_DRAW_DSC_BASE_GET_DATA       349
+#define LV_DRAW_DSC_BASE_SET_DATA       350
+#define LV_DRAW_LINE_DSC_GET_DATA       351
+#define LV_DRAW_LINE_DSC_SET_DATA       352
+#define LV_DRAW_FILL_DSC_GET_DATA       353
+#define LV_DRAW_TASK_GET_DRAW_DSC       354
+#define LV_DRAW_TASK_GET_AREA           355
+#define LV_DRAW_TASK_GET_LINE_DSC       356
+#define LV_DRAW_TASK_GET_FILL_DSC       357
+#define LV_DRAW_TASK_GET_LABEL_DSC      358
+#define LV_DRAW_TASK_GET_BORDER_DSC     359
+#define LV_DRAW_TRIANGLE_DSC_INIT       360
+#define LV_DRAW_TRIANGLE                361
+#define LV_AREA_PCT                     362
+#define LV_CHART_GET_FIRST_POINT_CENTER_OFFSET 363
+#define LV_CHART_GET_SERIES_COLOR       364
+#define LV_CHART_GET_SERIES_Y_ARRAY     365
+#define LV_OBJ_CENTER                   366
+#define LV_OBJ_DELETE_ANIM_COMPLETED_CB 367
+#define LV_OBJ_GET_SIBLING              368
+#define LV_OBJ_SET_STYLE_ARC_OPA        369
+#define LV_OBJ_SET_STYLE_MARGIN_LEFT    370
+#define LV_OBJ_SET_STYLE_MARGIN_RIGHT   371
+#define LV_OBJ_SET_STYLE_MARGIN_TOP     372
+#define LV_OBJ_SET_STYLE_MARGIN_BOTTOM  373
+#define LV_OBJ_SET_STYLE_LENGTH         374
+#define LV_OBJ_SET_STYLE_ARC_ROUNDED    375
+#define LV_OBJ_GET_COORDS               376
+#define LV_OBJ_REMOVE_STYLE_ALL         377
+#define LV_OBJ_SET_LAYOUT               378
+#define LV_OBJ_GET_CONTENT_HEIGHT       379
+#define LV_OBJ_GET_SCROLL_BOTTOM        380
+#define LV_OBJ_SET_STYLE_OPA_LAYERED    381
+#define LV_OBJ_SCROLL_TO_Y              382
+#define LV_OBJ_SET_STYLE_TRANSLATE_Y    383
+#define LV_STYLE_SET_ARC_COLOR          384
+#define LV_STYLE_SET_LINE_COLOR         385
+#define LV_COLOR_WHITE                  386
+#define LV_COLOR_BLACK                  387
+#define LV_COLOR_HEX3                   388
+#define LV_IMAGE_SET_PIVOT              389
+#define LV_IMAGE_SET_INNER_ALIGN        390
+#define LV_INDEV_WAIT_RELEASE           391
+#define LV_SLIDER_SET_VALUE             392
+#define LV_SLIDER_SET_RANGE             393
+#define LV_SLIDER_GET_VALUE             394
+#define LV_AREA_GET_WIDTH               395
+#define LV_AREA_GET_HEIGHT              396
+#define LV_ARC_SET_ANGLES               397
+#define LV_EVENT_GET_DRAW_TASK          398
+#define LV_EVENT_GET_LAYER              399
+#define LV_TABVIEW_GET_CONTENT          400
+#define LV_ANIM_SPEED                   401
+#define LV_OBJ_GET_OBS_DATA             402
+#define LV_DRAW_TASK_GET_DATA           403
+#define LV_DRAW_FILL_DSC_SET_DATA       404
+#define LV_DRAW_LABEL_DSC_SET_DATA      405
+#define LV_DRAW_BORDER_DSC_SET_DATA     406
+#define LV_FONT_GET_LINE_HEIGHT         407
+#define LV_TRIGO_COS                    408
+#define LV_GET_SYS_PERF_DATA            409
+#define LV_BUTTONMATRIX_CREATE          410
+#define LV_BUTTONMATRIX_SET_MAP         411
+#define LV_BUTTONMATRIX_SET_BUTTON_WIDTH    412
+#define LV_BUTTONMATRIX_SET_BUTTON_CTRL     413
+#define LV_BUTTONMATRIX_GET_SELECTED_BUTTON 414
+#define LV_BUTTONMATRIX_GET_BUTTON_TEXT 415
+#define LV_LABEL_CUT_TEXT               416
+#define LV_LABEL_INS_TEXT               417
+#define LV_LABEL_GET_TEXT               418
+#define LV_TEXTAREA_GET_TEXT            419
+#define LV_SUBJECT_GET_POINTER          420
+#define LV_OBSERVER_GET_TARGET          421
+#define LV_OBJ_GET_X                    422
+#define LV_OBJ_GET_Y                    423
+#define LV_OBJ_SET_STYLE_GRID_COLUMN_DSC_ARRAY  424
+#define LV_OBJ_SET_STYLE_GRID_ROW_DSC_ARRAY     425
+#define LV_OBJ_SET_GRID_ALIGN           426
+#define LV_SCREEN_LOAD_ANIM             427
+#define LV_SCREEN_LOAD                  428
+#define LV_THEME_SIMPLE_INIT            429
+#define LV_DISPLAY_SET_THEME            430
+#define LV_OBJ_SET_ALIGN                431
+#define LV_OBJ_SET_STYLE_TEXT_OPA       432
+#define LV_OBJ_SEND_EVENT               433
+#define LV_OBJ_SET_STYLE_BG_IMAGE_TILED 434
+#define LV_OBJ_SET_STYLE_BORDER_OPA     435
+#define LV_OBJ_SET_STYLE_SHADOW_SPREAD  436
+#define LV_OBJ_SET_STYLE_IMAGE_RECOLOR_OPA 437
+#define LV_OBJ_GET_Y_ALIGNED            438
+#define LV_MALLOC                       439
+#define LV_FREE                         440
+#define LV_ANIM_SET_USER_DATA           441
+#define LV_ANIM_SET_CUSTOM_EXEC_CB      442
+#define LV_ANIM_SET_DELETED_CB          443
+#define LV_ANIM_SET_REVERSE_DELAY       444
+#define LV_ANIM_SET_REPEAT_DELAY        445
+#define LV_ANIM_SET_EARLY_APPLY         446
+#define LV_ANIM_SET_GET_VALUE_CB        447
+#define LV_ARC_GET_VALUE                448
+#define LV_OBJ_SET_STYLE_TRANSFORM_SCALE_X 449
+#define LV_OBJ_SET_STYLE_TRANSFORM_SCALE_Y 450
+#define LV_ASYNC_CALL                   451
+#define LV_OBJ_GET_SUBJECT              452
+#define LV_OBJ_REMOVE_FROM_SUBJECT      453
+#define LV_OBJ_REFR_POS                 454
+#define LV_IMAGE_SET_OFFSET_X           455
+#define LV_ANIM_DELETE_ALL              456
+#define LV_OBJ_SET_PARENT               457
+#define LV_TICK_GET                     458
+#define LV_TICK_ELAPS                   459
+#define LV_ANIM_GET_USER_DATA           460
+
+#define LV_SYS_PERF_INFO_CALC             0
+
+#define LV_DRAW_BORDER_DSC_COLOR          0
+#define LV_DRAW_BORDER_DSC_WIDTH          1
+#define LV_DRAW_BORDER_DSC_SIDE           2
+
+#define LV_DRAW_LABEL_DSC_COLOR           0
+
+#define LV_DRAW_FILL_DSC_COLOR            0
+
+#define LV_DRAW_TASK_DSC_BASE             0 /*!< type of set/get lv_draw_task_t->dsc_base */
+
+#define LV_SYSMON_BACKEND_DATA            0 /*!< type of set/get sysmon backend data */
 
 #define LV_OBJ_COORDS                     0 /*!< type of set/get lv_obj_t->coords */
 
@@ -337,7 +498,33 @@
 #define LV_OBJ_DRAW_PART_DSC_SUB_PART_PTR 11 /*!< type of set/get lv_obj_draw_part_dsc_t->sub_part_ptr */
 #define LV_OBJ_DRAW_PART_DSC_DRAW_CTX     12 /*!< type of set/get lv_obj_draw_part_dsc_t->draw_ctx */
 
+#define LV_DRAW_RECT_DSC_BASE             0 /*!< type of set/get lv_draw_rect_dsc_t->base */
+#define LV_DRAW_RECT_DSC_RADIUS           1 /*!< type of set/get lv_draw_rect_dsc_t->radius */
+#define LV_DRAW_RECT_DSC_BG_OPA           2 /*!< type of set/get lv_draw_rect_dsc_t->bg_opa */
+#define LV_DRAW_RECT_DSC_BG_COLOR         3 /*!< type of set/get lv_draw_rect_dsc_t->bg_color */
+#define LV_DRAW_RECT_DSC_BG_GRAD          4 /*!< type of set/get lv_draw_rect_dsc_t->bg_grad */
+#define LV_DRAW_RECT_DSC_BG_IMAGE_RECOLOR 5 /*!< type of set/get lv_draw_rect_dsc_t->bg_image_recolor */
+#define LV_DRAW_RECT_DSC_BG_IMAGE_OPA     6 /*!< type of set/get lv_draw_rect_dsc_t->bg_image_opa */
+#define LV_DRAW_RECT_DSC_BG_IMAGE_RECOLOR_OPA 7 /*!< type of set/get lv_draw_rect_dsc_t->bg_image_recolor_opa */
+#define LV_DRAW_RECT_DSC_BG_IMAGE_TILED   8 /*!< type of set/get lv_draw_rect_dsc_t->bg_image_tiled */
+
+#define LV_DRAW_DSC_BASE_OBJ              0 /*!< type of set/get lv_draw_dsc_base_t->obj */
+#define LV_DRAW_DSC_BASE_PART             1 /*!< type of set/get lv_draw_dsc_base_t->part */
+#define LV_DRAW_DSC_BASE_ID1              2 /*!< type of set/get lv_draw_dsc_base_t->id1 */
+#define LV_DRAW_DSC_BASE_ID2              3 /*!< type of set/get lv_draw_dsc_base_t->id2 */
+#define LV_DRAW_DSC_BASE_LAYER            4 /*!< type of set/get lv_draw_dsc_base_t->layer */
+#define LV_DRAW_DSC_BASE_DSC_SIZE         5 /*!< type of set/get lv_draw_dsc_base_t->dsc_size */
+
+#define LV_DRAW_LINE_DSC_BASE             0 /*!< type of set/get lv_draw_line_dsc_t->base */
+#define LV_DRAW_LINE_DSC_P1               1 /*!< type of set/get lv_draw_line_dsc_t->p1 */
+#define LV_DRAW_LINE_DSC_P2               2 /*!< type of set/get lv_draw_line_dsc_t->p2 */
+#define LV_DRAW_LINE_DSC_COLOR            3 /*!< type of set/get lv_draw_line_dsc_t->color */
+#define LV_DRAW_LINE_DSC_WIDTH            4 /*!< type of set/get lv_draw_line_dsc_t->width */
+#define LV_DRAW_LINE_DSC_DASH_WIDTH       5 /*!< type of set/get lv_draw_line_dsc_t->dash_width */
+
 #define LV_CHART_SERIES_COLOR             0 /*!< type of set/get lv_chart_series_t->color */
+
+#define LV_DRAW_FILL_DSC_RADIUS           0 /*!< type of set/get lv_draw_fill_dsc_t->radius */
 
 #define LV_FONT_LINE_HEIGHT               0 /*!< type of set/get lv_font_t->line_height */
 
@@ -369,12 +556,16 @@
 #define LV_FONT_DEJAVU_16_PERSIAN_HEBREW_FONT 25
 #define LV_FONT_SIMSUN_16_CJK_FONT 26
 #define LV_FONT_BENCHMARK_MONTSERRAT_12_COMPR_AZ_FONT 27
-#define LV_FONT_BENCHMARK_MONTSERRAT_16_COMPR_AZ_FONT 28
-#define LV_FONT_BENCHMARK_MONTSERRAT_28_COMPR_AZ_FONT 29
+#define LV_FONT_BENCHMARK_MONTSERRAT_14_COMPR_AZ_FONT 28
+#define LV_FONT_BENCHMARK_MONTSERRAT_16_COMPR_AZ_FONT 29
+#define LV_FONT_BENCHMARK_MONTSERRAT_18_COMPR_AZ_FONT 30
+#define LV_FONT_BENCHMARK_MONTSERRAT_20_COMPR_AZ_FONT 31
+#define LV_FONT_BENCHMARK_MONTSERRAT_24_COMPR_AZ_FONT 32
+#define LV_FONT_BENCHMARK_MONTSERRAT_26_COMPR_AZ_FONT 33
 
 #define LV_TIMER_CTX_COUNT_VAL 0
 
-/* ESP-Wasmachine LVGL version: 0.1.0 */
-#define WM_LV_VERSION_MAJOR 0
-#define WM_LV_VERSION_MINOR 1
+/* ESP-Wasmachine LVGL version: 1.0.0 */
+#define WM_LV_VERSION_MAJOR 1
+#define WM_LV_VERSION_MINOR 0
 #define WM_LV_VERSION_PATCH 0

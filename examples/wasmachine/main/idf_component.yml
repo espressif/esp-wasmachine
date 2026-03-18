@@ -14,7 +14,7 @@ dependencies:
       - if: "target in [esp32p4]"
 
   lvgl/lvgl:
-    version: "8.4.0"
+    version: "9.3.0"
     rules:
       - if: "target in [esp32s3, esp32p4]"
 
@@ -32,6 +32,6 @@ dependencies:
     override_path: ../../../components/wasmachine_ext_wasm_native_rainmaker
 
   esp_wifi_remote:
-    version: "0.*"
+    version: "0.14.0"
     rules:
       - if: "target in [esp32p4]"

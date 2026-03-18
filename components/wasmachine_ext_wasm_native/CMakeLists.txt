@@ -72,8 +72,23 @@ if(CONFIG_WASMACHINE_WASM_EXT_NATIVE)
         idf_component_optional_requires(PRIVATE "lvgl__lvgl")
 
         idf_component_get_property(lvgl lvgl__lvgl COMPONENT_LIB)
-        target_compile_definitions(${lvgl} PUBLIC "-DLV_EXTERNAL_DATA_AND_DESTRUCTOR"
-                                                  "-DLV_EXT_DATA_MAX_NUM=3")
+        target_compile_definitions(${lvgl} PUBLIC LV_USE_EXT_DATA)
+        if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_LVGL_USE_WASM_HEAP)
+            set(WRAP_FUNCTIONS
+                lv_mem_init
+                lv_mem_deinit
+                lv_mem_add_pool
+                lv_mem_remove_pool
+                lv_malloc_core
+                lv_realloc_core
+                lv_free_core
+                lv_mem_monitor_core
+                lv_mem_test_core)
+
+            foreach(wrap ${WRAP_FUNCTIONS})
+                target_link_libraries(${COMPONENT_LIB} PUBLIC "-Wl,--wrap=${wrap}")
+            endforeach()
+        endif()
     endif()
     if(CONFIG_WASMACHINE_WASM_EXT_NATIVE_MQTT)
         idf_component_optional_requires(PRIVATE "mqtt")

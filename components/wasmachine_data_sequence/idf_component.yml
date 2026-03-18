@@ -1,8 +1,9 @@
-version: "0.1.0~2"
+version: "0.1.0~3"
 description: Data sequence component for Espressif WASMachine
 url: https://github.com/espressif/esp-wasmachine/tree/master/components/wasmachine_data_sequence
 repository: https://github.com/espressif/esp-wasmachine.git
 issues: https://github.com/espressif/esp-wasmachine/issues
+interface_version: 4
 dependencies:
   idf:
     version: ">=5.1"

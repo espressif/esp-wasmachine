@@ -1,8 +1,9 @@
-version: "0.1.1"
+version: "0.1.1~1"
 description: shell component for Espressif WASMachine
 url: https://github.com/espressif/esp-wasmachine/tree/master/components/wasmachine_shell
 repository: https://github.com/espressif/esp-wasmachine.git
 issues: https://github.com/espressif/esp-wasmachine/issues
+interface_version: 4
 dependencies:
   idf: ">=5.1"
 cmake_utilities:

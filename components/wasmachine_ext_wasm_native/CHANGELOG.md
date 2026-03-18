@@ -1,5 +1,11 @@
 # ChangeLog
 
+## 0.5.0
+
+- Update LVGL version to 9.3.0
+- Add support for ESP-brookesia
+- Update LVGL patch to synchronize with LVGL upstream
+
 ## 0.4.0
 
 - Update LVGL version to 8.4.0

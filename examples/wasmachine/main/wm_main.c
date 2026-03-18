@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -59,7 +59,7 @@ static void bsp_display_config(void)
 #endif
         .flags = {
             .buff_dma = true,
-            .buff_spiram = false,
+            .buff_spiram = true,
         }
     };
 #else
@@ -92,7 +92,7 @@ static void bsp_display_config(void)
 #else
             .buff_dma = true,
 #endif
-            .buff_spiram = false,
+            .buff_spiram = true,
             .sw_rotate = true,
         }
     };

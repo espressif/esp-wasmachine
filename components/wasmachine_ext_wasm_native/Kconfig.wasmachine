@@ -23,6 +23,17 @@ menu "WASM Extended Native"
         default n
         depends on WASMACHINE_WASM_EXT_NATIVE
 
+    config WASMACHINE_WASM_EXT_NATIVE_LVGL_USE_WASM_HEAP
+        bool "Enable to allocate LVGL memory from WASM APP heap"
+        default n
+        depends on WASMACHINE_WASM_EXT_NATIVE && WASMACHINE_WASM_EXT_NATIVE_LVGL
+        help
+            When enabled, LVGL memory allocations are redirected to the WASM APP's heap
+            instead of the system heap. This ensures memory isolation between different
+            WASM applications and allows proper cleanup when an app is unloaded.
+
+            Requires configNUM_THREAD_LOCAL_STORAGE_POINTERS >= 3 in FreeRTOS config.
+
     config WASMACHINE_WASM_EXT_NATIVE_MQTT
         bool "Export WASM extended MQTT native APIs"
         default n
