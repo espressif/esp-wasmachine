@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+#include "esp_attr.h"
+
 typedef struct {
     int (*fn)(void);   /*!< Pointer to the export function */
 } wm_ext_wasm_native_export_fn_t;
